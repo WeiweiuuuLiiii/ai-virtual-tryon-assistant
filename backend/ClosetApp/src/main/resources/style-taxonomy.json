@@ -1,0 +1,254 @@
+{
+  "style_taxonomy": [
+    {
+      "name": "minimalist",
+      "core_vibe": ["clean", "understated", "polished", "simple"],
+      "common_colors": ["black", "white", "cream", "beige", "gray", "navy"],
+      "color_families": ["neutrals", "monochrome"],
+      "silhouettes": ["tailored", "straight", "structured", "relaxed"],
+      "common_items": ["blazer", "white shirt", "straight trousers", "long coat", "loafers"],
+      "materials": ["cotton", "wool", "linen", "knit"],
+      "dressiness": "medium"
+    },
+    {
+      "name": "classic",
+      "core_vibe": ["timeless", "refined", "balanced", "elegant"],
+      "common_colors": ["navy", "camel", "white", "black", "burgundy"],
+      "color_families": ["neutrals", "earth tones"],
+      "silhouettes": ["tailored", "structured", "fitted"],
+      "common_items": ["trench coat", "button-down", "pencil skirt", "blazer", "pumps"],
+      "materials": ["wool", "cotton", "tweed", "silk"],
+      "dressiness": "medium-high"
+    },
+    {
+      "name": "business_casual",
+      "core_vibe": ["professional", "clean", "approachable", "smart"],
+      "common_colors": ["navy", "black", "white", "beige", "dusty blue"],
+      "color_families": ["neutrals", "muted tones"],
+      "silhouettes": ["tailored", "straight", "structured"],
+      "common_items": ["blazer", "trousers", "blouse", "midi skirt", "loafers"],
+      "materials": ["cotton", "wool", "knit"],
+      "dressiness": "medium"
+    },
+    {
+      "name": "streetwear",
+      "core_vibe": ["cool", "oversized", "graphic", "urban"],
+      "common_colors": ["black", "white", "charcoal", "red", "cobalt"],
+      "color_families": ["monochrome", "brights", "dark tones"],
+      "silhouettes": ["oversized", "relaxed", "boxy"],
+      "common_items": ["hoodie", "cargo pants", "graphic tee", "sneakers", "bomber jacket"],
+      "materials": ["cotton", "nylon", "denim"],
+      "dressiness": "low"
+    },
+    {
+      "name": "casual_basic",
+      "core_vibe": ["easy", "practical", "comfortable", "natural"],
+      "common_colors": ["white", "gray", "black", "blue", "olive"],
+      "color_families": ["neutrals", "soft tones"],
+      "silhouettes": ["relaxed", "straight", "regular fit"],
+      "common_items": ["t-shirt", "jeans", "cardigan", "sneakers", "hoodie"],
+      "materials": ["cotton", "denim", "jersey", "knit"],
+      "dressiness": "low"
+    },
+    {
+      "name": "smart_casual",
+      "core_vibe": ["effortless", "put-together", "modern", "balanced"],
+      "common_colors": ["white", "navy", "beige", "black", "olive"],
+      "color_families": ["neutrals", "earth tones"],
+      "silhouettes": ["straight", "tailored", "relaxed"],
+      "common_items": ["knit top", "wide-leg pants", "clean sneakers", "blazer", "midi skirt"],
+      "materials": ["knit", "cotton", "linen"],
+      "dressiness": "medium"
+    },
+    {
+      "name": "romantic",
+      "core_vibe": ["soft", "feminine", "delicate", "dreamy"],
+      "common_colors": ["blush", "cream", "lavender", "rose", "ivory"],
+      "color_families": ["pastels", "soft neutrals"],
+      "silhouettes": ["flowy", "fitted", "draped"],
+      "common_items": ["slip dress", "ruffled blouse", "midi skirt", "ballet flats", "cardigan"],
+      "materials": ["silk", "chiffon", "lace", "satin"],
+      "dressiness": "medium"
+    },
+    {
+      "name": "feminine_chic",
+      "core_vibe": ["pretty", "polished", "graceful", "dressy"],
+      "common_colors": ["pink", "white", "cream", "black", "pastel blue"],
+      "color_families": ["pastels", "neutrals"],
+      "silhouettes": ["fitted", "waist-defined", "flowy"],
+      "common_items": ["fitted top", "mini skirt", "heels", "dress coat", "handbag"],
+      "materials": ["knit", "satin", "tweed"],
+      "dressiness": "medium-high"
+    },
+    {
+      "name": "edgy",
+      "core_vibe": ["sharp", "bold", "dark", "confident"],
+      "common_colors": ["black", "charcoal", "deep red", "silver"],
+      "color_families": ["dark tones", "monochrome"],
+      "silhouettes": ["fitted", "structured", "cropped"],
+      "common_items": ["leather jacket", "combat boots", "mini skirt", "mesh top", "black denim"],
+      "materials": ["leather", "denim", "metallic", "mesh"],
+      "dressiness": "medium"
+    },
+    {
+      "name": "grunge",
+      "core_vibe": ["messy", "laid-back", "rebellious", "vintage"],
+      "common_colors": ["black", "gray", "faded green", "burgundy", "brown"],
+      "color_families": ["dark tones", "muted tones"],
+      "silhouettes": ["oversized", "layered", "relaxed"],
+      "common_items": ["flannel", "ripped jeans", "band tee", "boots", "oversized sweater"],
+      "materials": ["denim", "cotton", "knit", "plaid"],
+      "dressiness": "low"
+    },
+    {
+      "name": "bohemian",
+      "core_vibe": ["free-spirited", "earthy", "artsy", "relaxed"],
+      "common_colors": ["rust", "olive", "cream", "mustard", "brown"],
+      "color_families": ["earth tones", "warm tones"],
+      "silhouettes": ["flowy", "loose", "layered"],
+      "common_items": ["maxi dress", "kimono", "wide-leg pants", "fringe bag", "sandals"],
+      "materials": ["linen", "cotton", "crochet", "suede"],
+      "dressiness": "medium"
+    },
+    {
+      "name": "preppy",
+      "core_vibe": ["neat", "youthful", "academic", "clean"],
+      "common_colors": ["navy", "white", "forest green", "red", "camel"],
+      "color_families": ["neutrals", "jewel tones"],
+      "silhouettes": ["fitted", "structured", "straight"],
+      "common_items": ["pleated skirt", "cardigan", "polo", "blazer", "loafers"],
+      "materials": ["cotton", "knit", "wool", "tweed"],
+      "dressiness": "medium"
+    },
+    {
+      "name": "old_money",
+      "core_vibe": ["quiet luxury", "refined", "understated", "wealthy"],
+      "common_colors": ["cream", "camel", "white", "navy", "brown"],
+      "color_families": ["neutrals", "earth tones"],
+      "silhouettes": ["tailored", "structured", "relaxed elegance"],
+      "common_items": ["cashmere knit", "trousers", "long coat", "loafer", "button-down"],
+      "materials": ["cashmere", "wool", "linen", "cotton"],
+      "dressiness": "medium-high"
+    },
+    {
+      "name": "quiet_luxury",
+      "core_vibe": ["subtle", "expensive-looking", "minimal", "refined"],
+      "common_colors": ["ivory", "taupe", "black", "navy", "stone"],
+      "color_families": ["neutrals", "muted tones"],
+      "silhouettes": ["clean", "tailored", "fluid"],
+      "common_items": ["wool coat", "silk top", "straight trousers", "minimal heels", "structured bag"],
+      "materials": ["cashmere", "wool", "silk", "fine knit"],
+      "dressiness": "medium-high"
+    },
+    {
+      "name": "sporty",
+      "core_vibe": ["active", "clean", "energetic", "easy"],
+      "common_colors": ["white", "black", "gray", "blue", "green"],
+      "color_families": ["neutrals", "brights"],
+      "silhouettes": ["fitted", "relaxed", "athletic"],
+      "common_items": ["leggings", "zip jacket", "sneakers", "sports bra", "track pants"],
+      "materials": ["performance fabric", "nylon", "jersey"],
+      "dressiness": "low"
+    },
+    {
+      "name": "athleisure",
+      "core_vibe": ["comfortable", "modern", "off-duty", "clean"],
+      "common_colors": ["black", "gray", "white", "sage", "navy"],
+      "color_families": ["neutrals", "soft tones"],
+      "silhouettes": ["fitted", "relaxed", "cropped"],
+      "common_items": ["leggings", "hoodie", "oversized sweatshirt", "running shoes", "puffer"],
+      "materials": ["stretch knit", "nylon", "performance fabric"],
+      "dressiness": "low"
+    },
+    {
+      "name": "y2k",
+      "core_vibe": ["playful", "trendy", "nostalgic", "flashy"],
+      "common_colors": ["pink", "silver", "baby blue", "black", "lime"],
+      "color_families": ["brights", "pastels", "metallics"],
+      "silhouettes": ["cropped", "low-rise", "body-hugging"],
+      "common_items": ["baby tee", "mini skirt", "low-rise jeans", "platform shoes", "shoulder bag"],
+      "materials": ["denim", "jersey", "metallic", "velour"],
+      "dressiness": "medium"
+    },
+    {
+      "name": "coquette",
+      "core_vibe": ["girly", "sweet", "decorative", "soft"],
+      "common_colors": ["baby pink", "white", "cream", "light blue", "red accents"],
+      "color_families": ["pastels", "soft neutrals"],
+      "silhouettes": ["fitted", "mini", "soft drape"],
+      "common_items": ["cardigan", "mini skirt", "ribbon details", "ballet flats", "lace top"],
+      "materials": ["lace", "cotton", "knit", "satin"],
+      "dressiness": "medium"
+    },
+    {
+      "name": "korean_minimal",
+      "core_vibe": ["clean", "soft", "youthful", "light"],
+      "common_colors": ["cream", "gray", "black", "light blue", "beige"],
+      "color_families": ["neutrals", "soft tones"],
+      "silhouettes": ["straight", "relaxed", "lightly oversized"],
+      "common_items": ["cardigan", "wide pants", "simple blouse", "sneakers", "long coat"],
+      "materials": ["cotton", "knit", "wool blend"],
+      "dressiness": "medium"
+    },
+    {
+      "name": "parisian_chic",
+      "core_vibe": ["effortless", "refined", "slightly sexy", "classic"],
+      "common_colors": ["black", "white", "navy", "camel", "red accents"],
+      "color_families": ["neutrals", "muted tones"],
+      "silhouettes": ["tailored", "fitted", "straight"],
+      "common_items": ["trench coat", "striped top", "ankle boots", "blazer", "jeans"],
+      "materials": ["cotton", "wool", "silk", "denim"],
+      "dressiness": "medium"
+    },
+    {
+      "name": "vintage_retro",
+      "core_vibe": ["nostalgic", "styled", "characterful", "intentional"],
+      "common_colors": ["mustard", "brown", "cream", "red", "teal"],
+      "color_families": ["earth tones", "warm tones", "muted tones"],
+      "silhouettes": ["waist-defined", "structured", "flared"],
+      "common_items": ["retro blouse", "flare pants", "vintage dress", "oxfords", "cropped jacket"],
+      "materials": ["tweed", "cotton", "wool", "denim"],
+      "dressiness": "medium"
+    },
+    {
+      "name": "modest_elegant",
+      "core_vibe": ["covered", "graceful", "elegant", "clean"],
+      "common_colors": ["navy", "beige", "cream", "olive", "black"],
+      "color_families": ["neutrals", "earth tones"],
+      "silhouettes": ["long-line", "flowy", "structured"],
+      "common_items": ["maxi dress", "long skirt", "structured coat", "wide trousers", "flats"],
+      "materials": ["linen", "cotton", "crepe", "knit"],
+      "dressiness": "medium"
+    },
+    {
+      "name": "resort",
+      "core_vibe": ["relaxed", "vacation", "breezy", "sunny"],
+      "common_colors": ["white", "sand", "turquoise", "coral", "olive"],
+      "color_families": ["light neutrals", "brights", "warm tones"],
+      "silhouettes": ["flowy", "loose", "easy"],
+      "common_items": ["linen shirt", "shorts", "maxi dress", "sandals", "straw bag"],
+      "materials": ["linen", "cotton", "crochet"],
+      "dressiness": "low-medium"
+    },
+    {
+      "name": "party_glam",
+      "core_vibe": ["bold", "dressy", "attention-grabbing", "night-out"],
+      "common_colors": ["black", "silver", "gold", "red", "emerald"],
+      "color_families": ["dark tones", "metallics", "jewel tones"],
+      "silhouettes": ["body-hugging", "cropped", "dramatic"],
+      "common_items": ["mini dress", "heels", "statement bag", "corset top", "jewelry"],
+      "materials": ["satin", "sequins", "mesh", "velvet"],
+      "dressiness": "high"
+    },
+    {
+      "name": "soft_girl",
+      "core_vibe": ["gentle", "cute", "pastel", "casual-feminine"],
+      "common_colors": ["pink", "lavender", "cream", "baby blue", "sage"],
+      "color_families": ["pastels", "soft tones"],
+      "silhouettes": ["relaxed", "fitted", "soft drape"],
+      "common_items": ["cardigan", "pleated skirt", "cute tee", "sneakers", "small handbag"],
+      "materials": ["cotton", "knit", "jersey"],
+      "dressiness": "low-medium"
+    }
+  ]
+}

@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StyleSignal — Virtual Fitting Room</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,700;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-serif">Style</span><span class="logo-sans">Signal</span>
+      </div>
+      <nav class="tab-nav" role="tablist">
+        <button class="tab-btn active" data-tab="model" role="tab">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="4"/><path d="M5.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/></svg>
+          My Model
+        </button>
+        <button class="tab-btn" data-tab="studio" role="tab">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+          Try-On Studio
+        </button>
+        <button class="tab-btn" data-tab="scene" role="tab">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+          Scene Check
+        </button>
+        <button class="tab-btn" data-tab="buy" role="tab">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+          Buy or Skip
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <!-- ── MY MODEL TAB ── -->
+    <section id="tab-model" class="tab-content active">
+
+      <!-- Empty state -->
+      <div id="model-empty" class="center-pane">
+        <div class="hero-text">
+          <p class="eyebrow">Step 1 — Build Your Model</p>
+          <h1>Your personal<br /><em>fit model.</em></h1>
+          <p class="subhead">Upload a full-body photo. StyleSignal reads your shape and proportions — then every outfit check is calibrated to your frame.</p>
+        </div>
+
+        <div class="upload-area" id="model-drop-zone">
+          <input type="file" id="model-file-input" accept="image/*" hidden />
+          <div id="model-preview-wrap" class="model-upload-preview hidden">
+            <img id="model-preview-img" src="" alt="Model preview" />
+          </div>
+          <div id="model-upload-prompt">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="7" r="4"/><path d="M5.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/></svg>
+            <p class="upload-primary">Drop a full-body photo here</p>
+            <p class="upload-secondary">or <button class="link-btn" id="model-browse-btn">browse files</button></p>
+            <p class="upload-hint">Best results: standing, full-body, clear background</p>
+          </div>
+        </div>
+
+        <!-- Measurements (optional) -->
+        <div id="model-measurements-form" class="measurements-form hidden">
+          <p class="measurements-title">Measurements <span class="optional">(optional — improves fit advice)</span></p>
+          <div class="measurements-grid">
+            <div class="form-group">
+              <label class="form-label">Height (cm)</label>
+              <input type="number" id="meas-height" class="form-input" placeholder="e.g. 165" min="120" max="220" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Chest / Bust (cm)</label>
+              <input type="number" id="meas-chest" class="form-input" placeholder="e.g. 88" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Waist (cm)</label>
+              <input type="number" id="meas-waist" class="form-input" placeholder="e.g. 70" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Hips (cm)</label>
+              <input type="number" id="meas-hips" class="form-input" placeholder="e.g. 95" />
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-lg" id="model-analyze-btn" disabled>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Build My Model
+        </button>
+        <div id="model-loading" class="loading-block hidden">
+          <div class="spinner"></div>
+          <p>Analyzing your shape…<br /><span class="muted">Just a moment</span></p>
+        </div>
+      </div>
+
+      <!-- Model display -->
+      <div id="model-display" class="hidden">
+        <div class="section-header">
+          <div>
+            <h2>Your Fit Model</h2>
+            <p class="muted" id="model-updated-label"></p>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-outline" id="update-model-btn">Update Model</button>
+            <button class="btn btn-outline" id="style-dna-toggle-btn">Style DNA</button>
+          </div>
+        </div>
+
+        <!-- Model Card -->
+        <div class="model-card">
+          <div class="model-card-photo">
+            <img id="model-card-img" src="/api/model/photo" alt="Your model photo" />
+          </div>
+          <div class="model-card-info">
+            <div class="model-shape-badge-wrap">
+              <span class="model-shape-badge" id="model-shape-badge"></span>
+            </div>
+            <p class="model-shape-desc" id="model-shape-desc"></p>
+            <p class="model-key-proportions muted" id="model-key-proportions"></p>
+
+            <div class="model-info-section">
+              <p class="dna-section-label">Best Silhouettes</p>
+              <div id="model-best-silhouettes" class="tag-row"></div>
+            </div>
+            <div class="model-info-section">
+              <p class="dna-section-label">Style Tips</p>
+              <ul class="model-tips-list" id="model-tips-list"></ul>
+            </div>
+            <div id="model-measurements-display" class="model-info-section hidden">
+              <p class="dna-section-label">Measurements</p>
+              <div class="measurements-chips" id="model-meas-chips"></div>
+            </div>
+            <div class="model-info-section">
+              <p class="dna-section-label">Silhouettes to Avoid</p>
+              <div id="model-avoid-silhouettes" class="tag-row"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Style DNA (collapsible) -->
+        <details class="dna-details" id="style-dna-details">
+          <summary>Style DNA — outfit photo analysis</summary>
+          <div class="dna-details-inner">
+
+            <div id="style-dna-content">
+              <div id="style-dna-empty" class="style-dna-empty-notice">
+                <p>Upload outfit photos to build your Style DNA profile.</p>
+                <div class="upload-area compact-upload" id="style-photos-drop-zone">
+                  <input type="file" id="style-file-input" accept="image/*" multiple hidden />
+                  <p class="upload-primary">Drop outfit photos</p>
+                  <p class="upload-secondary">or <button class="link-btn" id="style-browse-btn">browse</button></p>
+                </div>
+                <div id="style-preview-grid" class="preview-grid hidden"></div>
+                <div id="style-actions" class="hidden">
+                  <p class="photo-count" id="style-count-label"></p>
+                  <button class="btn btn-primary" id="style-analyze-btn">
+                    Analyze My Style
+                  </button>
+                </div>
+                <div id="style-loading" class="loading-inline hidden">
+                  <div class="spinner sm"></div> Mapping your style DNA…
+                </div>
+              </div>
+
+              <!-- Style DNA display -->
+              <div id="style-dna-display" class="hidden">
+                <div>
+                  <p class="dna-section-label">Your Style</p>
+                  <div id="dominant-style-tags" class="tag-row"></div>
+                  <div id="secondary-style-tags" class="tag-row" style="margin-top:6px"></div>
+                  <p class="dna-summary-line" id="dna-summary-line" style="margin-top:10px;font-size:.82rem;color:var(--text-muted);font-style:italic"></p>
+                </div>
+                <div>
+                  <p class="dna-section-label">Color Palette</p>
+                  <div id="color-swatches" class="color-row"></div>
+                  <div id="color-family-tags" class="tag-row" style="margin-top:6px"></div>
+                  <p class="dna-section-label" style="margin-top:14px">Vibe</p>
+                  <div id="vibe-tags" class="tag-row"></div>
+                  <button class="btn btn-outline" id="refresh-style-btn" style="margin-top:14px;font-size:.8rem;padding:6px 14px">Refresh Style Analysis</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </details>
+
+      </div>
+    </section>
+
+    <!-- ── TRY-ON STUDIO TAB ── -->
+    <section id="tab-studio" class="tab-content hidden">
+      <div class="studio-layout">
+
+        <!-- Model preview column -->
+        <div class="studio-model-col">
+          <p class="studio-col-label">Your Model</p>
+          <div class="studio-model-photo" id="studio-model-photo">
+            <div class="studio-model-placeholder" id="studio-model-placeholder">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><circle cx="12" cy="7" r="4"/><path d="M5.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/></svg>
+              <p>Set up My Model first</p>
+            </div>
+            <img id="studio-model-img" src="" alt="Your model" class="hidden" />
+          </div>
+          <div class="studio-model-shape hidden" id="studio-model-shape"></div>
+        </div>
+
+        <!-- Item slots column -->
+        <div class="studio-slots-col">
+          <p class="studio-col-label">Your Outfit</p>
+          <div class="item-slots-grid">
+            <div class="item-slot" data-slot="top">
+              <input type="file" class="slot-file-input" accept="image/*" hidden />
+              <div class="slot-placeholder">
+                <span class="slot-icon">👕</span>
+                <span class="slot-name">Top</span>
+              </div>
+              <div class="slot-preview hidden">
+                <img class="slot-img" src="" alt="" />
+                <button class="slot-remove">✕</button>
+              </div>
+            </div>
+            <div class="item-slot" data-slot="bottom">
+              <input type="file" class="slot-file-input" accept="image/*" hidden />
+              <div class="slot-placeholder">
+                <span class="slot-icon">👖</span>
+                <span class="slot-name">Bottom</span>
+              </div>
+              <div class="slot-preview hidden">
+                <img class="slot-img" src="" alt="" />
+                <button class="slot-remove">✕</button>
+              </div>
+            </div>
+            <div class="item-slot" data-slot="dress">
+              <input type="file" class="slot-file-input" accept="image/*" hidden />
+              <div class="slot-placeholder">
+                <span class="slot-icon">👗</span>
+                <span class="slot-name">Dress</span>
+              </div>
+              <div class="slot-preview hidden">
+                <img class="slot-img" src="" alt="" />
+                <button class="slot-remove">✕</button>
+              </div>
+            </div>
+            <div class="item-slot" data-slot="outerwear">
+              <input type="file" class="slot-file-input" accept="image/*" hidden />
+              <div class="slot-placeholder">
+                <span class="slot-icon">🧥</span>
+                <span class="slot-name">Outerwear</span>
+              </div>
+              <div class="slot-preview hidden">
+                <img class="slot-img" src="" alt="" />
+                <button class="slot-remove">✕</button>
+              </div>
+            </div>
+            <div class="item-slot" data-slot="shoes">
+              <input type="file" class="slot-file-input" accept="image/*" hidden />
+              <div class="slot-placeholder">
+                <span class="slot-icon">👟</span>
+                <span class="slot-name">Shoes</span>
+              </div>
+              <div class="slot-preview hidden">
+                <img class="slot-img" src="" alt="" />
+                <button class="slot-remove">✕</button>
+              </div>
+            </div>
+            <div class="item-slot" data-slot="bag">
+              <input type="file" class="slot-file-input" accept="image/*" hidden />
+              <div class="slot-placeholder">
+                <span class="slot-icon">👜</span>
+                <span class="slot-name">Bag</span>
+              </div>
+              <div class="slot-preview hidden">
+                <img class="slot-img" src="" alt="" />
+                <button class="slot-remove">✕</button>
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-block" id="try-on-btn" disabled>
+            Analyze This Outfit
+          </button>
+          <div id="studio-loading" class="loading-inline hidden">
+            <div class="spinner sm"></div> Analyzing combination…
+          </div>
+        </div>
+
+        <!-- Result column -->
+        <div class="studio-result-col">
+          <p class="studio-col-label">Try-On Analysis</p>
+          <div id="studio-empty-state" class="empty-result">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+            <p>Upload items to see how they work together</p>
+          </div>
+          <div id="studio-result" class="hidden">
+            <!-- Verdict board -->
+            <div class="look-board">
+              <div class="tryon-verdict-row">
+                <span class="tryon-verdict-badge" id="tryon-verdict-badge"></span>
+                <span class="tryon-vibe" id="tryon-vibe"></span>
+              </div>
+              <div class="look-scores" style="margin-top:16px">
+                <div class="score-chip">
+                  <span class="score-num" id="tryon-combo-score">—</span>
+                  <span class="score-lbl">Combination</span>
+                </div>
+                <div class="score-chip">
+                  <span class="score-num" id="tryon-color-harmony">—</span>
+                  <span class="score-lbl">Color</span>
+                </div>
+                <div class="score-chip">
+                  <span class="score-num" id="tryon-fit-harmony">—</span>
+                  <span class="score-lbl">Fit</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Try-on notes -->
+            <div class="card look-reasons-card">
+              <p class="card-label">How It Works Together</p>
+              <ul class="short-reasons-list" id="tryon-notes"></ul>
+            </div>
+
+            <!-- Suggested tweaks -->
+            <div class="card verdict-card" id="tryon-tweaks-card">
+              <p class="card-label">Suggested Tweaks</p>
+              <ul class="short-reasons-list" id="tryon-tweaks"></ul>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── SCENE CHECK TAB ── -->
+    <section id="tab-scene" class="tab-content hidden">
+      <div class="simulator-layout">
+
+        <!-- Input panel -->
+        <div class="simulator-input">
+          <h2>Scene Check</h2>
+          <p class="muted">Describe what you're wearing. Pick a scene. We'll tell you if it works.</p>
+
+          <div class="form-group">
+            <label class="form-label">What are you wearing?</label>
+            <textarea id="scene-outfit-desc" class="form-input form-textarea" rows="3"
+              placeholder="e.g. cream knit sweater, straight dark jeans, white sneakers, minimal gold chain"></textarea>
+          </div>
+
+          <p class="sim-label">Pick a scene</p>
+          <div class="scene-cards-grid" id="scene-check-cards">
+            <button class="scene-card" data-value="class"><span class="scene-icon">📚</span><span class="scene-name">Class</span></button>
+            <button class="scene-card" data-value="work/office"><span class="scene-icon">💼</span><span class="scene-name">Work</span></button>
+            <button class="scene-card" data-value="casual hangout"><span class="scene-icon">☕</span><span class="scene-name">Casual</span></button>
+            <button class="scene-card" data-value="date"><span class="scene-icon">✨</span><span class="scene-name">Date</span></button>
+            <button class="scene-card" data-value="dinner out"><span class="scene-icon">🍽</span><span class="scene-name">Dinner</span></button>
+            <button class="scene-card" data-value="interview"><span class="scene-icon">🤝</span><span class="scene-name">Interview</span></button>
+            <button class="scene-card" data-value="travel"><span class="scene-icon">✈️</span><span class="scene-name">Travel</span></button>
+            <button class="scene-card" data-value="party"><span class="scene-icon">🎉</span><span class="scene-name">Party</span></button>
+          </div>
+
+          <p class="sim-label">Vibe</p>
+          <div class="vibe-chips-row" id="scene-vibe-chips">
+            <button class="vibe-chip" data-value="comfort">Comfort</button>
+            <button class="vibe-chip" data-value="polished">Polished</button>
+            <button class="vibe-chip" data-value="stand out">Stand Out</button>
+            <button class="vibe-chip" data-value="low-key">Low-Key</button>
+          </div>
+
+          <div class="sim-secondary">
+            <div class="form-group">
+              <label class="form-label">Location <span class="optional">(for weather)</span></label>
+              <input type="text" id="scene-location-input" class="form-input" placeholder="City or zip" />
+            </div>
+            <div id="scene-weather-card" class="weather-card hidden">
+              <div class="weather-main">
+                <img id="scene-weather-icon" src="" alt="" class="weather-icon" />
+                <div>
+                  <span id="scene-weather-temp" class="weather-temp"></span>
+                  <span id="scene-weather-desc" class="weather-desc"></span>
+                </div>
+              </div>
+              <div class="weather-details">
+                <span id="scene-weather-feels">Feels like —</span>
+                <span id="scene-weather-wind">Wind —</span>
+                <span id="scene-weather-rain">Rain —</span>
+              </div>
+              <span id="scene-weather-mock-badge" class="badge hidden">Demo data</span>
+            </div>
+          </div>
+
+          <button class="btn btn-primary btn-block" id="scene-check-btn">Check This Outfit</button>
+          <div id="scene-loading" class="loading-inline hidden">
+            <div class="spinner sm"></div> Checking your outfit…
+          </div>
+        </div>
+
+        <!-- Result panel -->
+        <div class="simulator-result" id="scene-result-panel">
+          <div id="scene-empty-state" class="empty-result">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+            <p>Describe your outfit and pick a scene to check</p>
+          </div>
+          <div id="scene-result" class="hidden">
+            <!-- Verdict board -->
+            <div class="look-board">
+              <div class="look-board-meta">
+                <span class="look-meta-badge" id="scene-scene-badge"></span>
+                <span class="look-meta-badge" id="scene-weather-badge"></span>
+              </div>
+              <div class="scene-verdict-display">
+                <span class="scene-verdict-badge" id="scene-verdict-badge"></span>
+              </div>
+              <div class="look-scores">
+                <div class="score-chip">
+                  <span class="score-num" id="scene-scene-score">—</span>
+                  <span class="score-lbl">Scene Fit</span>
+                </div>
+                <div class="score-chip">
+                  <span class="score-num" id="scene-weather-score">—</span>
+                  <span class="score-lbl">Weather Fit</span>
+                </div>
+                <div class="score-chip">
+                  <span class="score-num" id="scene-style-score">—</span>
+                  <span class="score-lbl">Style Fit</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Short reasons -->
+            <div class="card look-reasons-card">
+              <p class="card-label">Feedback</p>
+              <ul class="short-reasons-list" id="scene-short-reasons"></ul>
+            </div>
+
+            <!-- Suggested swaps -->
+            <div class="card verdict-card" id="scene-swaps-card">
+              <p class="card-label">Suggested Swaps</p>
+              <div id="scene-swaps"></div>
+            </div>
+
+            <!-- Overall notes -->
+            <div class="card" id="scene-notes-card">
+              <p class="card-label">Overall</p>
+              <p class="scene-overall-notes" id="scene-overall-notes"></p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── BUY OR SKIP TAB ── -->
+    <section id="tab-buy" class="tab-content hidden">
+      <div class="two-col-layout">
+
+        <!-- Upload panel -->
+        <div class="input-panel">
+          <h2>Worth Buying?</h2>
+          <p class="muted">Drop a photo of something you're eyeing. We'll tell you if it truly belongs in your wardrobe — or just looked good in the store.</p>
+
+          <div class="upload-area" id="buy-drop-zone">
+            <input type="file" id="buy-file-input" accept="image/*" hidden />
+            <div id="buy-preview-container" class="hidden">
+              <img id="buy-preview-img" class="buy-preview-img" src="" alt="Item to check" />
+            </div>
+            <div id="buy-upload-prompt">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              <p class="upload-primary">Drop the item photo here</p>
+              <p class="upload-secondary">or <button class="link-btn" id="buy-browse-btn">browse</button></p>
+            </div>
+          </div>
+
+          <button class="btn btn-primary btn-block" id="buy-analyze-btn" disabled>
+            Should I Buy This?
+          </button>
+          <div id="buy-loading" class="loading-inline hidden">
+            <div class="spinner sm"></div> Checking against your wardrobe…
+          </div>
+        </div>
+
+        <!-- Verdict panel -->
+        <div class="result-panel" id="buy-result-panel">
+          <div id="buy-empty-state" class="empty-result">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+            <p>Drop a photo to get the verdict</p>
+          </div>
+          <div id="buy-result" class="hidden">
+            <!-- Item image at top -->
+            <div class="buy-result-img-wrap" id="buy-result-img-wrap">
+              <img id="buy-result-img" src="" alt="Item being evaluated" />
+            </div>
+
+            <!-- Verdict Hero -->
+            <div class="verdict-hero">
+              <div class="verdict-hero-top">
+                <div id="buy-verdict-badge" class="verdict-badge"></div>
+                <div class="verdict-score-block">
+                  <span class="verdict-score-num" id="buy-style-score"></span>
+                  <span class="verdict-score-lbl">Style Match</span>
+                  <div class="verdict-meter-bar"><div id="buy-style-bar" class="meter-fill"></div></div>
+                </div>
+              </div>
+              <p id="buy-verdict-headline" class="verdict-headline"></p>
+            </div>
+
+            <!-- Scenes chips -->
+            <div class="scenes-row">
+              <div id="buy-best-scenes-wrap">
+                <p class="scenes-row-label">Best for</p>
+                <div id="buy-best-scenes" class="tag-row"></div>
+              </div>
+              <div id="buy-avoid-scenes-wrap" class="hidden">
+                <p class="scenes-row-label avoid">Skip for</p>
+                <div id="buy-avoid-scenes" class="tag-row"></div>
+              </div>
+            </div>
+
+            <!-- 3 short reasons -->
+            <div class="card verdict-card">
+              <p class="card-label">The Verdict</p>
+              <ul id="buy-short-reasons" class="short-reasons-list"></ul>
+            </div>
+
+            <!-- Head-to-toe styling -->
+            <div class="card verdict-card" id="buy-htt-card">
+              <p class="card-label">Style It Like This</p>
+              <div class="outfit-items" id="buy-htt-grid"></div>
+            </div>
+
+            <!-- One caution -->
+            <div class="card verdict-card caution-card" id="buy-concerns-card">
+              <p class="card-label">One Caution</p>
+              <p id="buy-concern-text"></p>
+            </div>
+
+            <!-- Full analysis: collapsible -->
+            <details class="result-details">
+              <summary>Full Analysis</summary>
+              <div class="result-details-body">
+                <p id="buy-main-reasoning"></p>
+                <div class="verdict-meters" style="margin-top:14px">
+                  <div class="meter-row">
+                    <span class="meter-label">Likely to wear</span>
+                    <span id="buy-wear-likelihood" class="meter-badge"></span>
+                  </div>
+                  <div class="meter-row">
+                    <span class="meter-label">Repetitiveness</span>
+                    <span id="buy-repetitiveness" class="meter-badge"></span>
+                  </div>
+                </div>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Toast -->
+  <div id="toast" class="toast" role="alert" aria-live="polite"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

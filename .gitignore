@@ -1,0 +1,24 @@
+# Secrets
+.env
+*.secret
+application-secret.properties
+application-local.properties
+
+# Build output
+target/
+*.class
+
+# OS / IDE
+.DS_Store
+__MACOSX__/
+.idea/
+.vscode/
+*.iml
+
+# Local generated data
+data/
+uploads/
+storage/
+
+# Logs
+*.log
