@@ -1,78 +1,119 @@
-# AI Virtual Try-On & Outfit Decision Assistant
+# StyleSignal AI Closet
 
-Pre-launch AI product MVP for virtual try-on and context-aware outfit decision support.
+In-progress AI virtual try-on and outfit decision assistant.
 
-This project explores an AI shopping assistant that helps users preview clothing on a personal digital fitting model and receive practical buy-or-skip recommendations before purchase.
+StyleSignal is a pre-launch AI product MVP that helps users create a personal fitting profile, upload clothing items, evaluate outfits in real-world contexts, and receive buy-or-skip recommendations before purchasing.
 
-## Problem
-
-Online shoppers often cannot tell how a piece of clothing will actually look on their own body before buying it. Product photos and model photos do not reflect each user’s body shape, proportions, lifestyle, or real use case. This leads to uncertainty, wasted time, returns, and low purchase confidence.
-
-## Product Vision
-
-The goal is to build a user-centered AI try-on experience where users can:
-
-- Create a personal digital fitting model from body measurements or a full-body photo
-- Upload clothing items such as tops, pants, dresses, shoes, and accessories
-- Virtually preview outfits on their own body model
-- Choose a real-world context such as travel, work, date night, school, or hot/cold weather
-- Receive AI-powered fit, style, comfort, weather, occasion, and buy-or-skip analysis
-
-## Core Workflow
-
-1. User profile / body model creation
-2. Garment image upload
-3. Outfit composition
-4. Scene and context selection
-5. AI fit, style, weather, and occasion analysis
-6. Buy-or-skip recommendation
+The final product vision is a “real-life dress-up assistant”: users can preview how clothing may work for their own body, style, weather, occasion, and lifestyle before spending money.
 
 ## Current Status
 
-Work in progress / pre-launch MVP.
+Actively in progress.
 
-The current focus is on product architecture, core workflow design, AI-agent-assisted feature planning, and building the first interactive frontend prototype.
+Completed so far:
+- Spring Boot backend MVP
+- Claude-powered AI analysis workflows
+- Weather/context integration
+- Local JSON/file storage
+- Multipart image upload APIs
+- Static frontend prototype served by Spring Boot
+- Product planning docs and roadmap
 
-## Planned System Components
+In progress:
+- Frontend polish
+- Hosted deployment
+- Stronger recommendation evaluation
+- Real virtual try-on rendering / image generation layer
+- Privacy controls for uploaded body and outfit images
 
-- `profile-model` — stores user measurements, body proportions, and style preferences
-- `garment-intake` — handles uploaded clothing images and metadata
-- `try-on-planner` — maps clothing items onto the user’s digital fitting model
-- `context-engine` — incorporates weather, occasion, travel, comfort, and scene constraints
-- `outfit-evaluator` — analyzes fit, style match, practicality, and repeat-use likelihood
-- `recommendation-layer` — generates buy-or-skip recommendation with explanation
-- `feedback-loop` — captures user feedback to improve future suggestions
+## Completed Backend Features
 
-## Engineering Focus
+- Style profile analysis from uploaded outfit photos
+- Personal body model setup from full-body photo and optional measurements
+- Stored body model photo and model metadata
+- Weather-aware outfit context using location input
+- Scene check API for outfit + scene + weather + body model analysis
+- Try-On Studio API supporting top, bottom, dress, outerwear, shoes, and bag uploads
+- Personalized outfit recommendations using stored style profile and weather context
+- Feedback logging for future personalization
+- Buy-or-skip purchase check from uploaded product images
+- Structured style taxonomy for grounding fashion analysis
 
-- AI-agent-assisted product engineering
-- Modular frontend/product architecture
-- Context-aware recommendation logic
-- Privacy-aware image and body data handling
-- Edge-case validation for sizing, image quality, and trust
-- Repeatable development workflow using planning docs, checklists, and GitHub commits
+## Tech Stack
 
-## AI-Agent Workflow
+- Java 17
+- Spring Boot
+- Claude / Anthropic API
+- OpenWeather API
+- HTML / CSS / JavaScript
+- Maven
+- Local JSON/file storage
+- Git/GitHub
 
-This project is being developed with a human-in-the-loop AI-agent workflow:
+## Core API Areas
 
-1. Define product requirement and user problem
-2. Map components, data flow, and feature boundaries
-3. Use Claude Code to draft implementation scaffolding and tests
-4. Review generated output manually
-5. Run local validation and edge-case checks
-6. Iterate through documented changes
+- `/api/profile`
+- `/api/analyze-style`
+- `/api/model`
+- `/api/model/photo`
+- `/api/weather`
+- `/api/scene-check`
+- `/api/try-on-studio`
+- `/api/recommend`
+- `/api/feedback`
+- `/api/buy-check`
 
-AI is used as an engineering partner, not a replacement for human judgment. The goal is to use AI to take the workflow to the next level while keeping planning, validation, and final decisions human-led.
+## Product Vision
+
+The goal is not just outfit recommendation.
+
+The final product should support:
+1. Personal body/style profile creation
+2. Clothing upload
+3. Virtual outfit planning
+4. Scene and context selection
+5. AI fit/style/weather/occasion analysis
+6. Buy-or-skip recommendation
+7. User feedback loop for future personalization
+
+## AI-Agent Engineering Workflow
+
+This project is developed with a human-in-the-loop AI-agent workflow:
+
+1. Map existing components and data flow
+2. Define feature boundaries and API behavior
+3. Use Claude Code to draft scaffolding and test ideas
+4. Review and modify generated output manually
+5. Validate through local runs and edge-case checks
+6. Commit meaningful progress through GitHub
+
+AI is used as an engineering partner, not as a replacement for human judgment.
 
 ## Roadmap
 
-- [ ] Build landing page and onboarding flow
-- [ ] Add measurement input and body profile form
-- [ ] Add garment upload UI
-- [ ] Add outfit composition screen
-- [ ] Add scene/context selector
-- [ ] Add AI analysis result page
-- [ ] Add buy-or-skip recommendation output
-- [ ] Add privacy and image quality edge-case handling
-- [ ] Deploy frontend MVP with GitHub Pages
+### Backend
+- [x] Style profile analysis
+- [x] Body model setup
+- [x] Model photo storage
+- [x] Weather context
+- [x] Scene check
+- [x] Try-on studio uploads
+- [x] Recommendation API
+- [x] Feedback API
+- [x] Buy-check API
+
+### Frontend
+- [x] Static frontend prototype
+- [ ] Frontend polish
+- [ ] Better onboarding flow
+- [ ] Better upload UX
+- [ ] Outfit composition interface
+- [ ] Recommendation result UI
+
+### AI / Product
+- [x] Claude workflow integration
+- [x] Style taxonomy
+- [ ] Stronger evaluation consistency
+- [ ] Privacy controls
+- [ ] Real try-on rendering / image generation
+- [ ] Hosted demo deployment
