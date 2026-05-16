@@ -124,6 +124,28 @@ public class ApiController {
             .body(storage.loadModelPhotoBytes());
     }
 
+    @PatchMapping("/model/measurements")
+    public ResponseEntity<?> updateMeasurements(
+            @RequestBody Map<String, Object> incoming) throws Exception {
+        log.info("PATCH /api/model/measurements — fields={}", incoming.keySet());
+        Optional<Map<String, Object>> modelOpt = storage.loadModelData();
+        if (modelOpt.isEmpty()) {
+            return ResponseEntity.badRequest()
+                .body(errorBody("No model found. Build your model first."));
+        }
+        Map<String, Object> model = new LinkedHashMap<>(modelOpt.get());
+        // Merge into existing measurements so partial updates preserve other fields
+        @SuppressWarnings("unchecked")
+        Map<String, Object> existing = model.get("measurements") instanceof Map
+            ? new LinkedHashMap<>((Map<String, Object>) model.get("measurements"))
+            : new LinkedHashMap<>();
+        existing.putAll(incoming);
+        model.put("measurements", existing);
+        storage.saveModelData(model);
+        log.info("Measurements saved — {}", existing);
+        return ResponseEntity.ok(model);
+    }
+
     // ── Weather ───────────────────────────────────────────────────────────────
 
     @GetMapping("/weather")
