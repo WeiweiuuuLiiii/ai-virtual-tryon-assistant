@@ -102,6 +102,13 @@ function generateMannequinSVG(bodyShape) {
   </svg>`;
 }
 
+/* ── Fit Model Mannequin Renderer ────────────────────────────── */
+function renderFitModelMannequin(bodyShape, _measurements) {
+  const el = document.getElementById('fit-mannequin-svg');
+  if (!el) return;
+  el.innerHTML = generateMannequinSVG(bodyShape);
+}
+
 /* ── Score Normalization ─────────────────────────────────────── */
 function normalizeScore(v) {
   if (v == null) return null;
@@ -202,6 +209,8 @@ function setupModelTab() {
     details.open = !details.open;
   });
 
+  document.getElementById('save-measurements-btn')?.addEventListener('click', saveMeasurements);
+
   // Style DNA photo upload
   setupStyleDNAUpload();
 }
@@ -254,15 +263,91 @@ async function runModelAnalysis() {
 
 function collectMeasurements() {
   const m = {};
-  const height = document.getElementById('meas-height')?.value;
-  const chest  = document.getElementById('meas-chest')?.value;
-  const waist  = document.getElementById('meas-waist')?.value;
-  const hips   = document.getElementById('meas-hips')?.value;
-  if (height) m.height_cm = parseInt(height);
-  if (chest)  m.chest_cm  = parseInt(chest);
-  if (waist)  m.waist_cm  = parseInt(waist);
-  if (hips)   m.hips_cm   = parseInt(hips);
+  const fields = [
+    ['meas-height',   'height_cm',   parseInt],
+    ['meas-weight',   'weight_kg',   parseInt],
+    ['meas-chest',    'chest_cm',    parseInt],
+    ['meas-waist',    'waist_cm',    parseInt],
+    ['meas-hips',     'hips_cm',     parseInt],
+    ['meas-shoulder', 'shoulder_cm', parseInt],
+  ];
+  fields.forEach(([id, key, parse]) => {
+    const val = document.getElementById(id)?.value;
+    if (val) m[key] = parse(val);
+  });
   return m;
+}
+
+async function saveMeasurements() {
+  const btn = document.getElementById('save-measurements-btn');
+  const loading = document.getElementById('meas-save-loading');
+  const success = document.getElementById('meas-save-success');
+  btn.disabled = true;
+  loading.classList.remove('hidden');
+  success.classList.add('hidden');
+
+  const fields = [
+    ['edit-meas-height',   'height_cm',   parseInt],
+    ['edit-meas-weight',   'weight_kg',   parseInt],
+    ['edit-meas-chest',    'chest_cm',    parseInt],
+    ['edit-meas-waist',    'waist_cm',    parseInt],
+    ['edit-meas-hips',     'hips_cm',     parseInt],
+    ['edit-meas-shoulder', 'shoulder_cm', parseInt],
+  ];
+  const m = {};
+  fields.forEach(([id, key, parse]) => {
+    const val = document.getElementById(id)?.value;
+    if (val) m[key] = parse(val);
+  });
+
+  try {
+    const resp = await fetch(`${API}/api/model/measurements`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(m),
+    });
+    if (!resp.ok) await apiError(resp);
+    const updated = await resp.json();
+    state.model = updated;
+    // Refresh measurement chips in Full Analysis
+    const measSection = document.getElementById('model-measurements-display');
+    const measChips   = document.getElementById('model-meas-chips');
+    if (measChips && Object.keys(m).length > 0) {
+      measChips.innerHTML = '';
+      const labels = { height_cm: 'Height', weight_kg: 'Weight', chest_cm: 'Bust', waist_cm: 'Waist', hips_cm: 'Hips', shoulder_cm: 'Shoulder' };
+      Object.entries(m).forEach(([key, val]) => {
+        const chip = document.createElement('span');
+        chip.className = 'meas-chip';
+        const unit = key === 'weight_kg' ? 'kg' : 'cm';
+        chip.innerHTML = `<strong>${labels[key] || key}</strong> ${val} ${unit}`;
+        measChips.appendChild(chip);
+      });
+      measSection?.classList.remove('hidden');
+    }
+    success.classList.remove('hidden');
+    setTimeout(() => success.classList.add('hidden'), 2500);
+  } catch (err) {
+    showToast('Could not save measurements: ' + err.message, true);
+  } finally {
+    btn.disabled = false;
+    loading.classList.add('hidden');
+  }
+}
+
+function populateMeasurementEditFields(measurements) {
+  if (!measurements) return;
+  const map = {
+    height_cm:   'edit-meas-height',
+    weight_kg:   'edit-meas-weight',
+    chest_cm:    'edit-meas-chest',
+    waist_cm:    'edit-meas-waist',
+    hips_cm:     'edit-meas-hips',
+    shoulder_cm: 'edit-meas-shoulder',
+  };
+  Object.entries(map).forEach(([key, id]) => {
+    const el = document.getElementById(id);
+    if (el && measurements[key] != null) el.value = measurements[key];
+  });
 }
 
 function renderModelCard(model, hasPhoto) {
@@ -280,10 +365,9 @@ function renderModelCard(model, hasPhoto) {
     document.getElementById('model-card-img').src = `/api/model/photo?t=${Date.now()}`;
   }
 
-  // Generate SVG mannequin based on body shape
+  // Render SVG mannequin into the right panel
   const bodyShape = model.body_shape || 'rectangle';
-  const svgWrap = document.getElementById('fit-mannequin-svg');
-  if (svgWrap) svgWrap.innerHTML = generateMannequinSVG(bodyShape);
+  renderFitModelMannequin(bodyShape, model.measurements);
 
   // Shape badge
   const shape = bodyShape.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -333,21 +417,25 @@ function renderModelCard(model, hasPhoto) {
     });
   }
 
-  // Measurements
+  // Measurements chips (in Full Analysis collapsible)
   const measurements = model.measurements;
   const measSection = document.getElementById('model-measurements-display');
   const measChips = document.getElementById('model-meas-chips');
   if (measurements && Object.keys(measurements).length > 0 && measChips) {
     measChips.innerHTML = '';
-    const labels = { height_cm: 'Height', chest_cm: 'Chest', waist_cm: 'Waist', hips_cm: 'Hips' };
+    const labels = { height_cm: 'Height', weight_kg: 'Weight', chest_cm: 'Bust', waist_cm: 'Waist', hips_cm: 'Hips', shoulder_cm: 'Shoulder' };
     Object.entries(measurements).forEach(([key, val]) => {
       const chip = document.createElement('span');
       chip.className = 'meas-chip';
-      chip.innerHTML = `<strong>${labels[key] || key}</strong> ${val} cm`;
+      const unit = key === 'weight_kg' ? 'kg' : 'cm';
+      chip.innerHTML = `<strong>${labels[key] || key}</strong> ${val} ${unit}`;
       measChips.appendChild(chip);
     });
     measSection?.classList.remove('hidden');
   }
+
+  // Pre-populate the edit panel fields
+  populateMeasurementEditFields(measurements);
 
   syncStudioModelColumn(model, hasPhoto);
 }

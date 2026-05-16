@@ -71,7 +71,11 @@
               <input type="number" id="meas-height" class="form-input" placeholder="e.g. 165" min="120" max="220" />
             </div>
             <div class="form-group">
-              <label class="form-label">Chest / Bust (cm)</label>
+              <label class="form-label">Weight (kg)</label>
+              <input type="number" id="meas-weight" class="form-input" placeholder="e.g. 60" min="30" max="200" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Bust / Chest (cm)</label>
               <input type="number" id="meas-chest" class="form-input" placeholder="e.g. 88" />
             </div>
             <div class="form-group">
@@ -81,6 +85,10 @@
             <div class="form-group">
               <label class="form-label">Hips (cm)</label>
               <input type="number" id="meas-hips" class="form-input" placeholder="e.g. 95" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Shoulder width (cm)</label>
+              <input type="number" id="meas-shoulder" class="form-input" placeholder="e.g. 38" />
             </div>
           </div>
         </div>
@@ -99,56 +107,80 @@
       <div id="model-display" class="hidden">
         <div class="section-header">
           <div>
-            <h2>My Fit Model</h2>
+            <h2>Create My Fit Model</h2>
             <p class="muted" id="model-updated-label"></p>
           </div>
           <button class="btn btn-outline" id="style-dna-toggle-btn">Style DNA</button>
         </div>
 
-        <!-- Reference Photo + Mannequin layout -->
+        <!-- Two-panel layout: Reference Photo (left) + Fit Model mannequin (right) -->
         <div class="fit-model-layout">
 
-          <!-- LEFT: Reference Photo -->
-          <div class="fit-ref-panel">
-            <p class="fit-panel-label">Reference Photo</p>
+          <!-- LEFT: Reference Photo (small, secondary) -->
+          <section class="reference-photo-panel">
+            <h3>Reference Photo</h3>
             <div class="fit-ref-photo-wrap">
               <img id="model-card-img" src="/api/model/photo" alt="Reference photo" />
             </div>
             <button class="btn btn-outline" id="update-model-btn" style="font-size:.78rem;padding:7px 12px;margin-top:12px;width:100%">Change Photo</button>
-          </div>
+          </section>
 
-          <!-- RIGHT: Generated Fit Model -->
-          <div class="fit-mannequin-panel">
-            <div class="fit-mannequin-hdr">
-              <p class="fit-panel-label" style="margin-bottom:0">My Fit Model</p>
-              <span class="fit-ready-badge">✓ Ready</span>
+          <!-- RIGHT: My Fit Model (dominant visual) -->
+          <section class="my-fit-model-panel">
+            <div class="panel-header">
+              <h3>My Fit Model</h3>
+              <span class="ready-badge">Ready</span>
             </div>
-
-            <div class="fit-mannequin-body">
-              <!-- SVG mannequin silhouette -->
-              <div class="fit-mannequin-svg-wrap" id="fit-mannequin-svg">
-                <!-- Injected by JS -->
-              </div>
-
-              <!-- Shape + proportion info -->
-              <div class="fit-mannequin-info">
-                <div class="model-shape-badge-wrap">
-                  <span class="model-shape-badge" id="model-shape-badge"></span>
-                </div>
-                <div>
-                  <p class="fit-panel-label" style="margin-bottom:6px;margin-top:12px">Proportions</p>
-                  <div id="fit-proportion-chips" class="fit-proportion-chips"></div>
-                </div>
-                <div id="fit-notes-section">
-                  <p class="fit-panel-label" style="margin-bottom:6px;margin-top:12px">Fit Notes</p>
-                  <ul class="fit-notes-list" id="fit-notes-list"></ul>
-                </div>
-                <p class="muted" id="model-key-proportions" style="font-size:.8rem;margin-top:10px;line-height:1.5"></p>
-              </div>
+            <div id="fit-mannequin-svg" class="fit-mannequin-svg">
+              <!-- Injected by renderFitModelMannequin() -->
             </div>
-          </div>
+            <span id="model-shape-badge" class="model-shape-badge"></span>
+            <div id="fit-proportion-chips" class="fit-proportion-chips"></div>
+            <ul id="fit-notes-list" class="fit-notes-list"></ul>
+          </section>
 
         </div>
+
+        <!-- Adjust Measurements (collapsible edit panel) -->
+        <details class="fit-details-toggle" id="fit-measurements-edit">
+          <summary>Adjust Measurements</summary>
+          <div class="fit-analysis-inner">
+            <p class="muted" style="font-size:.82rem">Update your measurements to improve fit accuracy. Changes are saved immediately.</p>
+            <div class="measurements-grid" style="margin-top:4px">
+              <div class="form-group">
+                <label class="form-label">Height (cm)</label>
+                <input type="number" id="edit-meas-height" class="form-input" placeholder="e.g. 165" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Weight (kg)</label>
+                <input type="number" id="edit-meas-weight" class="form-input" placeholder="e.g. 60" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Bust / Chest (cm)</label>
+                <input type="number" id="edit-meas-chest" class="form-input" placeholder="e.g. 88" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Waist (cm)</label>
+                <input type="number" id="edit-meas-waist" class="form-input" placeholder="e.g. 70" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Hips (cm)</label>
+                <input type="number" id="edit-meas-hips" class="form-input" placeholder="e.g. 95" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Shoulder width (cm)</label>
+                <input type="number" id="edit-meas-shoulder" class="form-input" placeholder="e.g. 38" />
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
+              <button class="btn btn-primary" id="save-measurements-btn" style="font-size:.85rem;padding:9px 20px">Save Measurements</button>
+              <div id="meas-save-loading" class="loading-inline hidden">
+                <div class="spinner sm"></div><span>Saving…</span>
+              </div>
+              <span id="meas-save-success" class="hidden" style="font-size:.82rem;color:var(--success)">✓ Saved</span>
+            </div>
+          </div>
+        </details>
 
         <!-- Full Analysis (collapsible, below main view) -->
         <details class="fit-details-toggle" id="fit-analysis-details">

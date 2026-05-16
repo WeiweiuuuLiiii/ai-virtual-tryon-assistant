@@ -1110,7 +1110,7 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
 }
 .measurements-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 14px;
 }
 
@@ -1208,11 +1208,81 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
 /* ── My Fit Model display ───────────────────────────────────── */
 .fit-model-layout {
   display: grid;
-  grid-template-columns: 210px 1fr;
+  grid-template-columns: 200px 1fr;
   gap: 20px;
   align-items: start;
   margin-bottom: 16px;
 }
+/* Reference photo panel — left, narrow */
+.reference-photo-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+}
+.reference-photo-panel h3 {
+  font-size: .62rem;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 0 0 10px;
+}
+/* My Fit Model panel — right, dominant visual */
+.my-fit-model-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px 28px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 520px;
+}
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  align-self: stretch;
+}
+.panel-header h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+  flex: 1;
+}
+.ready-badge {
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid #A8D5B5;
+  font-size: .65rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+/* Large mannequin SVG container — the visual centrepiece */
+.fit-mannequin-svg {
+  width: 170px;
+  height: 440px;
+  background: #F5F2EE;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 12px;
+  overflow: hidden;
+  margin-bottom: 22px;
+}
+.fit-mannequin-svg svg { display: block; }
 .fit-panel-label {
   font-size: .62rem;
   font-weight: 600;
@@ -1949,6 +2019,7 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
 @media (max-width: 900px) {
   .fit-model-layout { grid-template-columns: 1fr; }
   .fit-mannequin-svg-wrap { width: 110px; height: 275px; }
+  .fit-mannequin-svg { width: 130px; height: 340px; }
   .two-col-layout { grid-template-columns: 1fr; }
   .simulator-layout { grid-template-columns: 1fr; }
   .dna-hero-body { grid-template-columns: 1fr; }
