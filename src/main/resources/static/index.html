@@ -259,78 +259,66 @@
     <!-- ── TRY-ON STUDIO TAB ── -->
     <section id="tab-studio" class="tab-content hidden">
 
-      <!-- ═══ SECTION 1: Build My Look (compact top row) ═══ -->
-      <div class="tryon-builder-row">
+      <!-- Three-column fitting room layout -->
+      <div class="studio-layout">
 
-        <!-- My Model card -->
-        <div class="builder-block builder-block-model">
-          <div class="builder-block-hdr">
-            <span class="builder-block-num">1</span>
-            <span class="builder-block-title">My Model</span>
-            <button class="link-btn studio-change-btn" id="studio-change-model-btn">Change</button>
+        <!-- ── LEFT: Clothing Asset Library ── -->
+        <aside class="studio-wardrobe-panel">
+          <div class="studio-panel-hdr">
+            <span class="studio-panel-title">Wardrobe</span>
+            <button class="btn-add-item" id="studio-add-item-btn">+ Add Item</button>
+            <input type="file" id="studio-asset-input" accept="image/*" multiple hidden />
           </div>
-          <div id="studio-has-model" class="hidden">
-            <div class="builder-model-photo">
-              <img id="studio-model-img" src="" alt="Your model" />
-              <div class="studio-ready-pill"><span class="studio-ready-dot"></span> Ready</div>
-            </div>
-            <div id="studio-model-meta" class="builder-model-meta"></div>
+          <p class="studio-asset-hint" id="studio-asset-hint">Upload clothing photos — drag cards onto the mannequin to try on.</p>
+          <div id="studio-asset-library" class="studio-asset-library">
+            <!-- Asset cards rendered by JS -->
           </div>
-          <div id="studio-no-model" class="builder-no-model">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><circle cx="12" cy="7" r="4"/><path d="M5.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/></svg>
-            <p>Set up your model first</p>
-            <button class="btn btn-outline" style="font-size:.75rem;padding:5px 10px" id="studio-go-model-btn">Go to My Model</button>
-          </div>
-        </div>
+        </aside>
 
-        <!-- Build My Look: slots -->
-        <div class="builder-block builder-block-slots">
-          <div class="builder-block-hdr">
-            <span class="builder-block-num">2</span>
-            <span class="builder-block-title">Build My Look</span>
-            <button class="link-btn" id="studio-clear-btn">Clear All</button>
+        <!-- ── CENTER: Mannequin + Drop Zones ── -->
+        <main class="studio-mannequin-panel">
+          <div class="studio-panel-hdr">
+            <span class="studio-panel-title">Try On</span>
+            <span class="studio-mock-pill">Mock Preview</span>
+            <span id="studio-piece-count" class="studio-piece-count hidden"></span>
           </div>
-          <div class="item-slots-grid">
-            <div class="item-slot" data-slot="top">
-              <input type="file" class="slot-file-input" accept="image/*" hidden />
-              <div class="slot-placeholder"><span class="slot-icon">👕</span><span class="slot-name">Top</span></div>
-              <div class="slot-preview hidden"><img class="slot-img" src="" alt="" /><button class="slot-remove" title="Remove">✕</button></div>
-            </div>
-            <div class="item-slot" data-slot="bottom">
-              <input type="file" class="slot-file-input" accept="image/*" hidden />
-              <div class="slot-placeholder"><span class="slot-icon">👖</span><span class="slot-name">Bottom</span></div>
-              <div class="slot-preview hidden"><img class="slot-img" src="" alt="" /><button class="slot-remove" title="Remove">✕</button></div>
-            </div>
-            <div class="item-slot" data-slot="dress">
-              <input type="file" class="slot-file-input" accept="image/*" hidden />
-              <div class="slot-placeholder"><span class="slot-icon">👗</span><span class="slot-name">Dress</span></div>
-              <div class="slot-preview hidden"><img class="slot-img" src="" alt="" /><button class="slot-remove" title="Remove">✕</button></div>
-            </div>
-            <div class="item-slot" data-slot="outerwear">
-              <input type="file" class="slot-file-input" accept="image/*" hidden />
-              <div class="slot-placeholder"><span class="slot-icon">🧥</span><span class="slot-name">Outerwear</span></div>
-              <div class="slot-preview hidden"><img class="slot-img" src="" alt="" /><button class="slot-remove" title="Remove">✕</button></div>
-            </div>
-            <div class="item-slot" data-slot="shoes">
-              <input type="file" class="slot-file-input" accept="image/*" hidden />
-              <div class="slot-placeholder"><span class="slot-icon">👟</span><span class="slot-name">Shoes</span></div>
-              <div class="slot-preview hidden"><img class="slot-img" src="" alt="" /><button class="slot-remove" title="Remove">✕</button></div>
-            </div>
-            <div class="item-slot" data-slot="bag">
-              <input type="file" class="slot-file-input" accept="image/*" hidden />
-              <div class="slot-placeholder"><span class="slot-icon">👜</span><span class="slot-name">Bag</span></div>
-              <div class="slot-preview hidden"><img class="slot-img" src="" alt="" /><button class="slot-remove" title="Remove">✕</button></div>
-            </div>
-          </div>
-        </div>
 
-        <!-- Scene & Context card -->
-        <div class="builder-block builder-block-scene">
-          <div class="builder-block-hdr">
-            <span class="builder-block-num">3</span>
-            <span class="builder-block-title">Scene & Context</span>
+          <div class="studio-stage" id="studio-stage">
+            <!-- Mannequin SVG (rendered by JS from generateMannequinSVG) -->
+            <div id="studio-mannequin-svg" class="studio-mannequin-svg-inner"></div>
+
+            <!-- Drop zone: upper body (Top / Dress) -->
+            <div class="studio-dz" id="dz-top" data-slot="top">
+              <span class="dz-label">Top / Dress</span>
+              <img class="dz-thumb hidden" id="dz-top-thumb" src="" alt="" />
+              <button class="dz-clear hidden" id="dz-top-clear" title="Remove">✕</button>
+            </div>
+
+            <!-- Drop zone: lower body (Bottoms) -->
+            <div class="studio-dz" id="dz-bottom" data-slot="bottom">
+              <span class="dz-label">Bottoms</span>
+              <img class="dz-thumb hidden" id="dz-bottom-thumb" src="" alt="" />
+              <button class="dz-clear hidden" id="dz-bottom-clear" title="Remove">✕</button>
+            </div>
+
+            <!-- Drop zone: feet (Shoes) -->
+            <div class="studio-dz" id="dz-shoes" data-slot="shoes">
+              <span class="dz-label">Shoes</span>
+              <img class="dz-thumb hidden" id="dz-shoes-thumb" src="" alt="" />
+              <button class="dz-clear hidden" id="dz-shoes-clear" title="Remove">✕</button>
+            </div>
           </div>
-          <p class="builder-sublabel">Scene</p>
+
+          <!-- Extra items (outerwear, bag) assigned below mannequin -->
+          <div id="studio-extras" class="studio-extras"></div>
+        </main>
+
+        <!-- ── RIGHT: Scene + AI Check ── -->
+        <aside class="studio-check-panel">
+
+          <div class="studio-panel-hdr">
+            <span class="studio-panel-title">Scene</span>
+          </div>
           <div class="studio-scene-pills" id="studio-scene-pills">
             <button class="studio-scene-pill" data-value="class">📚 Class</button>
             <button class="studio-scene-pill" data-value="travel/airport">✈️ Travel</button>
@@ -340,6 +328,7 @@
             <button class="studio-scene-pill" data-value="party">🎉 Party</button>
             <button class="studio-scene-pill" data-value="shopping">🛍 Shopping</button>
           </div>
+
           <p class="builder-sublabel" style="margin-top:10px">Vibe</p>
           <div class="studio-vibe-pills" id="studio-vibe-pills">
             <button class="studio-vibe-pill" data-value="comfort">Comfort</button>
@@ -347,128 +336,72 @@
             <button class="studio-vibe-pill" data-value="stand out">Stand Out</button>
             <button class="studio-vibe-pill" data-value="low-key">Low-Key</button>
           </div>
+
           <div style="margin-top:10px">
             <input id="studio-location" class="studio-location-input" placeholder="City for weather…" style="width:100%" />
             <div id="studio-weather-mini" class="studio-weather-mini hidden" style="margin-top:5px">
               <span id="studio-weather-mini-text"></span>
             </div>
           </div>
-        </div>
 
-      </div>
+          <div class="studio-check-divider"></div>
 
-      <!-- CTA bar -->
-      <div class="tryon-cta-bar">
-        <p class="studio-hint" id="studio-hint">Upload at least one clothing item to start</p>
-        <div class="tryon-cta-btns">
-          <button class="btn btn-primary" id="studio-primary-btn" disabled>Preview This Look</button>
-          <button class="btn btn-outline hidden" id="studio-check-btn">Check This Look</button>
-        </div>
-        <div id="studio-loading" class="loading-inline hidden">
-          <div class="spinner sm"></div><span id="studio-loading-text">Analyzing…</span>
-        </div>
-      </div>
-
-      <!-- ═══ SECTION 2: Preview on Me (large central panel) ═══ -->
-      <div class="tryon-preview-panel">
-
-        <!-- Empty state -->
-        <div class="tryon-preview-empty" id="preview-empty">
-          <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><circle cx="12" cy="7" r="4"/><path d="M5.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/></svg>
-          <h3>Preview on Me</h3>
-          <p>Upload clothing items above and click <strong>Preview This Look</strong><br/>to see your model wearing your selected pieces</p>
-        </div>
-
-        <!-- Active fitting-room view -->
-        <div class="tryon-preview-active hidden" id="preview-canvas">
-
-          <div class="tryon-preview-header">
-            <span class="tryon-preview-title">Preview on Me</span>
-            <span class="tryon-mock-badge">Mock Preview</span>
-            <span class="preview-item-count" id="preview-item-count"></span>
+          <button class="btn btn-primary" id="studio-check-btn" disabled style="width:100%;justify-content:center">Check This Look</button>
+          <div id="studio-loading" class="loading-inline hidden" style="justify-content:center;margin-top:8px">
+            <div class="spinner sm"></div><span id="studio-loading-text">Analyzing…</span>
           </div>
 
-          <!-- 3-column composition: items | model | items -->
-          <div class="tryon-composition">
-
-            <!-- Left column: upper-body items (outerwear, top, dress) -->
-            <div class="tryon-items-col tryon-items-left" id="tryon-left-col">
-              <!-- filled by JS -->
-            </div>
-
-            <!-- Center: model photo with body-zone overlays -->
-            <div class="tryon-model-center">
-              <div class="tryon-model-photo-wrap">
-                <img id="preview-model-img" src="" alt="Your model" />
-                <div class="body-zone body-zone-upper" id="body-zone-upper"></div>
-                <div class="body-zone body-zone-lower" id="body-zone-lower"></div>
-                <div class="preview-no-model hidden" id="preview-no-model">
-                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><circle cx="12" cy="7" r="4"/><path d="M5.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/></svg>
-                  <p>No model photo — go to My Model first</p>
+          <!-- AI analysis result (shown after Check This Look) -->
+          <div id="studio-analysis" class="studio-ai-result hidden">
+            <div class="ai-check-hdr" style="margin-top:16px">
+              <span class="ai-check-label">AI Check</span>
+              <span class="analysis-verdict-badge" id="analysis-verdict-badge"></span>
+              <div class="analysis-score-row">
+                <div class="analysis-score-chip">
+                  <span class="analysis-score-num" id="ana-body-score">—</span>
+                  <span class="analysis-score-lbl">Body Fit</span>
+                </div>
+                <div class="analysis-score-chip">
+                  <span class="analysis-score-num" id="ana-style-score">—</span>
+                  <span class="analysis-score-lbl">Style Fit</span>
+                </div>
+                <div class="analysis-score-chip">
+                  <span class="analysis-score-num" id="ana-scene-score">—</span>
+                  <span class="analysis-score-lbl">Scene Fit</span>
                 </div>
               </div>
-              <div class="tryon-scene-tag hidden" id="preview-scene-badge"></div>
             </div>
 
-            <!-- Right column: lower-body items (bottom, shoes, bag) -->
-            <div class="tryon-items-col tryon-items-right" id="tryon-right-col">
-              <!-- filled by JS -->
+            <div id="ana-body-notes-wrap" class="hidden">
+              <p class="analysis-tag-label">Body Fit Notes</p>
+              <ul class="analysis-bullets" id="ana-body-notes"></ul>
             </div>
 
-          </div>
-        </div>
+            <ul class="analysis-bullets" id="ana-reasons"></ul>
 
-      </div>
-
-      <!-- ═══ SECTION 3: AI Check (compact, below preview) ═══ -->
-      <div class="tryon-ai-check hidden" id="studio-analysis">
-
-        <div class="ai-check-hdr">
-          <span class="ai-check-label">AI Check</span>
-          <span class="analysis-verdict-badge" id="analysis-verdict-badge"></span>
-          <div class="analysis-score-row">
-            <div class="analysis-score-chip">
-              <span class="analysis-score-num" id="ana-body-score">—</span>
-              <span class="analysis-score-lbl">Body Fit</span>
+            <div class="analysis-scenes-row">
+              <div id="ana-best-wrap">
+                <p class="analysis-tag-label">Best for</p>
+                <div class="tag-row" id="ana-best-scenes"></div>
+              </div>
+              <div id="ana-avoid-wrap" class="hidden">
+                <p class="analysis-tag-label avoid">Avoid for</p>
+                <div class="tag-row" id="ana-avoid-scenes"></div>
+              </div>
             </div>
-            <div class="analysis-score-chip">
-              <span class="analysis-score-num" id="ana-style-score">—</span>
-              <span class="analysis-score-lbl">Style Fit</span>
+
+            <div id="ana-complete-wrap" class="hidden">
+              <p class="analysis-tag-label">Complete the Look</p>
+              <div class="analysis-complete-row" id="ana-complete-chips"></div>
             </div>
-            <div class="analysis-score-chip">
-              <span class="analysis-score-num" id="ana-scene-score">—</span>
-              <span class="analysis-score-lbl">Scene Fit</span>
+
+            <div id="ana-swaps-wrap" class="hidden">
+              <p class="analysis-tag-label">Swap Ideas</p>
+              <div class="analysis-swaps-row" id="ana-swaps"></div>
             </div>
           </div>
-        </div>
 
-        <div id="ana-body-notes-wrap" class="hidden">
-          <p class="analysis-tag-label">Body Fit Notes</p>
-          <ul class="analysis-bullets" id="ana-body-notes"></ul>
-        </div>
-
-        <ul class="analysis-bullets" id="ana-reasons"></ul>
-
-        <div class="analysis-scenes-row">
-          <div id="ana-best-wrap">
-            <p class="analysis-tag-label">Best for</p>
-            <div class="tag-row" id="ana-best-scenes"></div>
-          </div>
-          <div id="ana-avoid-wrap" class="hidden">
-            <p class="analysis-tag-label avoid">Avoid for</p>
-            <div class="tag-row" id="ana-avoid-scenes"></div>
-          </div>
-        </div>
-
-        <div id="ana-complete-wrap" class="hidden">
-          <p class="analysis-tag-label">Complete the Look</p>
-          <div class="analysis-complete-row" id="ana-complete-chips"></div>
-        </div>
-
-        <div id="ana-swaps-wrap" class="hidden">
-          <p class="analysis-tag-label">Swap Ideas</p>
-          <div class="analysis-swaps-row" id="ana-swaps"></div>
-        </div>
+        </aside>
 
       </div>
 

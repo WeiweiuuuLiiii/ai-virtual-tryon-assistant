@@ -7,12 +7,16 @@ const state = {
   // Style profile (inside My Model's Style DNA section)
   profile: null,
   uploadedStylePhotos: [],
-  // Studio
+  // Studio — clothing asset library
+  clothingAssets: [],       // [{ id, file, url, type }]
+  slotAssignments: { top: null, bottom: null, dress: null, outerwear: null, shoes: null, bag: null },
+  draggedAssetId: null,
+  // Studio — legacy (kept for API compatibility)
   studioItems: { top: null, bottom: null, dress: null, outerwear: null, shoes: null, bag: null },
   studioScene:  null,
   studioVibe:   null,
   studioWeather: null,
-  studioStep:   'build',  // 'build' | 'preview' | 'checked'
+  studioStep:   'build',
   // Scene check
   sceneCheckScene: null,
   sceneCheckVibe: null,
@@ -440,29 +444,9 @@ function renderModelCard(model, hasPhoto) {
   syncStudioModelColumn(model, hasPhoto);
 }
 
-function syncStudioModelColumn(model, hasPhoto) {
-  const hasModelEl = document.getElementById('studio-has-model');
-  const noModelEl  = document.getElementById('studio-no-model');
-
-  if (!model) {
-    hasModelEl?.classList.add('hidden');
-    noModelEl?.classList.remove('hidden');
-    return;
-  }
-
-  hasModelEl?.classList.remove('hidden');
-  noModelEl?.classList.add('hidden');
-
-  if (hasPhoto) {
-    const img = document.getElementById('studio-model-img');
-    if (img) img.src = `/api/model/photo?t=${Date.now()}`;
-  }
-
-  const metaEl = document.getElementById('studio-model-meta');
-  if (metaEl && model.body_shape) {
-    const shapeLabel = model.body_shape.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    metaEl.innerHTML = `<span class="model-shape-badge" style="font-size:.6rem;padding:3px 9px">${shapeLabel}</span>`;
-  }
+function syncStudioModelColumn(_model, _hasPhoto) {
+  // Update the studio mannequin to match the body shape from the loaded model
+  renderStudioMannequin();
 }
 
 /* ── Style DNA (inside My Model) ────────────────────────────── */
@@ -591,6 +575,225 @@ function renderStyleDNA(p) {
 }
 
 /* ── Try-On Studio ──────────────────────────────────────────── */
+/* ── Clothing Asset Library (Issue #2) ───────────────────────── */
+
+const ASSET_TYPES = [
+  { key: 'top',       label: 'Top',       emoji: '👕' },
+  { key: 'bottom',    label: 'Bottom',    emoji: '👖' },
+  { key: 'dress',     label: 'Dress',     emoji: '👗' },
+  { key: 'outerwear', label: 'Layer',     emoji: '🧥' },
+  { key: 'shoes',     label: 'Shoes',     emoji: '👟' },
+  { key: 'bag',       label: 'Bag',       emoji: '👜' },
+];
+const MAIN_DZ_SLOTS  = ['top', 'bottom', 'shoes'];
+const EXTRA_DZ_SLOTS = ['dress', 'outerwear', 'bag'];
+let _assetIdCounter  = 0;
+
+function _guessType(file) {
+  const n = file.name.toLowerCase();
+  if (/shoe|boot|sneaker|heel|loafer|sandal/.test(n)) return 'shoes';
+  if (/pant|jean|skirt|short|trouser|bottom/.test(n))  return 'bottom';
+  if (/dress|gown|romper/.test(n))                     return 'dress';
+  if (/jacket|coat|outer|blazer|cardigan/.test(n))     return 'outerwear';
+  if (/bag|purse|clutch|tote/.test(n))                 return 'bag';
+  return 'top';
+}
+
+function addClothingAsset(file) {
+  const id  = `asset_${++_assetIdCounter}`;
+  const url = URL.createObjectURL(file);
+  state.clothingAssets.push({ id, file, url, type: _guessType(file) });
+  renderAssetLibrary();
+  updateStudioPieceCount();
+}
+
+function removeClothingAsset(id) {
+  const asset = state.clothingAssets.find(a => a.id === id);
+  if (!asset) return;
+  Object.keys(state.slotAssignments).forEach(s => {
+    if (state.slotAssignments[s] === id) state.slotAssignments[s] = null;
+  });
+  URL.revokeObjectURL(asset.url);
+  state.clothingAssets = state.clothingAssets.filter(a => a.id !== id);
+  renderAssetLibrary();
+  updateDropZones();
+  updateStudioExtras();
+  updateStudioPieceCount();
+}
+
+function cycleAssetType(id) {
+  const asset = state.clothingAssets.find(a => a.id === id);
+  if (!asset) return;
+  const idx  = ASSET_TYPES.findIndex(t => t.key === asset.type);
+  asset.type = ASSET_TYPES[(idx + 1) % ASSET_TYPES.length].key;
+  renderAssetLibrary();
+}
+
+function renderAssetLibrary() {
+  const lib  = document.getElementById('studio-asset-library');
+  const hint = document.getElementById('studio-asset-hint');
+  if (!lib) return;
+  if (state.clothingAssets.length === 0) {
+    lib.innerHTML = '';
+    hint?.classList.remove('hidden');
+    return;
+  }
+  hint?.classList.add('hidden');
+  lib.innerHTML = '';
+  state.clothingAssets.forEach(asset => {
+    const t    = ASSET_TYPES.find(x => x.key === asset.type) || ASSET_TYPES[0];
+    const card = document.createElement('div');
+    card.className   = 'asset-card';
+    card.draggable   = true;
+    card.dataset.assetId = asset.id;
+    const assigned = Object.values(state.slotAssignments).includes(asset.id);
+    if (assigned) card.classList.add('asset-assigned');
+    card.innerHTML = `
+      <img class="asset-thumb" src="${asset.url}" alt="${t.label}" draggable="false" />
+      <div class="asset-card-footer">
+        <button class="asset-type-btn" title="Click to change type">${t.emoji} ${t.label}</button>
+        <button class="asset-remove-btn" title="Remove">✕</button>
+      </div>`;
+    card.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('text/plain', asset.id);
+      e.dataTransfer.effectAllowed = 'copy';
+      card.classList.add('dragging');
+      state.draggedAssetId = asset.id;
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      state.draggedAssetId = null;
+    });
+    card.querySelector('.asset-type-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      cycleAssetType(asset.id);
+    });
+    card.querySelector('.asset-remove-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      removeClothingAsset(asset.id);
+    });
+    lib.appendChild(card);
+  });
+}
+
+function assignAssetToSlot(assetId, slotKey) {
+  Object.keys(state.slotAssignments).forEach(s => {
+    if (state.slotAssignments[s] === assetId) state.slotAssignments[s] = null;
+  });
+  state.slotAssignments[slotKey] = assetId;
+  updateDropZones();
+  updateStudioExtras();
+  updateStudioPieceCount();
+  renderAssetLibrary();
+  updateCheckButton();
+}
+
+function unassignSlot(slotKey) {
+  state.slotAssignments[slotKey] = null;
+  updateDropZones();
+  updateStudioExtras();
+  updateStudioPieceCount();
+  renderAssetLibrary();
+  updateCheckButton();
+}
+
+function updateDropZones() {
+  MAIN_DZ_SLOTS.forEach(slot => {
+    const zone     = document.getElementById(`dz-${slot}`);
+    const thumb    = document.getElementById(`dz-${slot}-thumb`);
+    const clearBtn = document.getElementById(`dz-${slot}-clear`);
+    const label    = zone?.querySelector('.dz-label');
+    if (!zone) return;
+    const assetId = state.slotAssignments[slot];
+    if (assetId) {
+      const asset = state.clothingAssets.find(a => a.id === assetId);
+      if (asset) {
+        if (thumb)    { thumb.src = asset.url; thumb.classList.remove('hidden'); }
+        clearBtn?.classList.remove('hidden');
+        label?.classList.add('hidden');
+        zone.classList.add('has-item');
+      }
+    } else {
+      if (thumb)    { thumb.src = ''; thumb.classList.add('hidden'); }
+      clearBtn?.classList.add('hidden');
+      label?.classList.remove('hidden');
+      zone.classList.remove('has-item');
+    }
+  });
+}
+
+function updateStudioExtras() {
+  const wrap = document.getElementById('studio-extras');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  EXTRA_DZ_SLOTS.forEach(slot => {
+    const assetId = state.slotAssignments[slot];
+    if (!assetId) return;
+    const asset = state.clothingAssets.find(a => a.id === assetId);
+    if (!asset) return;
+    const t    = ASSET_TYPES.find(x => x.key === slot) || ASSET_TYPES[0];
+    const chip = document.createElement('div');
+    chip.className = 'studio-extra-chip';
+    chip.innerHTML = `<img src="${asset.url}" alt="${t.label}" />
+      <span>${t.emoji} ${t.label}</span>
+      <button class="dz-clear" title="Remove">✕</button>`;
+    chip.querySelector('.dz-clear').addEventListener('click', () => unassignSlot(slot));
+    wrap.appendChild(chip);
+  });
+}
+
+function updateStudioPieceCount() {
+  const count = Object.values(state.slotAssignments).filter(Boolean).length;
+  const el    = document.getElementById('studio-piece-count');
+  if (!el) return;
+  if (count > 0) {
+    el.textContent = `${count} piece${count !== 1 ? 's' : ''}`;
+    el.classList.remove('hidden');
+  } else {
+    el.classList.add('hidden');
+  }
+}
+
+function updateCheckButton() {
+  const btn      = document.getElementById('studio-check-btn');
+  if (!btn) return;
+  const hasItems = Object.values(state.slotAssignments).some(Boolean);
+  const hasScene = !!state.studioScene;
+  btn.disabled   = !(hasItems && hasScene);
+}
+
+function setupDragDrop() {
+  MAIN_DZ_SLOTS.forEach(slot => {
+    const zone     = document.getElementById(`dz-${slot}`);
+    const clearBtn = document.getElementById(`dz-${slot}-clear`);
+    if (!zone) return;
+    zone.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      zone.classList.add('drag-over');
+    });
+    zone.addEventListener('dragleave', e => {
+      if (!zone.contains(e.relatedTarget)) zone.classList.remove('drag-over');
+    });
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.classList.remove('drag-over');
+      const id = e.dataTransfer.getData('text/plain');
+      if (id) assignAssetToSlot(id, slot);
+    });
+    clearBtn?.addEventListener('click', e => {
+      e.stopPropagation();
+      unassignSlot(slot);
+    });
+  });
+}
+
+function renderStudioMannequin() {
+  const el = document.getElementById('studio-mannequin-svg');
+  if (!el) return;
+  el.innerHTML = generateMannequinSVG(state.model?.body_shape || 'rectangle');
+}
+
 function setupStudio() {
   // Scene pills
   document.querySelectorAll('#studio-scene-pills .studio-scene-pill').forEach(pill => {
@@ -603,7 +806,7 @@ function setupStudio() {
       } else {
         state.studioScene = null;
       }
-      updateStudioCTA();
+      updateCheckButton();
     });
   });
 
@@ -634,38 +837,42 @@ function setupStudio() {
   locInput?.addEventListener('blur', fetchWeather);
   locInput?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); fetchWeather(); } });
 
-  // Item slots
-  document.querySelectorAll('#tab-studio .item-slot').forEach(slot => {
-    const slotName = slot.dataset.slot;
-    const fileInput = slot.querySelector('.slot-file-input');
-    const removeBtn = slot.querySelector('.slot-remove');
-    slot.addEventListener('click', e => { if (e.target !== removeBtn) fileInput.click(); });
-    fileInput.addEventListener('change', () => {
-      if (fileInput.files[0]) setSlotPhoto(slot, slotName, fileInput.files[0]);
-      fileInput.value = '';
-    });
-    removeBtn.addEventListener('click', e => { e.stopPropagation(); clearSlot(slot, slotName); });
+  // Asset upload: button + file input
+  const addItemBtn   = document.getElementById('studio-add-item-btn');
+  const assetInput   = document.getElementById('studio-asset-input');
+  addItemBtn?.addEventListener('click', () => assetInput?.click());
+  assetInput?.addEventListener('change', () => {
+    Array.from(assetInput.files).forEach(f => addClothingAsset(f));
+    assetInput.value = '';
   });
 
-  // Clear all
-  document.getElementById('studio-clear-btn')?.addEventListener('click', () => {
-    document.querySelectorAll('#tab-studio .item-slot').forEach(slot => {
-      if (slot.classList.contains('has-photo')) clearSlot(slot, slot.dataset.slot);
-    });
-    resetStudioPreview();
+  // Allow dragging image files from OS onto the wardrobe panel
+  const wardrobePanel = document.querySelector('.studio-wardrobe-panel');
+  wardrobePanel?.addEventListener('dragover', e => {
+    if (e.dataTransfer.types.includes('Files')) {
+      e.preventDefault();
+      wardrobePanel.classList.add('drag-over');
+    }
+  });
+  wardrobePanel?.addEventListener('dragleave', () => wardrobePanel.classList.remove('drag-over'));
+  wardrobePanel?.addEventListener('drop', e => {
+    e.preventDefault();
+    wardrobePanel.classList.remove('drag-over');
+    Array.from(e.dataTransfer.files)
+      .filter(f => f.type.startsWith('image/'))
+      .forEach(f => addClothingAsset(f));
   });
 
-  // Change/go-to model
-  document.getElementById('studio-change-model-btn')?.addEventListener('click', switchToModelTab);
-  document.getElementById('studio-go-model-btn')?.addEventListener('click', switchToModelTab);
-
-  // Primary CTA → always "Preview This Look"
-  document.getElementById('studio-primary-btn')?.addEventListener('click', handleStudioPrimary);
-
-  // Secondary CTA → "Check This Look" (appears after preview)
+  // Check This Look button
   document.getElementById('studio-check-btn')?.addEventListener('click', runSceneAnalysis);
 
-  updateStudioCTA();
+  // Wire drag-and-drop on mannequin drop zones
+  setupDragDrop();
+
+  // Render mannequin (body shape from model if available)
+  renderStudioMannequin();
+
+  updateCheckButton();
 }
 
 function switchToModelTab() {
@@ -830,12 +1037,18 @@ function updatePreviewComposition() {
 }
 
 async function runSceneAnalysis() {
-  const btn = document.getElementById('studio-check-btn');
-  const primaryBtn = document.getElementById('studio-primary-btn');
-  const loadingEl = document.getElementById('studio-loading');
+  // Sync state.studioItems from current slot assignments
+  state.studioItems = {};
+  Object.entries(state.slotAssignments).forEach(([slot, assetId]) => {
+    if (!assetId) return;
+    const asset = state.clothingAssets.find(a => a.id === assetId);
+    if (asset) state.studioItems[slot] = { file: asset.file, url: asset.url };
+  });
+
+  const btn        = document.getElementById('studio-check-btn');
+  const loadingEl  = document.getElementById('studio-loading');
   const loadingText = document.getElementById('studio-loading-text');
   btn.disabled = true;
-  primaryBtn.disabled = true;
   if (loadingText) loadingText.textContent = `Checking for ${state.studioScene || 'this scene'}…`;
   loadingEl.classList.remove('hidden');
   document.getElementById('studio-analysis').classList.add('hidden');
@@ -851,15 +1064,12 @@ async function runSceneAnalysis() {
     const result = await resp.json();
     renderStudioAnalysis(result);
     state.studioStep = 'checked';
-    updateStudioCTA();
   } catch (err) {
     showToast('Analysis failed: ' + err.message, true);
-    state.studioStep = 'preview';
-    updateStudioCTA();
   } finally {
-    primaryBtn.disabled = false;
     btn.disabled = false;
     loadingEl.classList.add('hidden');
+    updateCheckButton();
   }
 }
 

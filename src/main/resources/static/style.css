@@ -1432,6 +1432,309 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
 
 /* ── Try-On Studio ──────────────────────────────────────────── */
 
+/* ── Issue #2: Three-column fitting room layout ─────────────── */
+.studio-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr 240px;
+  gap: 16px;
+  align-items: start;
+}
+
+/* Shared panel base */
+.studio-wardrobe-panel,
+.studio-mannequin-panel,
+.studio-check-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+.studio-mannequin-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Panel header row */
+.studio-panel-hdr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  width: 100%;
+}
+.studio-panel-title {
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  flex: 1;
+}
+.studio-mock-pill {
+  font-size: .6rem;
+  font-weight: 600;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-faint);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.studio-piece-count {
+  font-size: .7rem;
+  color: var(--text-muted);
+  background: var(--accent-bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+
+/* ── Wardrobe panel ─────────────────────────────────────────── */
+.btn-add-item {
+  background: var(--accent-bg);
+  border: 1px solid var(--accent);
+  color: var(--accent-dark);
+  font-size: .72rem;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-add-item:hover { background: var(--accent); color: #fff; }
+
+.studio-asset-hint {
+  font-size: .78rem;
+  color: var(--text-faint);
+  line-height: 1.45;
+  margin-bottom: 12px;
+}
+
+.studio-asset-library {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 560px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+/* Draggable asset card */
+.asset-card {
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: grab;
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.asset-card:hover { border-color: var(--accent); box-shadow: var(--shadow-md); }
+.asset-card.dragging { opacity: 0.45; cursor: grabbing; }
+.asset-card.asset-assigned { border-color: var(--success); }
+
+.asset-thumb {
+  width: 100%;
+  aspect-ratio: 3/4;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+
+.asset-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  gap: 6px;
+  background: var(--surface);
+}
+.asset-type-btn {
+  background: var(--accent-bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: .68rem;
+  font-weight: 600;
+  color: var(--accent-dark);
+  padding: 3px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex: 1;
+  text-align: left;
+}
+.asset-type-btn:hover { background: var(--accent); color: #fff; }
+.asset-remove-btn {
+  background: none;
+  border: none;
+  font-size: .8rem;
+  color: var(--text-faint);
+  cursor: pointer;
+  padding: 3px 5px;
+  border-radius: 4px;
+  line-height: 1;
+}
+.asset-remove-btn:hover { color: #c0392b; background: #fdf0ee; }
+
+/* ── Mannequin stage + drop zones ──────────────────────────── */
+.studio-stage {
+  position: relative;
+  width: 170px;
+  height: 440px;
+  margin: 4px auto 0;
+  flex-shrink: 0;
+}
+
+.studio-mannequin-svg-inner {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.studio-mannequin-svg-inner svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Drop zones — overlaid on mannequin */
+.studio-dz {
+  position: absolute;
+  left: -6px;
+  right: -6px;
+  border: 2px dashed var(--border);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  overflow: hidden;
+}
+#dz-top    { top: 19%; height: 36%; }
+#dz-bottom { top: 55%; height: 28%; }
+#dz-shoes  { top: 83%; height: 14%; }
+
+.studio-dz .dz-label {
+  font-size: .6rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  background: rgba(255,255,255,0.78);
+  padding: 2px 7px;
+  border-radius: 4px;
+  pointer-events: none;
+}
+.studio-dz:hover { border-color: var(--accent); background: rgba(201,169,110,0.07); }
+.studio-dz.drag-over {
+  border-color: var(--accent);
+  background: rgba(201,169,110,0.14);
+}
+.studio-dz.has-item {
+  border-style: solid;
+  border-color: rgba(201,169,110,0.4);
+}
+
+/* Thumbnail shown inside drop zone when item is assigned */
+.dz-thumb {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+  opacity: 0.8;
+  pointer-events: none;
+}
+.dz-clear {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 19px;
+  height: 19px;
+  font-size: .65rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  line-height: 1;
+}
+.dz-clear:hover { background: #c0392b; }
+
+/* Extra items below mannequin */
+.studio-extras {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  justify-content: center;
+  width: 100%;
+}
+.studio-extra-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  font-size: .75rem;
+  color: var(--text-muted);
+  cursor: default;
+  position: relative;
+}
+.studio-extra-chip img {
+  width: 28px;
+  height: 28px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.studio-extra-chip .dz-clear {
+  position: static;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  font-size: .7rem;
+  width: auto;
+  height: auto;
+  border-radius: 3px;
+  padding: 1px 3px;
+}
+.studio-extra-chip .dz-clear:hover { background: #fdf0ee; color: #c0392b; }
+
+/* ── Right panel: scene + AI check ─────────────────────────── */
+.studio-check-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 14px 0;
+}
+.studio-ai-result { }
+
+/* Wardrobe drag-over (file drop from OS) */
+.studio-wardrobe-panel.drag-over {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .studio-layout { grid-template-columns: 200px 1fr 210px; }
+}
+@media (max-width: 860px) {
+  .studio-layout { grid-template-columns: 1fr; }
+  .studio-stage { width: 150px; height: 390px; }
+  #dz-shoes { height: 12%; }
+}
+
+/* ── Legacy Try-On Studio (kept for CSS references) ─────────── */
 /* ── Section 1: Builder Row ─────────────────────────────────── */
 .tryon-builder-row {
   display: grid;
