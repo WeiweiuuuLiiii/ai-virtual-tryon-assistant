@@ -1157,6 +1157,7 @@ function renderStudioAnalysis(r) {
   }
 
   document.getElementById('studio-analysis').classList.remove('hidden');
+  document.getElementById('studio-ai-idle-msg')?.classList.add('hidden');
 }
 
 /* ── Scene Check ─────────────────────────────────────────────── */

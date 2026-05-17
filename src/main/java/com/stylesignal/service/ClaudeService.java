@@ -356,12 +356,13 @@ public class ClaudeService {
 
             For body_fit_notes: 2–3 short notes (≤15 words each) about how these items interact with the user's body shape — e.g. how the silhouette affects proportions.
             For complete_the_look: suggest what's missing to complete the outfit. Only fill slots that are not already uploaded. Use null for already-present or not-needed slots.
+            For suggested_swaps: 0–2 specific item swaps that would improve the look (empty [] if outfit is already good). Each entry is a plain string like "Swap white sneakers for block-heel loafers".
             For short_reasons: exactly 3 one-line statements (≤12 words each) about why this look works or needs adjustment on this body.
             For best_scenes: 2–4 occasions this look is great for.
             For avoid_scenes: 0–2 occasions where it genuinely doesn't work. Use [] if none.
 
             Return ONLY valid JSON:
-            {"mode":"mock","preview_ready":true,"preview_image_url":null,"model_photo_used":true,"body_fit_notes":[],"style_fit_score":8,"body_fit_score":8,"scene_fit_score":8,"verdict":"works or adjust or not ideal","complete_the_look":{"bottom":null,"shoes":null,"outerwear":null,"accessories":null},"best_scenes":[],"avoid_scenes":[],"short_reasons":[]}
+            {"mode":"mock","preview_ready":true,"preview_image_url":null,"fit_model_used":true,"body_fit_notes":[],"style_fit_score":8,"body_fit_score":8,"scene_fit_score":8,"verdict":"works or adjust or not ideal","complete_the_look":{"bottom":null,"shoes":null,"outerwear":null,"accessories":null},"suggested_swaps":[],"best_scenes":[],"avoid_scenes":[],"short_reasons":[]}
             """.formatted(itemList, bodyCtx);
 
         content.add(Map.of("type", "text", "text", prompt));

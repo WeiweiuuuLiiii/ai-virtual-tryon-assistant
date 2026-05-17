@@ -1716,6 +1716,13 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
   border-top: 1px solid var(--border);
   margin: 14px 0;
 }
+.studio-ai-idle-msg {
+  font-size: .8rem;
+  color: var(--text-faint);
+  text-align: center;
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
 .studio-ai-result { }
 
 /* Wardrobe drag-over (file drop from OS) */
