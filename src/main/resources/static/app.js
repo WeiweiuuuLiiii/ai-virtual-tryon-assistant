@@ -8,7 +8,7 @@ const state = {
   profile: null,
   uploadedStylePhotos: [],
   // Studio — clothing asset library
-  clothingAssets: [],       // [{ id, file, rawImageUrl, cleanAssetUrl, extractionStatus, detectedType, itemName, garmentDescription, garmentLayerReady, containsModel, cleanupNeeded, type }]
+  clothingAssets: [],       // [{ id, file, rawImageUrl, cleanAssetUrl, extractionStatus, detectedType, itemName, garmentDescription, garmentLayerReady, containsModel, cleanupNeeded, userTypeOverride, type }]
   slotAssignments: { top: null, bottom: null, dress: null, outerwear: null, shoes: null, bag: null },
   draggedAssetId: null,
   // Studio — legacy (kept for API compatibility)
@@ -614,6 +614,7 @@ function addClothingAsset(file) {
     garmentLayerReady:   false,
     containsModel:       false,
     cleanupNeeded:       false,
+    userTypeOverride:    false,
     type: _guessType(file),
   });
   renderAssetLibrary();
@@ -640,6 +641,7 @@ function cycleAssetType(id) {
   if (!asset) return;
   const idx  = ASSET_TYPES.findIndex(t => t.key === asset.type);
   asset.type = ASSET_TYPES[(idx + 1) % ASSET_TYPES.length].key;
+  asset.userTypeOverride = true;
   renderAssetLibrary();
 }
 
@@ -754,7 +756,13 @@ function updateDropZones() {
         if (badge) {
           badge.classList.remove('hidden');
           if (asset.cleanAssetUrl) {
-            badge.textContent = asset.extractionStatus === 'mock' ? 'Mock Clean' : 'Fallback';
+            if (asset.extractionStatus === 'failed') {
+              badge.textContent = 'Fallback Preview';
+            } else if (asset.containsModel || asset.cleanupNeeded) {
+              badge.textContent = 'Needs Cleanup';
+            } else {
+              badge.textContent = 'Mock Clean';
+            }
           } else {
             badge.textContent = 'Raw';
           }
@@ -848,25 +856,43 @@ function renderStudioMannequin() {
 
 /* ── Garment Clean Asset Pipeline (Issue #4) ─────────────────── */
 
-function generateMockCleanAsset(rawImageUrl) {
+function generateMockCleanAsset(rawImageUrl, type) {
+  // Type-aware crop regions [xStart, yStart, xEnd, yEnd] as fractions of image dimensions.
+  // Isolates the relevant garment area — for model photos, removes face / off-body regions.
+  const CROP_REGIONS = {
+    top:       [0.08, 0.08, 0.92, 0.62],  // upper torso only
+    bottom:    [0.08, 0.35, 0.92, 0.95],  // waist-to-ankle
+    shoes:     [0.08, 0.52, 0.92, 1.00],  // feet area
+    dress:     [0.05, 0.05, 0.95, 0.90],  // tall garment, neck-to-hem
+    outerwear: [0.05, 0.05, 0.95, 0.88],  // same as dress
+    bag:       [0.12, 0.12, 0.88, 0.88],  // center square for accessories
+  };
+  const [x0, y0, x1, y1] = CROP_REGIONS[type] || CROP_REGIONS.top;
+
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
-      const size = Math.max(img.naturalWidth, img.naturalHeight, 240);
+      const srcX = Math.round(img.naturalWidth  * x0);
+      const srcY = Math.round(img.naturalHeight * y0);
+      const srcW = Math.round(img.naturalWidth  * (x1 - x0));
+      const srcH = Math.round(img.naturalHeight * (y1 - y0));
+
+      const OUT = 480;
       const canvas = document.createElement('canvas');
-      canvas.width  = size;
-      canvas.height = size;
+      canvas.width  = OUT;
+      canvas.height = OUT;
       const ctx = canvas.getContext('2d');
-      // Neutral product-cutout background — distinct from raw screenshot
+      // Neutral product-cutout background
       ctx.fillStyle = '#F4F1EC';
-      ctx.fillRect(0, 0, size, size);
-      // Center the garment with 6% padding on each side
-      const pad   = size * 0.06;
-      const avail = size - pad * 2;
-      const scale = Math.min(avail / img.naturalWidth, avail / img.naturalHeight);
-      const drawW = img.naturalWidth  * scale;
-      const drawH = img.naturalHeight * scale;
-      ctx.drawImage(img, (size - drawW) / 2, (size - drawH) / 2, drawW, drawH);
+      ctx.fillRect(0, 0, OUT, OUT);
+      // Scale the cropped region to fit with 6% padding
+      const pad   = OUT * 0.06;
+      const avail = OUT - pad * 2;
+      const scale = Math.min(avail / srcW, avail / srcH);
+      const drawW = srcW * scale;
+      const drawH = srcH * scale;
+      ctx.drawImage(img, srcX, srcY, srcW, srcH,
+        (OUT - drawW) / 2, (OUT - drawH) / 2, drawW, drawH);
       resolve(canvas.toDataURL('image/png'));
     };
     img.onerror = () => resolve(rawImageUrl);
@@ -884,25 +910,27 @@ async function analyzeGarmentAsset(id, file) {
     const asset = state.clothingAssets.find(a => a.id === id);
     if (!asset) return;
 
-    // Apply Claude-detected metadata; preserve user's manual type correction if already changed
+    // Apply Claude-detected metadata
     if (meta.detected_type && ASSET_TYPES.find(t => t.key === meta.detected_type)) {
       asset.detectedType = meta.detected_type;
-      if (asset.extractionStatus === 'analyzing') asset.type = meta.detected_type;
+      // Only update the user-visible type if the user hasn't manually overridden it
+      if (!asset.userTypeOverride) asset.type = meta.detected_type;
     }
     asset.itemName           = meta.item_name           || null;
     asset.garmentDescription = meta.garment_description || null;
     asset.containsModel      = !!meta.contains_model;
     asset.cleanupNeeded      = !!meta.cleanup_needed;
 
-    // Generate the mock clean asset via canvas (always succeeds)
-    asset.cleanAssetUrl    = await generateMockCleanAsset(asset.rawImageUrl);
-    asset.extractionStatus = resp.ok ? 'mock' : 'failed';
+    // Type-aware canvas crop — use detected type for the most accurate crop region
+    const cropType = asset.detectedType || asset.type;
+    asset.cleanAssetUrl     = await generateMockCleanAsset(asset.rawImageUrl, cropType);
+    asset.extractionStatus  = resp.ok ? 'mock' : 'failed';
     asset.garmentLayerReady = true;
   } catch (_) {
     const asset = state.clothingAssets.find(a => a.id === id);
     if (asset) {
       asset.extractionStatus  = 'failed';
-      asset.cleanAssetUrl     = await generateMockCleanAsset(asset.rawImageUrl);
+      asset.cleanAssetUrl     = await generateMockCleanAsset(asset.rawImageUrl, asset.type);
       asset.garmentLayerReady = true;
     }
   } finally {
