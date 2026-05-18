@@ -911,6 +911,18 @@ function renderTryOnPreview() {
 }
 
 async function runTryOnGenerate() {
+  const filledSlots = Object.entries(state.slotAssignments).filter(([, id]) => !!id);
+  if (filledSlots.length === 0) return;
+
+  // v1 single-garment constraint
+  if (filledSlots.length > 1) {
+    state.tryOnPreview.status  = 'failed';
+    state.tryOnPreview.message = 'v1 real try-on supports one garment at a time. Remove extra garments before generating.';
+    renderTryOnPreview();
+    updateGenerateButton();
+    return;
+  }
+
   state.tryOnPreview.status   = 'generating';
   state.tryOnPreview.imageUrl = null;
   state.tryOnPreview.message  = null;
@@ -920,34 +932,23 @@ async function runTryOnGenerate() {
   if (btn) btn.disabled = true;
 
   try {
-    // Build slot payload with full garment metadata for the provider
-    const slots = {};
-    Object.entries(state.slotAssignments).forEach(([slot, assetId]) => {
-      if (!assetId) return;
-      const asset = state.clothingAssets.find(a => a.id === assetId);
-      if (!asset) return;
-      slots[slot] = {
-        type:               asset.type,
-        detectedType:       asset.detectedType,
-        itemName:           asset.itemName,
-        garmentDescription: asset.garmentDescription,
-        containsModel:      asset.containsModel,
-        cleanupNeeded:      asset.cleanupNeeded,
-        extractionStatus:   asset.extractionStatus,
-      };
-    });
+    const [slot, assetId] = filledSlots[0];
+    const asset = state.clothingAssets.find(a => a.id === assetId);
+    if (!asset) throw new Error('Asset not found for slot ' + slot);
 
-    const resp = await fetch(`${API}/api/try-on/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ slots, bodyShape: state.model?.body_shape || null }),
-    });
+    const form = new FormData();
+    form.append('garm_img',    asset.file);
+    form.append('slot',        slot);
+    form.append('garment_des', asset.itemName || asset.garmentDescription || '');
+    if (state.model?.body_shape) form.append('body_shape', state.model.body_shape);
+
+    const resp   = await fetch(`${API}/api/try-on/generate`, { method: 'POST', body: form });
     const result = await resp.json();
 
-    state.tryOnPreview.status   = result.status  || 'provider_required';
-    state.tryOnPreview.mode     = result.mode     || 'provider_stub';
+    state.tryOnPreview.status   = result.status            || 'provider_required';
+    state.tryOnPreview.mode     = result.mode              || 'provider_stub';
     state.tryOnPreview.imageUrl = result.preview_image_url || null;
-    state.tryOnPreview.message  = result.message  || null;
+    state.tryOnPreview.message  = result.message           || null;
   } catch (err) {
     state.tryOnPreview.status  = 'failed';
     state.tryOnPreview.message = err.message;

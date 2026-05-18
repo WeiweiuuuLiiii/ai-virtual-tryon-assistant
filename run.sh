@@ -7,9 +7,17 @@ cd "$ROOT"
 if [ ! -f "$ROOT/.env" ]; then
   cp "$ROOT/.env.example" "$ROOT/.env"
   echo ""
-  echo "  Created .env — add your Anthropic key before running:"
+  echo "  Created .env — add your API keys before running:"
   echo "    ANTHROPIC_API_KEY=sk-ant-..."
+  echo "    REPLICATE_API_TOKEN=r8_..."
   echo ""
+fi
+
+# Export .env vars so Spring Boot can read them via ${ENV_VAR:}
+if [ -f "$ROOT/.env" ]; then
+  set -a
+  source "$ROOT/.env"
+  set +a
 fi
 
 echo ""

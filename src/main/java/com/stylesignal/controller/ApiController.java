@@ -6,6 +6,7 @@ import com.stylesignal.model.FeedbackRequest;
 import com.stylesignal.model.RecommendRequest;
 import com.stylesignal.model.SceneCheckRequest;
 import com.stylesignal.service.ClaudeService;
+import com.stylesignal.service.ReplicateService;
 import com.stylesignal.service.StorageService;
 import com.stylesignal.service.WeatherService;
 import org.slf4j.Logger;
@@ -27,15 +28,18 @@ public class ApiController {
 
     private static final Logger log = LoggerFactory.getLogger(ApiController.class);
 
-    private final ClaudeService  claude;
-    private final WeatherService weather;
-    private final StorageService storage;
-    private final ObjectMapper   mapper = new ObjectMapper();
+    private final ClaudeService     claude;
+    private final WeatherService    weather;
+    private final StorageService    storage;
+    private final ReplicateService  replicate;
+    private final ObjectMapper      mapper = new ObjectMapper();
 
-    public ApiController(ClaudeService claude, WeatherService weather, StorageService storage) {
-        this.claude  = claude;
-        this.weather = weather;
-        this.storage = storage;
+    public ApiController(ClaudeService claude, WeatherService weather,
+                         StorageService storage, ReplicateService replicate) {
+        this.claude    = claude;
+        this.weather   = weather;
+        this.storage   = storage;
+        this.replicate = replicate;
     }
 
     // ── Global error handler ──────────────────────────────────────────────────
@@ -208,21 +212,45 @@ public class ApiController {
         return ResponseEntity.ok(claude.analyzeTryOn(items, modelData.orElse(null)));
     }
 
-    // ── Try-On Generation ────────────────────────────────────────────────────
+    // ── Try-On Generation ─────────────────────────────────────────────────────
 
     @PostMapping("/try-on/generate")
-    public ResponseEntity<Map<String, Object>> generateTryOn(
-            @RequestBody Map<String, Object> req) {
-        log.info("POST /api/try-on/generate — slots={}", req.get("slots"));
-        Map<String, Object> resp = new LinkedHashMap<>();
-        resp.put("status", "provider_required");
-        resp.put("mode",   "provider_stub");
-        resp.put("preview_image_url", null);
-        resp.put("message",
-            "Real virtual try-on requires an external provider (e.g. IDM-VTON, OOTDiffusion, "
-            + "or a hosted inference API). No provider is currently configured. "
-            + "This feature is planned for v0.7 — Real Garment Segmentation.");
-        return ResponseEntity.ok(resp);
+    public ResponseEntity<?> generateTryOn(
+            @RequestParam("garm_img")                              MultipartFile garmImg,
+            @RequestParam("slot")                                  String slot,
+            @RequestParam(value = "garment_des", required = false) String garmentDes,
+            @RequestParam(value = "body_shape",  required = false) String bodyShape)
+            throws Exception {
+
+        log.info("POST /api/try-on/generate — slot={}", slot);
+
+        if (!replicate.isConfigured()) {
+            Map<String, Object> resp = new LinkedHashMap<>();
+            resp.put("status", "provider_required");
+            resp.put("mode",   "provider_stub");
+            resp.put("preview_image_url", null);
+            resp.put("message",
+                "Real virtual try-on requires a Replicate API token. "
+                + "Add REPLICATE_API_TOKEN to your .env and restart.");
+            return ResponseEntity.ok(resp);
+        }
+
+        if (!storage.hasModelPhoto()) {
+            return ResponseEntity.badRequest().body(errorBody(
+                "Build your body model first — go to the My Model tab and upload a full-body photo."));
+        }
+
+        byte[] humanBytes = storage.loadModelPhotoBytes();
+        String humanType  = "image/jpeg"; // model photos are always stored as JPEG
+        byte[] garmBytes  = garmImg.getBytes();
+        String garmType   = garmImg.getContentType() != null
+            ? garmImg.getContentType().toLowerCase() : "image/jpeg";
+        if ("image/jpg".equalsIgnoreCase(garmType)) garmType = "image/jpeg";
+
+        String category = ReplicateService.mapSlotToCategory(slot);
+
+        return ResponseEntity.ok(replicate.generateTryOn(
+            humanBytes, humanType, garmBytes, garmType, garmentDes, category));
     }
 
     // ── Garment Analysis ─────────────────────────────────────────────────────
