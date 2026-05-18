@@ -248,6 +248,11 @@ public class ApiController {
         if ("image/jpg".equalsIgnoreCase(garmType)) garmType = "image/jpeg";
 
         String category = ReplicateService.mapSlotToCategory(slot);
+        if (category == null) {
+            return ResponseEntity.badRequest().body(errorBody(
+                "Real try-on v1 does not support this item type yet. "
+                + "Please try Top, Dress, Outerwear, Bottom, or Shoes."));
+        }
 
         return ResponseEntity.ok(replicate.generateTryOn(
             humanBytes, humanType, garmBytes, garmType, garmentDes, category));

@@ -37,11 +37,13 @@ public class ReplicateService {
         return apiToken != null && !apiToken.isBlank() && !apiToken.startsWith("your_");
     }
 
+    /** Returns the IDM-VTON category for a slot, or null if unsupported in v1. */
     public static String mapSlotToCategory(String slot) {
         return switch (slot == null ? "" : slot) {
-            case "bottom", "shoes" -> "lower_body";
-            case "dress"           -> "dresses";
-            default                -> "upper_body"; // top, outerwear, bag
+            case "top",  "outerwear" -> "upper_body";
+            case "bottom", "shoes"   -> "lower_body";
+            case "dress"             -> "dresses";
+            default                  -> null; // bag and unknown slots unsupported in v1
         };
     }
 
