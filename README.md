@@ -53,7 +53,7 @@ export ANTHROPIC_API_KEY=sk-ant-...
 **Branch:** `stylesignal-fitting-room-v2`
 
 Established the full API surface and data pipeline:
-- All 9 core endpoints wired and returning structured JSON
+- Core REST endpoints wired and returning structured JSON
 - Claude multimodal vision integration with base64 image encoding
 - `StorageService` flat-file persistence (profile, model data, model photo)
 - Style taxonomy for grounding fashion analysis
@@ -91,7 +91,7 @@ Introduced the three-column fitting room layout:
 
 ---
 
-### v0.4.0 — Clean Garment Asset Pipeline
+### v0.4.0 — Garment Overlay Refinement
 **Branch:** `issue-3-garment-overlay-refinement`
 
 Refined clothing overlays so thumbnails read as garment layers, not pasted product screenshots:
@@ -113,8 +113,8 @@ Refined clothing overlays so thumbnails read as garment layers, not pasted produ
 
 ### Future Direction
 
-- **v0.5 — Outfit History & Feedback Loop:** Log worn outfits with occasion and comfort ratings; surface patterns back into recommendations.
-- **v0.6 — Closet Inventory:** Persistent garment library with tags, wear-count, and cost-per-wear.
+- **v0.5 — Clean Garment Asset Pipeline:** Separate raw uploaded product images from clean garment asset representations; add garment metadata, cleanup status, and clean preview URLs.
+- **v0.6 — Outfit History & Feedback Loop:** Log worn outfits with occasion and comfort ratings; surface patterns back into recommendations.
 - **v0.7 — Real Garment Segmentation:** Background removal or segmentation (e.g., rembg or cloud API) to produce clean cutout assets.
 - **v0.8 — Realistic Try-On Layer:** Diffusion-based virtual try-on (e.g., IDM-VTON or a hosted inference API) — only when output quality is high enough to be genuinely useful.
 
