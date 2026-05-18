@@ -1635,18 +1635,81 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
 }
 .studio-dz.has-item {
   border-style: solid;
-  border-color: rgba(201,169,110,0.4);
+  border-color: rgba(201,169,110,0.35);
+  background: rgba(255,255,255,0.04); /* near-transparent so mannequin shows */
 }
 
-/* Thumbnail shown inside drop zone when item is assigned */
+/* Garment layer — contained, not full-covering, mannequin stays visible */
 .dz-thumb {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 8px;
-  opacity: 0.8;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: auto;
+  height: 80%;
+  max-width: 68%;
+  object-fit: contain;
+  border-radius: 6px;
+  opacity: 0.82;
+  filter: drop-shadow(0 3px 8px rgba(0,0,0,0.22));
+  pointer-events: none;
+}
+/* Garment base class (for specificity) */
+.garment-layer { display: block; }
+
+/* Top — torso width, positioned slightly above center so it doesn't hit the neck */
+.garment-layer-top {
+  height: 78%;
+  max-width: 65%;
+  top: 52%;
+}
+
+/* Bottom — narrower than torso, taller, centered in zone */
+.garment-layer-bottom {
+  height: 88%;
+  max-width: 56%;
+  top: 48%;
+}
+
+/* Shoes — small, near bottom of zone */
+.garment-layer-shoes {
+  height: 72%;
+  max-width: 52%;
+  top: 54%;
+}
+
+/* Slot label shown in top-left when filled */
+.dz-slot-label {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  background: rgba(255,255,255,0.88);
+  font-size: .55rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding: 1px 6px;
+  border-radius: 3px;
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* Mock-extracted badge shown at bottom when filled */
+.mock-extracted-badge {
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.38);
+  color: rgba(255,255,255,0.9);
+  font-size: .5rem;
+  font-weight: 600;
+  letter-spacing: .05em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  white-space: nowrap;
+  z-index: 3;
   pointer-events: none;
 }
 .dz-clear {
@@ -1723,7 +1786,11 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
   margin-bottom: 10px;
   line-height: 1.4;
 }
-.studio-ai-result { }
+.studio-ai-result {
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
 
 /* Wardrobe drag-over (file drop from OS) */
 .studio-wardrobe-panel.drag-over {
@@ -2200,11 +2267,11 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
   flex-shrink: 0;
 }
 .analysis-verdict-badge {
-  font-size: .85rem;
+  font-size: .72rem;
   font-weight: 700;
   letter-spacing: .05em;
   text-transform: uppercase;
-  padding: 6px 14px;
+  padding: 4px 11px;
   border-radius: 999px;
   flex-shrink: 0;
 }
@@ -2222,16 +2289,16 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 8px 4px;
+  padding: 6px 4px;
   text-align: center;
 }
 .analysis-score-num {
   display: block;
-  font-size: 1.1rem;
+  font-size: .95rem;
   font-weight: 700;
   color: var(--accent);
   line-height: 1;
-  margin-bottom: 3px;
+  margin-bottom: 2px;
 }
 .analysis-score-lbl {
   font-size: .55rem;
@@ -2261,15 +2328,15 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
   gap: 5px;
   margin: 0;
 }
-.analysis-bullets li { font-size: .875rem; color: var(--text); line-height: 1.45; }
+.analysis-bullets li { font-size: .8rem; color: var(--text); line-height: 1.4; }
 .analysis-swaps-row    { display: flex; flex-wrap: wrap; gap: 6px; }
 .analysis-complete-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .swap-chip {
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 999px;
-  padding: 4px 10px;
-  font-size: .75rem;
+  padding: 3px 9px;
+  font-size: .7rem;
   color: var(--text-muted);
 }
 .complete-chip {

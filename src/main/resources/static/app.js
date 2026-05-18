@@ -699,24 +699,30 @@ function unassignSlot(slotKey) {
 
 function updateDropZones() {
   MAIN_DZ_SLOTS.forEach(slot => {
-    const zone     = document.getElementById(`dz-${slot}`);
-    const thumb    = document.getElementById(`dz-${slot}-thumb`);
-    const clearBtn = document.getElementById(`dz-${slot}-clear`);
-    const label    = zone?.querySelector('.dz-label');
+    const zone       = document.getElementById(`dz-${slot}`);
+    const thumb      = document.getElementById(`dz-${slot}-thumb`);
+    const clearBtn   = document.getElementById(`dz-${slot}-clear`);
+    const badge      = document.getElementById(`dz-${slot}-badge`);
+    const slotLabel  = document.getElementById(`dz-${slot}-slotlabel`);
+    const dzLabel    = zone?.querySelector('.dz-label');
     if (!zone) return;
     const assetId = state.slotAssignments[slot];
     if (assetId) {
       const asset = state.clothingAssets.find(a => a.id === assetId);
       if (asset) {
-        if (thumb)    { thumb.src = asset.url; thumb.classList.remove('hidden'); }
+        if (thumb) { thumb.src = asset.url; thumb.classList.remove('hidden'); }
         clearBtn?.classList.remove('hidden');
-        label?.classList.add('hidden');
+        badge?.classList.remove('hidden');
+        slotLabel?.classList.remove('hidden');
+        dzLabel?.classList.add('hidden');
         zone.classList.add('has-item');
       }
     } else {
-      if (thumb)    { thumb.src = ''; thumb.classList.add('hidden'); }
+      if (thumb) { thumb.src = ''; thumb.classList.add('hidden'); }
       clearBtn?.classList.add('hidden');
-      label?.classList.remove('hidden');
+      badge?.classList.add('hidden');
+      slotLabel?.classList.add('hidden');
+      dzLabel?.classList.remove('hidden');
       zone.classList.remove('has-item');
     }
   });
