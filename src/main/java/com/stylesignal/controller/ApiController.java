@@ -208,6 +208,18 @@ public class ApiController {
         return ResponseEntity.ok(claude.analyzeTryOn(items, modelData.orElse(null)));
     }
 
+    // ── Garment Analysis ─────────────────────────────────────────────────────
+
+    @PostMapping("/garment/analyze")
+    public ResponseEntity<?> analyzeGarment(
+            @RequestParam("photo") MultipartFile photo) throws Exception {
+        log.info("POST /api/garment/analyze — file={}", photo.getOriginalFilename());
+        if (photo == null || photo.isEmpty()) {
+            return ResponseEntity.badRequest().body(errorBody("No photo provided."));
+        }
+        return ResponseEntity.ok(claude.analyzeGarment(photo));
+    }
+
     // ── Outfit recommendation ─────────────────────────────────────────────────
 
     @PostMapping("/recommend")

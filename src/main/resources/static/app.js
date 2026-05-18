@@ -8,7 +8,7 @@ const state = {
   profile: null,
   uploadedStylePhotos: [],
   // Studio — clothing asset library
-  clothingAssets: [],       // [{ id, file, url, type }]
+  clothingAssets: [],       // [{ id, file, rawImageUrl, cleanAssetUrl, extractionStatus, detectedType, itemName, garmentDescription, garmentLayerReady, containsModel, cleanupNeeded, type }]
   slotAssignments: { top: null, bottom: null, dress: null, outerwear: null, shoes: null, bag: null },
   draggedAssetId: null,
   // Studio — legacy (kept for API compatibility)
@@ -601,10 +601,24 @@ function _guessType(file) {
 
 function addClothingAsset(file) {
   const id  = `asset_${++_assetIdCounter}`;
-  const url = URL.createObjectURL(file);
-  state.clothingAssets.push({ id, file, url, type: _guessType(file) });
+  const rawImageUrl = URL.createObjectURL(file);
+  state.clothingAssets.push({
+    id,
+    file,
+    rawImageUrl,
+    cleanAssetUrl:       null,
+    extractionStatus:    'analyzing',
+    detectedType:        null,
+    itemName:            null,
+    garmentDescription:  null,
+    garmentLayerReady:   false,
+    containsModel:       false,
+    cleanupNeeded:       false,
+    type: _guessType(file),
+  });
   renderAssetLibrary();
   updateStudioPieceCount();
+  analyzeGarmentAsset(id, file);
 }
 
 function removeClothingAsset(id) {
@@ -613,7 +627,7 @@ function removeClothingAsset(id) {
   Object.keys(state.slotAssignments).forEach(s => {
     if (state.slotAssignments[s] === id) state.slotAssignments[s] = null;
   });
-  URL.revokeObjectURL(asset.url);
+  URL.revokeObjectURL(asset.rawImageUrl);
   state.clothingAssets = state.clothingAssets.filter(a => a.id !== id);
   renderAssetLibrary();
   updateDropZones();
@@ -627,6 +641,16 @@ function cycleAssetType(id) {
   const idx  = ASSET_TYPES.findIndex(t => t.key === asset.type);
   asset.type = ASSET_TYPES[(idx + 1) % ASSET_TYPES.length].key;
   renderAssetLibrary();
+}
+
+function _extractionStatusInfo(status) {
+  switch (status) {
+    case 'analyzing':  return { label: 'Analyzing…' };
+    case 'mock':       return { label: 'Mock Extracted' };
+    case 'processed':  return { label: 'Clean Asset Ready' };
+    case 'failed':     return { label: 'Needs Cleanup' };
+    default:           return { label: 'Pending' };
+  }
 }
 
 function renderAssetLibrary() {
@@ -648,8 +672,21 @@ function renderAssetLibrary() {
     card.dataset.assetId = asset.id;
     const assigned = Object.values(state.slotAssignments).includes(asset.id);
     if (assigned) card.classList.add('asset-assigned');
+
+    const statusInfo  = _extractionStatusInfo(asset.extractionStatus);
+    const nameDisplay = asset.itemName || asset.file.name.replace(/\.[^.]+$/, '');
+    const modelBadge  = asset.containsModel
+      ? `<span class="asset-model-warning">has model</span>` : '';
+
     card.innerHTML = `
-      <img class="asset-thumb" src="${asset.url}" alt="${t.label}" draggable="false" />
+      <img class="asset-thumb" src="${asset.rawImageUrl}" alt="${t.label}" draggable="false" />
+      <div class="asset-card-info">
+        <p class="asset-item-name" title="${nameDisplay}">${nameDisplay}</p>
+        <div class="asset-info-row">
+          <span class="asset-status-chip asset-status-${asset.extractionStatus}">${statusInfo.label}</span>
+          ${modelBadge}
+        </div>
+      </div>
       <div class="asset-card-footer">
         <button class="asset-type-btn" title="Click to change type">${t.emoji} ${t.label}</button>
         <button class="asset-remove-btn" title="Remove">✕</button>
@@ -710,9 +747,18 @@ function updateDropZones() {
     if (assetId) {
       const asset = state.clothingAssets.find(a => a.id === assetId);
       if (asset) {
-        if (thumb) { thumb.src = asset.url; thumb.classList.remove('hidden'); }
+        // Use clean asset for the overlay; fall back to raw while analysis is pending
+        const displayUrl = asset.cleanAssetUrl || asset.rawImageUrl;
+        if (thumb) { thumb.src = displayUrl; thumb.classList.remove('hidden'); }
         clearBtn?.classList.remove('hidden');
-        badge?.classList.remove('hidden');
+        if (badge) {
+          badge.classList.remove('hidden');
+          if (asset.cleanAssetUrl) {
+            badge.textContent = asset.extractionStatus === 'mock' ? 'Mock Clean' : 'Fallback';
+          } else {
+            badge.textContent = 'Raw';
+          }
+        }
         slotLabel?.classList.remove('hidden');
         dzLabel?.classList.add('hidden');
         zone.classList.add('has-item');
@@ -740,7 +786,7 @@ function updateStudioExtras() {
     const t    = ASSET_TYPES.find(x => x.key === slot) || ASSET_TYPES[0];
     const chip = document.createElement('div');
     chip.className = 'studio-extra-chip';
-    chip.innerHTML = `<img src="${asset.url}" alt="${t.label}" />
+    chip.innerHTML = `<img src="${asset.rawImageUrl}" alt="${t.label}" />
       <span>${t.emoji} ${t.label}</span>
       <button class="dz-clear" title="Remove">✕</button>`;
     chip.querySelector('.dz-clear').addEventListener('click', () => unassignSlot(slot));
@@ -798,6 +844,72 @@ function renderStudioMannequin() {
   const el = document.getElementById('studio-mannequin-svg');
   if (!el) return;
   el.innerHTML = generateMannequinSVG(state.model?.body_shape || 'rectangle');
+}
+
+/* ── Garment Clean Asset Pipeline (Issue #4) ─────────────────── */
+
+function generateMockCleanAsset(rawImageUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const size = Math.max(img.naturalWidth, img.naturalHeight, 240);
+      const canvas = document.createElement('canvas');
+      canvas.width  = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      // Neutral product-cutout background — distinct from raw screenshot
+      ctx.fillStyle = '#F4F1EC';
+      ctx.fillRect(0, 0, size, size);
+      // Center the garment with 6% padding on each side
+      const pad   = size * 0.06;
+      const avail = size - pad * 2;
+      const scale = Math.min(avail / img.naturalWidth, avail / img.naturalHeight);
+      const drawW = img.naturalWidth  * scale;
+      const drawH = img.naturalHeight * scale;
+      ctx.drawImage(img, (size - drawW) / 2, (size - drawH) / 2, drawW, drawH);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => resolve(rawImageUrl);
+    img.src = rawImageUrl;
+  });
+}
+
+async function analyzeGarmentAsset(id, file) {
+  try {
+    const form = new FormData();
+    form.append('photo', file);
+    const resp = await fetch(`${API}/api/garment/analyze`, { method: 'POST', body: form });
+    const meta = resp.ok ? await resp.json() : {};
+
+    const asset = state.clothingAssets.find(a => a.id === id);
+    if (!asset) return;
+
+    // Apply Claude-detected metadata; preserve user's manual type correction if already changed
+    if (meta.detected_type && ASSET_TYPES.find(t => t.key === meta.detected_type)) {
+      asset.detectedType = meta.detected_type;
+      if (asset.extractionStatus === 'analyzing') asset.type = meta.detected_type;
+    }
+    asset.itemName           = meta.item_name           || null;
+    asset.garmentDescription = meta.garment_description || null;
+    asset.containsModel      = !!meta.contains_model;
+    asset.cleanupNeeded      = !!meta.cleanup_needed;
+
+    // Generate the mock clean asset via canvas (always succeeds)
+    asset.cleanAssetUrl    = await generateMockCleanAsset(asset.rawImageUrl);
+    asset.extractionStatus = resp.ok ? 'mock' : 'failed';
+    asset.garmentLayerReady = true;
+  } catch (_) {
+    const asset = state.clothingAssets.find(a => a.id === id);
+    if (asset) {
+      asset.extractionStatus  = 'failed';
+      asset.cleanAssetUrl     = await generateMockCleanAsset(asset.rawImageUrl);
+      asset.garmentLayerReady = true;
+    }
+  } finally {
+    renderAssetLibrary();
+    updateDropZones();
+    updateStudioExtras();
+  }
 }
 
 function setupStudio() {
@@ -1048,7 +1160,7 @@ async function runSceneAnalysis() {
   Object.entries(state.slotAssignments).forEach(([slot, assetId]) => {
     if (!assetId) return;
     const asset = state.clothingAssets.find(a => a.id === assetId);
-    if (asset) state.studioItems[slot] = { file: asset.file, url: asset.url };
+    if (asset) state.studioItems[slot] = { file: asset.file, url: asset.rawImageUrl };
   });
 
   const btn        = document.getElementById('studio-check-btn');

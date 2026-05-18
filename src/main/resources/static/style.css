@@ -1578,6 +1578,65 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
 }
 .asset-remove-btn:hover { color: #c0392b; background: #fdf0ee; }
 
+/* ── Garment extraction metadata (Issue #4) ─────────────────── */
+.asset-card-info {
+  padding: 4px 7px 2px;
+}
+.asset-item-name {
+  font-size: .6rem;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0 0 3px;
+  max-width: 100%;
+}
+.asset-info-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.asset-status-chip {
+  font-size: .5rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 3px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.asset-status-analyzing {
+  background: rgba(100,100,120,.10);
+  color: var(--text-faint);
+}
+.asset-status-mock {
+  background: rgba(201,169,110,.20);
+  color: var(--accent-dark);
+}
+.asset-status-processed {
+  background: var(--success-bg);
+  color: var(--success);
+}
+.asset-status-failed {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.asset-model-warning {
+  font-size: .48rem;
+  font-weight: 700;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: rgba(183,119,13,.12);
+  color: var(--warning);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 /* ── Mannequin stage + drop zones ──────────────────────────── */
 .studio-stage {
   position: relative;

@@ -369,6 +369,35 @@ public class ClaudeService {
         return callClaude(content, 1200);
     }
 
+    // ── Garment Analysis ─────────────────────────────────────────────────────
+
+    public Map<String, Object> analyzeGarment(MultipartFile photo) throws Exception {
+        validateApiKey();
+        String mt  = validateMediaType(photo);
+        String b64 = Base64.getEncoder().encodeToString(photo.getBytes());
+
+        String prompt = """
+            You are a garment analysis AI. Analyze this clothing product image.
+
+            Determine:
+            1. The garment type — one of exactly: top, bottom, dress, outerwear, shoes, bag
+            2. A descriptive item name with color and style (e.g. "White Cotton Crew-Neck T-Shirt", "Dark Wash Straight-Leg Jeans")
+            3. A one-sentence garment description (≤20 words)
+            4. Whether the photo contains a person or model wearing the item (true) vs. a flat lay or isolated product shot (false)
+            5. Whether background removal or cleanup would significantly improve this image for try-on overlay use
+            6. Which mannequin slot this garment belongs in (top, bottom, shoes — use these three for main slots)
+
+            Return ONLY valid JSON:
+            {"detected_type":"top","item_name":"","garment_description":"","contains_model":false,"cleanup_needed":false,"suggested_slot":"top","extraction_status":"mock"}
+            """;
+
+        List<Object> content = List.of(
+            Map.of("type", "image", "source", Map.of("type", "base64", "media_type", mt, "data", b64)),
+            Map.of("type", "text", "text", prompt)
+        );
+        return callClaude(content, 400);
+    }
+
     // ── Buy Check ─────────────────────────────────────────────────────────────
 
     public Map<String, Object> checkPurchase(MultipartFile photo, Map<String, Object> profile) throws Exception {
