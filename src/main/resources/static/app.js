@@ -636,6 +636,7 @@ function removeClothingAsset(id) {
   updateDropZones();
   updateStudioExtras();
   updateStudioPieceCount();
+  updateGenerateButton();
 }
 
 function cycleAssetType(id) {
