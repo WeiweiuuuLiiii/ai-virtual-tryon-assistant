@@ -1,8 +1,8 @@
 # StyleSignal
 
-An AI-powered personal styling assistant built with Java Spring Boot and the Anthropic Claude API. StyleSignal analyzes body shape, builds a parametric fit model, and provides AI outfit recommendations — structured around a mock try-on studio where users drag clothing onto a mannequin and receive instant AI feedback.
+An AI-powered virtual fitting room and shopping decision platform built with Java Spring Boot, JavaScript, and the Anthropic Claude API. StyleSignal analyzes body/style context, builds a parametric fit model, supports a mock try-on studio, and provides structured AI fit/style/scene feedback for online purchase decisions.
 
-> **Status:** Actively in development. Core backend, fit model, and try-on studio MVPs are complete and Codex-reviewed. Frontend polish, hosted deployment, and a real garment-segmentation pipeline are in progress.
+> **Status:** Actively in development. Core backend, fit model, and try-on studio MVPs are complete and Codex-reviewed. Clean garment asset generation, hosted deployment, and future segmentation-based try-on are in progress.
 
 ---
 
@@ -94,7 +94,7 @@ Introduced the three-column fitting room layout:
 ### v0.4.0 — Garment Overlay Refinement
 **Branch:** `issue-3-garment-overlay-refinement`
 
-Refined clothing overlays so thumbnails read as garment layers, not pasted product screenshots:
+Refined clothing overlay behavior as an intermediate mock preview layer:
 - `object-fit: contain` (replacing `cover`) with explicit height and `max-width` per slot
 - Slot-specific layer classes:
   - `.garment-layer-top` — 78% height, 65% max-width, offset to avoid neck
@@ -104,6 +104,8 @@ Refined clothing overlays so thumbnails read as garment layers, not pasted produ
 - Empty zones: "Drop Top / Drop Bottom / Drop Shoes" with dashed borders
 - Filled zones: `.dz-slot-label` chip + `.mock-extracted-badge` ("Mock") label
 - AI check panel: verdict badge, score chips, bullet text, and swap chips scaled down; `max-height: 380px` with scroll
+
+This milestone improves placement and readability, but garment extraction is intentionally deferred to v0.5.
 
 > **Note:** v0.4 is a mock preview pipeline. No real garment segmentation or AI image generation is used. The mannequin is parametric SVG; clothing overlays are contained thumbnails.
 
