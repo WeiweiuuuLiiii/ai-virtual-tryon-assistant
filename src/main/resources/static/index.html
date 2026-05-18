@@ -269,7 +269,7 @@
             <button class="btn-add-item" id="studio-add-item-btn">+ Add Item</button>
             <input type="file" id="studio-asset-input" accept="image/*" multiple hidden />
           </div>
-          <p class="studio-asset-hint" id="studio-asset-hint">Upload clothing photos — drag cards onto the mannequin to try on.</p>
+          <p class="studio-asset-hint" id="studio-asset-hint">Upload clothing photos — drag cards to build your outfit.</p>
           <div id="studio-asset-library" class="studio-asset-library">
             <!-- Asset cards rendered by JS -->
           </div>
@@ -278,8 +278,8 @@
         <!-- ── CENTER: Mannequin + Drop Zones ── -->
         <main class="studio-mannequin-panel">
           <div class="studio-panel-hdr">
-            <span class="studio-panel-title">Try On</span>
-            <span class="studio-mock-pill">Mock Preview</span>
+            <span class="studio-panel-title">Outfit Builder</span>
+            <span class="studio-mock-pill">Assembly View</span>
             <span id="studio-piece-count" class="studio-piece-count hidden"></span>
           </div>
 
@@ -317,6 +317,14 @@
 
           <!-- Extra items (outerwear, bag) assigned below mannequin -->
           <div id="studio-extras" class="studio-extras"></div>
+
+          <!-- Generate Try-On Preview action -->
+          <div class="studio-generate-wrap">
+            <button class="btn btn-primary" id="studio-generate-btn" disabled style="width:100%;justify-content:center;margin-top:12px">
+              Generate Try-On Preview
+            </button>
+            <p class="studio-generate-hint">Real provider required — see below</p>
+          </div>
         </main>
 
         <!-- ── RIGHT: Scene + AI Check ── -->
@@ -410,6 +418,37 @@
 
         </aside>
 
+      </div>
+
+      <!-- ── Generated Try-On Preview (below three columns) ── -->
+      <div id="studio-tryon-preview" class="studio-tryon-preview-section">
+        <div class="tryon-preview-header">
+          <h3 class="tryon-preview-title">Generated Try-On Preview</h3>
+          <span id="tryon-status-badge" class="tryon-status-badge tryon-status-idle">Idle</span>
+        </div>
+
+        <div id="tryon-state-idle" class="tryon-state">
+          <p class="tryon-state-msg">Build your outfit above, then click <strong>Generate Try-On Preview</strong> to request a realistic preview of the selected garments on your fit model.</p>
+          <p class="tryon-state-sub">This calls the try-on generation endpoint. A real provider must be configured to produce output.</p>
+        </div>
+
+        <div id="tryon-state-generating" class="tryon-state hidden">
+          <div class="loading-inline" style="justify-content:center;padding:20px 0">
+            <div class="spinner"></div><span style="margin-left:10px">Requesting try-on generation…</span>
+          </div>
+        </div>
+
+        <div id="tryon-state-provider-required" class="tryon-state hidden">
+          <!-- Rendered dynamically by renderTryOnPreview() -->
+        </div>
+
+        <div id="tryon-state-ready" class="tryon-state hidden">
+          <img id="tryon-preview-img" class="tryon-preview-img" src="" alt="Generated try-on preview" />
+        </div>
+
+        <div id="tryon-state-failed" class="tryon-state hidden">
+          <p class="tryon-state-error">Generation failed. Check server logs and try again.</p>
+        </div>
       </div>
 
     </section>

@@ -208,6 +208,23 @@ public class ApiController {
         return ResponseEntity.ok(claude.analyzeTryOn(items, modelData.orElse(null)));
     }
 
+    // ── Try-On Generation ────────────────────────────────────────────────────
+
+    @PostMapping("/try-on/generate")
+    public ResponseEntity<Map<String, Object>> generateTryOn(
+            @RequestBody Map<String, Object> req) {
+        log.info("POST /api/try-on/generate — slots={}", req.get("slots"));
+        Map<String, Object> resp = new LinkedHashMap<>();
+        resp.put("status", "provider_required");
+        resp.put("mode",   "provider_stub");
+        resp.put("preview_image_url", null);
+        resp.put("message",
+            "Real virtual try-on requires an external provider (e.g. IDM-VTON, OOTDiffusion, "
+            + "or a hosted inference API). No provider is currently configured. "
+            + "This feature is planned for v0.7 — Real Garment Segmentation.");
+        return ResponseEntity.ok(resp);
+    }
+
     // ── Garment Analysis ─────────────────────────────────────────────────────
 
     @PostMapping("/garment/analyze")

@@ -1851,6 +1851,124 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
   padding-right: 2px;
 }
 
+/* ── Generate Try-On button area ────────────────────────────── */
+.studio-generate-wrap {
+  padding: 0 8px;
+  text-align: center;
+}
+.studio-generate-hint {
+  font-size: .58rem;
+  color: var(--text-faint);
+  margin-top: 5px;
+  text-align: center;
+  letter-spacing: .02em;
+}
+
+/* ── Generated Try-On Preview section (Issue #5) ─────────────── */
+.studio-tryon-preview-section {
+  margin-top: 20px;
+  padding: 18px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.tryon-preview-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.tryon-preview-title {
+  font-size: .95rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+.tryon-status-badge {
+  font-size: .58rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.tryon-status-idle      { background: rgba(100,100,120,.10); color: var(--text-faint); }
+.tryon-status-generating{ background: var(--accent-bg);    color: var(--accent-dark); }
+.tryon-status-ready     { background: var(--success-bg);   color: var(--success); }
+.tryon-status-failed    { background: var(--danger-bg);    color: var(--danger); }
+.tryon-status-provider  { background: var(--warning-bg);   color: var(--warning); }
+
+.tryon-state { }
+.tryon-state-msg {
+  font-size: .85rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+  margin-bottom: 6px;
+}
+.tryon-state-sub {
+  font-size: .75rem;
+  color: var(--text-faint);
+  line-height: 1.45;
+}
+.tryon-state-error {
+  font-size: .85rem;
+  color: var(--danger);
+}
+.tryon-preview-img {
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+  display: block;
+  margin: 0 auto;
+}
+
+/* Provider-required state */
+.tryon-provider-box {
+  background: var(--warning-bg);
+  border: 1px solid rgba(183,119,13,.20);
+  border-radius: var(--radius-sm);
+  padding: 16px 18px;
+}
+.tryon-provider-title {
+  font-size: .88rem;
+  font-weight: 600;
+  color: var(--warning);
+  margin-bottom: 8px;
+}
+.tryon-provider-msg {
+  font-size: .82rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+.tryon-provider-connect {
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.tryon-provider-list {
+  padding-left: 18px;
+  margin-bottom: 12px;
+}
+.tryon-provider-list li {
+  font-size: .78rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+.tryon-roadmap-tag {
+  display: inline-block;
+  font-size: .6rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--accent-dark);
+  background: var(--accent-bg);
+  border: 1px solid rgba(201,169,110,.30);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
 /* Wardrobe drag-over (file drop from OS) */
 .studio-wardrobe-panel.drag-over {
   border-color: var(--accent);

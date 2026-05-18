@@ -17,6 +17,8 @@ const state = {
   studioVibe:   null,
   studioWeather: null,
   studioStep:   'build',
+  // Try-On Preview (Issue #5)
+  tryOnPreview: { status: 'idle', mode: null, imageUrl: null, message: null },
   // Scene check
   sceneCheckScene: null,
   sceneCheckVibe: null,
@@ -725,6 +727,7 @@ function assignAssetToSlot(assetId, slotKey) {
   updateStudioPieceCount();
   renderAssetLibrary();
   updateCheckButton();
+  updateGenerateButton();
 }
 
 function unassignSlot(slotKey) {
@@ -734,6 +737,7 @@ function unassignSlot(slotKey) {
   updateStudioPieceCount();
   renderAssetLibrary();
   updateCheckButton();
+  updateGenerateButton();
 }
 
 function updateDropZones() {
@@ -852,6 +856,104 @@ function renderStudioMannequin() {
   const el = document.getElementById('studio-mannequin-svg');
   if (!el) return;
   el.innerHTML = generateMannequinSVG(state.model?.body_shape || 'rectangle');
+}
+
+/* ── Try-On Preview Flow (Issue #5) ──────────────────────────── */
+
+function updateGenerateButton() {
+  const btn = document.getElementById('studio-generate-btn');
+  if (!btn) return;
+  const hasItems = Object.values(state.slotAssignments).some(Boolean);
+  btn.disabled = !hasItems;
+}
+
+function renderTryOnPreview() {
+  const ALL = ['idle', 'generating', 'provider-required', 'ready', 'failed'];
+  ALL.forEach(s => document.getElementById(`tryon-state-${s}`)?.classList.add('hidden'));
+
+  const status  = state.tryOnPreview.status || 'idle';
+  const stateId = status.replace('_', '-');
+  const stateEl = document.getElementById(`tryon-state-${stateId}`);
+  stateEl?.classList.remove('hidden');
+
+  const badge = document.getElementById('tryon-status-badge');
+  if (badge) {
+    const labels = {
+      idle:              { text: 'Idle',              cls: 'tryon-status-idle' },
+      generating:        { text: 'Generating…',       cls: 'tryon-status-generating' },
+      ready:             { text: 'Preview Ready',     cls: 'tryon-status-ready' },
+      failed:            { text: 'Failed',            cls: 'tryon-status-failed' },
+      provider_required: { text: 'Provider Required', cls: 'tryon-status-provider' },
+    };
+    const info = labels[status] || labels.idle;
+    badge.textContent = info.text;
+    badge.className   = `tryon-status-badge ${info.cls}`;
+  }
+
+  if (status === 'provider_required' && stateEl) {
+    stateEl.innerHTML = `
+      <div class="tryon-provider-box">
+        <p class="tryon-provider-title">Real Try-On Provider Required</p>
+        <p class="tryon-provider-msg">${state.tryOnPreview.message || 'No virtual try-on provider is currently configured.'}</p>
+        <p class="tryon-provider-connect">To enable real try-on generation, connect a provider:</p>
+        <ul class="tryon-provider-list">
+          <li>IDM-VTON — self-hosted open-source diffusion model</li>
+          <li>OOTDiffusion — self-hosted wardrobe diffusion</li>
+          <li>Replicate / HuggingFace — hosted inference API</li>
+        </ul>
+        <span class="tryon-roadmap-tag">Planned milestone: v0.7 — Real Garment Segmentation</span>
+      </div>`;
+  } else if (status === 'ready' && state.tryOnPreview.imageUrl) {
+    const img = document.getElementById('tryon-preview-img');
+    if (img) img.src = state.tryOnPreview.imageUrl;
+  }
+}
+
+async function runTryOnGenerate() {
+  state.tryOnPreview.status   = 'generating';
+  state.tryOnPreview.imageUrl = null;
+  state.tryOnPreview.message  = null;
+  renderTryOnPreview();
+
+  const btn = document.getElementById('studio-generate-btn');
+  if (btn) btn.disabled = true;
+
+  try {
+    // Build slot payload with full garment metadata for the provider
+    const slots = {};
+    Object.entries(state.slotAssignments).forEach(([slot, assetId]) => {
+      if (!assetId) return;
+      const asset = state.clothingAssets.find(a => a.id === assetId);
+      if (!asset) return;
+      slots[slot] = {
+        type:               asset.type,
+        detectedType:       asset.detectedType,
+        itemName:           asset.itemName,
+        garmentDescription: asset.garmentDescription,
+        containsModel:      asset.containsModel,
+        cleanupNeeded:      asset.cleanupNeeded,
+        extractionStatus:   asset.extractionStatus,
+      };
+    });
+
+    const resp = await fetch(`${API}/api/try-on/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slots, bodyShape: state.model?.body_shape || null }),
+    });
+    const result = await resp.json();
+
+    state.tryOnPreview.status   = result.status  || 'provider_required';
+    state.tryOnPreview.mode     = result.mode     || 'provider_stub';
+    state.tryOnPreview.imageUrl = result.preview_image_url || null;
+    state.tryOnPreview.message  = result.message  || null;
+  } catch (err) {
+    state.tryOnPreview.status  = 'failed';
+    state.tryOnPreview.message = err.message;
+  } finally {
+    renderTryOnPreview();
+    updateGenerateButton();
+  }
 }
 
 /* ── Garment Clean Asset Pipeline (Issue #4) ─────────────────── */
@@ -1012,6 +1114,9 @@ function setupStudio() {
   // Check This Look button
   document.getElementById('studio-check-btn')?.addEventListener('click', runSceneAnalysis);
 
+  // Wire generate try-on button
+  document.getElementById('studio-generate-btn')?.addEventListener('click', runTryOnGenerate);
+
   // Wire drag-and-drop on mannequin drop zones
   setupDragDrop();
 
@@ -1019,6 +1124,8 @@ function setupStudio() {
   renderStudioMannequin();
 
   updateCheckButton();
+  updateGenerateButton();
+  renderTryOnPreview();
 }
 
 function switchToModelTab() {
