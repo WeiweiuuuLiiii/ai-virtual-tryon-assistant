@@ -21,11 +21,11 @@ public class ReplicateService {
 
     private static final Logger log = LoggerFactory.getLogger(ReplicateService.class);
 
-    private static final String REPLICATE_API    = "https://api.replicate.com/v1";
-    private static final String MODEL_OWNER      = "cuuupid";
-    private static final String MODEL_NAME       = "idm-vton";
-    private static final int    POLL_INTERVAL_MS = 2000;
-    private static final int    MAX_POLLS        = 60; // 120s timeout
+    private static final String REPLICATE_API      = "https://api.replicate.com/v1";
+    private static final String IDM_VTON_VERSION  =
+        "0513734a452173b8173e907e3a59d19a36266e55b48528559432bd21c7d7e985";
+    private static final int    POLL_INTERVAL_MS  = 2000;
+    private static final int    MAX_POLLS         = 60; // 120s timeout
 
     @Value("${replicate.api.token:}")
     private String apiToken;
@@ -82,9 +82,10 @@ public class ReplicateService {
 
     private String createPrediction(Map<String, Object> input) throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("input", input);
+        body.put("version", IDM_VTON_VERSION);
+        body.put("input",   input);
 
-        String url = REPLICATE_API + "/models/" + MODEL_OWNER + "/" + MODEL_NAME + "/predictions";
+        String url = REPLICATE_API + "/predictions";
         HttpRequest req = HttpRequest.newBuilder()
             .uri(URI.create(url))
             .header("Authorization", "Bearer " + apiToken)
@@ -96,7 +97,8 @@ public class ReplicateService {
         if (resp.statusCode() != 201) {
             String snippet = resp.body().length() > 400 ? resp.body().substring(0, 400) : resp.body();
             throw new RuntimeException(
-                "Replicate create prediction failed (HTTP " + resp.statusCode() + "): " + snippet);
+                "Replicate create prediction failed at POST " + url
+                + " (HTTP " + resp.statusCode() + "): " + snippet);
         }
 
         Map<String, Object> parsed = mapper.readValue(resp.body(), new TypeReference<>() {});
