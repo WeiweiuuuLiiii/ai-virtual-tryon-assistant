@@ -6,9 +6,11 @@ import com.stylesignal.model.FeedbackRequest;
 import com.stylesignal.model.RecommendRequest;
 import com.stylesignal.model.SceneCheckRequest;
 import com.stylesignal.service.ClaudeService;
-import com.stylesignal.service.ReplicateService;
 import com.stylesignal.service.StorageService;
 import com.stylesignal.service.WeatherService;
+import com.stylesignal.tryon.TryOnProvider;
+import com.stylesignal.tryon.TryOnProviderRegistry;
+import com.stylesignal.tryon.TryOnRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
@@ -28,18 +30,18 @@ public class ApiController {
 
     private static final Logger log = LoggerFactory.getLogger(ApiController.class);
 
-    private final ClaudeService     claude;
-    private final WeatherService    weather;
-    private final StorageService    storage;
-    private final ReplicateService  replicate;
-    private final ObjectMapper      mapper = new ObjectMapper();
+    private final ClaudeService          claude;
+    private final WeatherService         weather;
+    private final StorageService         storage;
+    private final TryOnProviderRegistry  providerRegistry;
+    private final ObjectMapper           mapper = new ObjectMapper();
 
     public ApiController(ClaudeService claude, WeatherService weather,
-                         StorageService storage, ReplicateService replicate) {
-        this.claude    = claude;
-        this.weather   = weather;
-        this.storage   = storage;
-        this.replicate = replicate;
+                         StorageService storage, TryOnProviderRegistry providerRegistry) {
+        this.claude           = claude;
+        this.weather          = weather;
+        this.storage          = storage;
+        this.providerRegistry = providerRegistry;
     }
 
     // ── Global error handler ──────────────────────────────────────────────────
@@ -212,6 +214,14 @@ public class ApiController {
         return ResponseEntity.ok(claude.analyzeTryOn(items, modelData.orElse(null)));
     }
 
+    // ── Try-On Providers ──────────────────────────────────────────────────────
+
+    @GetMapping("/try-on/providers")
+    public ResponseEntity<Map<String, Object>> getTryOnProviders() {
+        log.info("GET /api/try-on/providers");
+        return ResponseEntity.ok(providerRegistry.buildCapabilityResponse());
+    }
+
     // ── Try-On Generation ─────────────────────────────────────────────────────
 
     @PostMapping("/try-on/generate")
@@ -224,13 +234,14 @@ public class ApiController {
 
         log.info("POST /api/try-on/generate — slot={}", slot);
 
-        if (!replicate.isConfigured()) {
+        TryOnProvider provider = providerRegistry.getActiveProvider();
+        if (provider == null || !provider.isConfigured()) {
             Map<String, Object> resp = new LinkedHashMap<>();
             resp.put("status", "provider_required");
             resp.put("mode",   "provider_stub");
             resp.put("preview_image_url", null);
             resp.put("message",
-                "Real virtual try-on requires a Replicate API token. "
+                "Real virtual try-on requires a provider token. "
                 + "Add REPLICATE_API_TOKEN to your .env and restart.");
             return ResponseEntity.ok(resp);
         }
@@ -241,21 +252,20 @@ public class ApiController {
         }
 
         byte[] humanBytes = storage.loadModelPhotoBytes();
-        String humanType  = "image/jpeg"; // model photos are always stored as JPEG
+        String humanType  = "image/jpeg"; // model photos are stored as JPEG
         byte[] garmBytes  = garmImg.getBytes();
         String garmType   = garmImg.getContentType() != null
             ? garmImg.getContentType().toLowerCase() : "image/jpeg";
         if ("image/jpg".equalsIgnoreCase(garmType)) garmType = "image/jpeg";
 
-        String category = ReplicateService.mapSlotToCategory(slot);
-        if (category == null) {
-            return ResponseEntity.badRequest().body(errorBody(
-                "Real try-on v1 does not support this item type yet. "
-                + "Please try Top, Dress, Outerwear, Bottom, or Shoes."));
-        }
+        TryOnRequest req = new TryOnRequest(
+            humanBytes, humanType, garmBytes, garmType, slot, garmentDes, bodyShape);
 
-        return ResponseEntity.ok(replicate.generateTryOn(
-            humanBytes, humanType, garmBytes, garmType, garmentDes, category));
+        try {
+            return ResponseEntity.ok(provider.generate(req));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
+        }
     }
 
     // ── Garment Analysis ─────────────────────────────────────────────────────

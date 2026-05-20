@@ -19,6 +19,8 @@ const state = {
   studioStep:   'build',
   // Try-On Preview (Issue #5)
   tryOnPreview: { status: 'idle', mode: null, imageUrl: null, message: null },
+  // Provider capability matrix (Issue #7)
+  tryOnProviders: null,
   // Scene check
   sceneCheckScene: null,
   sceneCheckVibe: null,
@@ -36,7 +38,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupStudio();
   setupSceneCheck();
   setupBuyCheck();
-  await Promise.all([loadModel(), loadProfile()]);
+  await Promise.all([loadModel(), loadProfile(), loadTryOnProviders()]);
 });
 
 /* ── Mannequin SVG Generator ─────────────────────────────────── */
@@ -857,6 +859,57 @@ function renderStudioMannequin() {
   const el = document.getElementById('studio-mannequin-svg');
   if (!el) return;
   el.innerHTML = generateMannequinSVG(state.model?.body_shape || 'rectangle');
+}
+
+/* ── Try-On Provider Capability (Issue #7) ───────────────────── */
+
+async function loadTryOnProviders() {
+  try {
+    const resp = await fetch(`${API}/api/try-on/providers`);
+    state.tryOnProviders = await resp.json();
+    renderProviderCapability();
+  } catch (_) {}
+}
+
+function renderProviderCapability() {
+  const el = document.getElementById('provider-capability-section');
+  if (!el || !state.tryOnProviders) return;
+
+  const { active_provider, providers } = state.tryOnProviders;
+  const active = providers?.find(p => p.id === active_provider);
+
+  const statusLabel = {
+    active:          '<span class="prov-badge prov-active">Active</span>',
+    not_configured:  '<span class="prov-badge prov-unconfigured">Token Missing</span>',
+    planned:         '<span class="prov-badge prov-planned">Planned</span>',
+  };
+
+  const activeBlock = active ? `
+    <div class="prov-active-row">
+      <span class="prov-active-name">${active.name}</span>
+      ${statusLabel[active.status] || ''}
+      <span class="prov-garment-limit">Max ${active.max_garments} garment${active.max_garments !== 1 ? 's' : ''}</span>
+    </div>
+    <ul class="prov-limitations">
+      ${(active.limitations || []).map(l => `<li>${l}</li>`).join('')}
+    </ul>` : `
+    <div class="prov-active-row">
+      <span class="prov-active-name">No provider configured</span>
+      <span class="prov-badge prov-unconfigured">Token Missing</span>
+    </div>
+    <ul class="prov-limitations"><li>Add REPLICATE_API_TOKEN to .env and restart</li></ul>`;
+
+  const otherProviders = (providers || [])
+    .filter(p => p.id !== active_provider)
+    .map(p => `<span class="prov-chip prov-chip-${p.status}" title="${p.description}">${p.name}</span>`)
+    .join('');
+
+  el.innerHTML = `
+    <div class="provider-capability-box">
+      <p class="prov-heading">Try-On Provider</p>
+      ${activeBlock}
+      ${otherProviders ? `<p class="prov-others-label">Future providers</p><div class="prov-others">${otherProviders}</div>` : ''}
+    </div>`;
 }
 
 /* ── Try-On Preview Flow (Issue #5) ──────────────────────────── */

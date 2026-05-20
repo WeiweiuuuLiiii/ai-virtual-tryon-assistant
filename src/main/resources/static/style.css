@@ -1969,6 +1969,100 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
   border-radius: 4px;
 }
 
+/* ── Provider Capability Section (Issue #7) ── */
+.provider-capability-section {
+  margin: 16px 0 0;
+}
+
+.provider-capability-box {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.prov-heading {
+  font-size: .65rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 0 0 10px;
+}
+
+.prov-active-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.prov-active-name {
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.prov-garment-limit {
+  font-size: .72rem;
+  color: var(--text-faint);
+  margin-left: auto;
+}
+
+.prov-badge {
+  font-size: .6rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.prov-active       { background: var(--success-bg);  color: var(--success); }
+.prov-unconfigured { background: var(--warning-bg);  color: var(--warning); }
+.prov-planned      { background: rgba(100,100,120,.10); color: var(--text-faint); }
+
+.prov-limitations {
+  margin: 0 0 10px;
+  padding-left: 16px;
+  list-style: disc;
+}
+
+.prov-limitations li {
+  font-size: .75rem;
+  color: var(--warning);
+  line-height: 1.5;
+}
+
+.prov-others-label {
+  font-size: .62rem;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 8px 0 6px;
+}
+
+.prov-others {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.prov-chip {
+  font-size: .68rem;
+  font-weight: 500;
+  padding: 3px 9px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  background: transparent;
+  cursor: default;
+}
+
+.prov-chip-planned { opacity: .7; }
+
 /* Wardrobe drag-over (file drop from OS) */
 .studio-wardrobe-panel.drag-over {
   border-color: var(--accent);
