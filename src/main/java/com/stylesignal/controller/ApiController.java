@@ -8,6 +8,7 @@ import com.stylesignal.model.SceneCheckRequest;
 import com.stylesignal.service.ClaudeService;
 import com.stylesignal.service.StorageService;
 import com.stylesignal.service.WeatherService;
+import com.stylesignal.tryon.GarmentItem;
 import com.stylesignal.tryon.TryOnProvider;
 import com.stylesignal.tryon.TryOnProviderRegistry;
 import com.stylesignal.tryon.TryOnRequest;
@@ -18,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -226,17 +228,25 @@ public class ApiController {
 
     @PostMapping("/try-on/generate")
     public ResponseEntity<?> generateTryOn(
-            @RequestParam("garm_img")                                          MultipartFile garmImg,
-            @RequestParam("slot")                                              String slot,
-            @RequestParam(value = "provider_id",    required = false)         String providerId,
-            @RequestParam(value = "garment_des",    required = false)         String garmentDes,
-            @RequestParam(value = "body_shape",     required = false)         String bodyShape,
-            @RequestParam(value = "contains_model", required = false,
-                          defaultValue = "false")                              boolean containsModel)
+            // Single-garment params (FASHN, IDM-VTON)
+            @RequestParam(value = "garm_img",          required = false)              MultipartFile garmImg,
+            @RequestParam(value = "slot",              required = false)              String slot,
+            @RequestParam(value = "provider_id",       required = false)              String providerId,
+            @RequestParam(value = "garment_des",       required = false)              String garmentDes,
+            @RequestParam(value = "body_shape",        required = false)              String bodyShape,
+            @RequestParam(value = "contains_model",    required = false,
+                          defaultValue = "false")                                     boolean containsModel,
+            // Per-slot garment images for multi-garment providers (stable order: top, outerwear, bottom, dress, shoes)
+            @RequestParam(value = "garm_img_top",       required = false) MultipartFile garmImgTop,
+            @RequestParam(value = "garm_img_outerwear", required = false) MultipartFile garmImgOuterwear,
+            @RequestParam(value = "garm_img_bottom",    required = false) MultipartFile garmImgBottom,
+            @RequestParam(value = "garm_img_dress",     required = false) MultipartFile garmImgDress,
+            @RequestParam(value = "garm_img_shoes",     required = false) MultipartFile garmImgShoes)
             throws Exception {
 
         log.info("POST /api/try-on/generate — slot={}, provider={}", slot, providerId);
 
+        // ── Provider resolution ──────────────────────────────────────────────
         TryOnProvider provider;
         if (providerId != null && !providerId.isBlank()) {
             provider = providerRegistry.getProviderById(providerId);
@@ -263,11 +273,12 @@ public class ApiController {
                 resp.put("preview_image_url", null);
                 resp.put("message",
                     "Real virtual try-on requires a provider token. "
-                    + "Add REPLICATE_API_TOKEN or FASHN_API_KEY to your .env and restart.");
+                    + "Add REPLICATE_API_TOKEN, FASHN_API_KEY, or WAVESPEED_API_KEY to your .env and restart.");
                 return ResponseEntity.ok(resp);
             }
         }
 
+        // ── Model photo ──────────────────────────────────────────────────────
         if (!storage.hasModelPhoto()) {
             return ResponseEntity.badRequest().body(errorBody(
                 "Build your body model first — go to the My Model tab and upload a full-body photo."));
@@ -275,13 +286,42 @@ public class ApiController {
 
         byte[] humanBytes = storage.loadModelPhotoBytes();
         String humanType  = "image/jpeg"; // model photos are stored as JPEG
-        byte[] garmBytes  = garmImg.getBytes();
-        String garmType   = garmImg.getContentType() != null
-            ? garmImg.getContentType().toLowerCase() : "image/jpeg";
-        if ("image/jpg".equalsIgnoreCase(garmType)) garmType = "image/jpeg";
+
+        // ── Build garments list from per-slot params (stable order: top, outerwear, bottom, dress, shoes) ──
+        List<GarmentItem> garments = new ArrayList<>();
+        for (var entry : List.of(
+                Map.entry("top",       garmImgTop),
+                Map.entry("outerwear", garmImgOuterwear),
+                Map.entry("bottom",    garmImgBottom),
+                Map.entry("dress",     garmImgDress),
+                Map.entry("shoes",     garmImgShoes))) {
+            MultipartFile f = entry.getValue();
+            if (f != null && !f.isEmpty()) {
+                String t = f.getContentType() != null ? f.getContentType().toLowerCase() : "image/jpeg";
+                if ("image/jpg".equalsIgnoreCase(t)) t = "image/jpeg";
+                garments.add(new GarmentItem(f.getBytes(), t, entry.getKey()));
+            }
+        }
+
+        // ── Primary garment validation (single-garment path) ────────────────
+        boolean hasSingleGarment = garmImg != null && !garmImg.isEmpty();
+        if (!hasSingleGarment && garments.isEmpty()) {
+            return ResponseEntity.badRequest().body(errorBody("No garment image provided."));
+        }
+        if (hasSingleGarment && (slot == null || slot.isBlank())) {
+            return ResponseEntity.badRequest().body(errorBody("Slot is required with garm_img."));
+        }
+
+        byte[] garmBytes = hasSingleGarment ? garmImg.getBytes() : null;
+        String garmType  = null;
+        if (hasSingleGarment) {
+            garmType = garmImg.getContentType() != null
+                ? garmImg.getContentType().toLowerCase() : "image/jpeg";
+            if ("image/jpg".equalsIgnoreCase(garmType)) garmType = "image/jpeg";
+        }
 
         TryOnRequest req = new TryOnRequest(
-            humanBytes, humanType, garmBytes, garmType, slot, garmentDes, bodyShape, containsModel);
+            humanBytes, humanType, garmBytes, garmType, slot, garmentDes, bodyShape, containsModel, garments);
 
         try {
             return ResponseEntity.ok(provider.generate(req));

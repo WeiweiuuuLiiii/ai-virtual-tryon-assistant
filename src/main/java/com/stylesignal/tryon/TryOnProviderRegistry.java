@@ -52,12 +52,6 @@ public class TryOnProviderRegistry {
             "Video-model-based try-on from Kuaishou. Integration planned.",
             List.of("Requires Kling API access", "Integration planned for a future milestone")
         ));
-        all.add(planned(
-            "future_multi_garment_provider", "Multi-Garment Provider", 6,
-            List.of("top", "bottom", "dress", "outerwear", "shoes", "bag"), List.of(),
-            "Future provider capable of compositing a full outfit across all garment slots.",
-            List.of("Not yet available", "Required for full outfit try-on generation")
-        ));
 
         Map<String, Object> resp = new LinkedHashMap<>();
         resp.put("active_provider", activeId);

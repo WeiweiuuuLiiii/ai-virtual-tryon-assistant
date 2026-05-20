@@ -18,7 +18,7 @@ const state = {
   studioWeather: null,
   studioStep:   'build',
   // Try-On Preview (Issue #5)
-  tryOnPreview: { status: 'idle', mode: null, imageUrl: null, message: null },
+  tryOnPreview: { status: 'idle', mode: null, imageUrl: null, videoUrl: null, message: null },
   // Provider capability matrix (Issue #7)
   tryOnProviders: null,
   selectedProviderId: null,
@@ -888,6 +888,7 @@ function renderProviderCapability() {
     not_configured: '<span class="prov-badge prov-unconfigured">Token Missing</span>',
     planned:        '<span class="prov-badge prov-planned">Planned</span>',
   };
+  const WAVESPEED_ID = 'wavespeed_ai_virtual_outfit_tryon';
 
   // Provider selector — shown when more than one real provider exists
   const selectorHtml = configured.length > 1 ? `
@@ -896,7 +897,9 @@ function renderProviderCapability() {
       ${configured.map(p => `
         <button class="prov-select-btn${state.selectedProviderId === p.id ? ' prov-select-active' : ''}"
           data-pid="${p.id}">
-          ${p.name} ${statusBadge[p.status] || ''}
+          ${p.name}
+          ${p.id === WAVESPEED_ID ? '<span class="prov-badge prov-recommended">Full Outfit</span>' : ''}
+          ${statusBadge[p.status] || ''}
         </button>`).join('')}
     </div>` : '';
 
@@ -977,6 +980,15 @@ function renderTryOnPreview() {
     badge.className   = `tryon-status-badge ${info.cls}`;
   }
 
+  if (status === 'generating') {
+    const msgEl = document.getElementById('tryon-generating-msg');
+    if (msgEl) {
+      msgEl.textContent = state.selectedProviderId === 'wavespeed_ai_virtual_outfit_tryon'
+        ? 'Generating full outfit preview... This may take 1–5 minutes. WaveSpeed may adjust pose or background. Please keep this page open.'
+        : 'Requesting try-on generation…';
+    }
+  }
+
   if (status === 'provider_required' && stateEl) {
     stateEl.innerHTML = `
       <div class="tryon-provider-box">
@@ -992,9 +1004,16 @@ function renderTryOnPreview() {
       </div>`;
   } else if (status === 'failed' && stateEl && state.tryOnPreview.message) {
     stateEl.innerHTML = `<p class="tryon-state-error">${state.tryOnPreview.message}</p>`;
-  } else if (status === 'ready' && state.tryOnPreview.imageUrl) {
-    const img = document.getElementById('tryon-preview-img');
-    if (img) img.src = state.tryOnPreview.imageUrl;
+  } else if (status === 'ready') {
+    const img   = document.getElementById('tryon-preview-img');
+    const video = document.getElementById('tryon-preview-video');
+    if (state.tryOnPreview.videoUrl) {
+      if (video) { video.src = state.tryOnPreview.videoUrl; video.classList.remove('hidden'); }
+      if (img)   img.classList.add('hidden');
+    } else if (state.tryOnPreview.imageUrl) {
+      if (img)   { img.src = state.tryOnPreview.imageUrl; img.classList.remove('hidden'); }
+      if (video) video.classList.add('hidden');
+    }
   }
 }
 
@@ -1002,8 +1021,10 @@ async function runTryOnGenerate() {
   const filledSlots = Object.entries(state.slotAssignments).filter(([, id]) => !!id);
   if (filledSlots.length === 0) return;
 
-  // v1 single-garment constraint
-  if (filledSlots.length > 1) {
+  const isWaveSpeed = state.selectedProviderId === 'wavespeed_ai_virtual_outfit_tryon';
+
+  // Single-garment constraint for FASHN / IDM-VTON; WaveSpeed supports multiple garments.
+  if (filledSlots.length > 1 && !isWaveSpeed) {
     state.tryOnPreview.status  = 'failed';
     state.tryOnPreview.message = 'v1 real try-on supports one garment at a time. Remove extra garments before generating.';
     renderTryOnPreview();
@@ -1011,8 +1032,22 @@ async function runTryOnGenerate() {
     return;
   }
 
+  // WaveSpeed: bag is unsupported — ensure at least one supported slot is filled.
+  if (isWaveSpeed) {
+    const waveSpeedSlots = ['top', 'outerwear', 'bottom', 'dress', 'shoes'];
+    const hasSupported = filledSlots.some(([s]) => waveSpeedSlots.includes(s));
+    if (!hasSupported) {
+      state.tryOnPreview.status  = 'failed';
+      state.tryOnPreview.message = 'WaveSpeed does not support bags. Add a top, bottom, dress, outerwear, or shoes.';
+      renderTryOnPreview();
+      updateGenerateButton();
+      return;
+    }
+  }
+
   state.tryOnPreview.status   = 'generating';
   state.tryOnPreview.imageUrl = null;
+  state.tryOnPreview.videoUrl = null;
   state.tryOnPreview.message  = null;
   renderTryOnPreview();
 
@@ -1020,17 +1055,28 @@ async function runTryOnGenerate() {
   if (btn) btn.disabled = true;
 
   try {
-    const [slot, assetId] = filledSlots[0];
-    const asset = state.clothingAssets.find(a => a.id === assetId);
-    if (!asset) throw new Error('Asset not found for slot ' + slot);
-
     const form = new FormData();
-    form.append('garm_img',       asset.file);
-    form.append('slot',           slot);
-    form.append('garment_des',    asset.itemName || asset.garmentDescription || '');
-    form.append('contains_model', asset.containsModel ? 'true' : 'false');
-    if (state.model?.body_shape)   form.append('body_shape',   state.model.body_shape);
     if (state.selectedProviderId)  form.append('provider_id',  state.selectedProviderId);
+    if (state.model?.body_shape)   form.append('body_shape',   state.model.body_shape);
+
+    if (isWaveSpeed) {
+      // Multi-garment: send per-slot files in stable order (top, outerwear, bottom, dress, shoes).
+      // Bag is unsupported by WaveSpeed and excluded.
+      const waveSpeedSlots = ['top', 'outerwear', 'bottom', 'dress', 'shoes'];
+      filledSlots.forEach(([slot, assetId]) => {
+        if (!waveSpeedSlots.includes(slot)) return;
+        const asset = state.clothingAssets.find(a => a.id === assetId);
+        if (asset) form.append(`garm_img_${slot}`, asset.file);
+      });
+    } else {
+      const [slot, assetId] = filledSlots[0];
+      const asset = state.clothingAssets.find(a => a.id === assetId);
+      if (!asset) throw new Error('Asset not found for slot ' + slot);
+      form.append('garm_img',       asset.file);
+      form.append('slot',           slot);
+      form.append('garment_des',    asset.itemName || asset.garmentDescription || '');
+      form.append('contains_model', asset.containsModel ? 'true' : 'false');
+    }
 
     const resp   = await fetch(`${API}/api/try-on/generate`, { method: 'POST', body: form });
     const result = await resp.json();
@@ -1042,6 +1088,7 @@ async function runTryOnGenerate() {
       state.tryOnPreview.status   = result.status            || 'provider_required';
       state.tryOnPreview.mode     = result.mode              || 'provider_stub';
       state.tryOnPreview.imageUrl = result.preview_image_url || null;
+      state.tryOnPreview.videoUrl = result.preview_video_url || null;
       state.tryOnPreview.message  = result.message           || null;
     }
   } catch (err) {

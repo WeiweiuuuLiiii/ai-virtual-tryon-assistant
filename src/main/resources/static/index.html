@@ -437,7 +437,8 @@
 
         <div id="tryon-state-generating" class="tryon-state hidden">
           <div class="loading-inline" style="justify-content:center;padding:20px 0">
-            <div class="spinner"></div><span style="margin-left:10px">Requesting try-on generation…</span>
+            <div class="spinner"></div>
+            <span id="tryon-generating-msg" style="margin-left:10px">Requesting try-on generation…</span>
           </div>
         </div>
 
@@ -446,7 +447,8 @@
         </div>
 
         <div id="tryon-state-ready" class="tryon-state hidden">
-          <img id="tryon-preview-img" class="tryon-preview-img" src="" alt="Generated try-on preview" />
+          <img id="tryon-preview-img" class="tryon-preview-img" src="" alt="AI-generated try-on preview" />
+          <video id="tryon-preview-video" class="tryon-preview-img hidden" controls></video>
         </div>
 
         <div id="tryon-state-failed" class="tryon-state hidden">
