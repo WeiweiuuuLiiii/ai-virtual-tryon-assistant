@@ -24,6 +24,15 @@ public class TryOnProviderRegistry {
             .orElse(providers.isEmpty() ? null : providers.get(0));
     }
 
+    /** Returns the registered provider with the given id, or null if not found. */
+    public TryOnProvider getProviderById(String id) {
+        if (id == null) return null;
+        return providers.stream()
+            .filter(p -> id.equals(p.getId()))
+            .findFirst()
+            .orElse(null);
+    }
+
     /** Builds the full capability response for GET /api/try-on/providers. */
     public Map<String, Object> buildCapabilityResponse() {
         TryOnProvider active  = getActiveProvider();
@@ -37,12 +46,6 @@ public class TryOnProviderRegistry {
         }
 
         // Planned providers — metadata only, no implementation yet
-        all.add(planned(
-            "fashn_vton", "FASHN VTON", 1,
-            List.of("top", "bottom", "dress", "outerwear", "shoes"), List.of("bag"),
-            "Hosted virtual try-on API with high-quality results. API integration planned.",
-            List.of("Requires FASHN_API_KEY", "Integration planned for a future milestone")
-        ));
         all.add(planned(
             "kling_kolors", "Kling Kolors", 1,
             List.of("top", "bottom", "dress", "outerwear"), List.of("shoes", "bag"),

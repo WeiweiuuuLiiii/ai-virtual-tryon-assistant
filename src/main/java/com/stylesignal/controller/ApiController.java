@@ -226,24 +226,46 @@ public class ApiController {
 
     @PostMapping("/try-on/generate")
     public ResponseEntity<?> generateTryOn(
-            @RequestParam("garm_img")                              MultipartFile garmImg,
-            @RequestParam("slot")                                  String slot,
-            @RequestParam(value = "garment_des", required = false) String garmentDes,
-            @RequestParam(value = "body_shape",  required = false) String bodyShape)
+            @RequestParam("garm_img")                                          MultipartFile garmImg,
+            @RequestParam("slot")                                              String slot,
+            @RequestParam(value = "provider_id",    required = false)         String providerId,
+            @RequestParam(value = "garment_des",    required = false)         String garmentDes,
+            @RequestParam(value = "body_shape",     required = false)         String bodyShape,
+            @RequestParam(value = "contains_model", required = false,
+                          defaultValue = "false")                              boolean containsModel)
             throws Exception {
 
-        log.info("POST /api/try-on/generate — slot={}", slot);
+        log.info("POST /api/try-on/generate — slot={}, provider={}", slot, providerId);
 
-        TryOnProvider provider = providerRegistry.getActiveProvider();
-        if (provider == null || !provider.isConfigured()) {
-            Map<String, Object> resp = new LinkedHashMap<>();
-            resp.put("status", "provider_required");
-            resp.put("mode",   "provider_stub");
-            resp.put("preview_image_url", null);
-            resp.put("message",
-                "Real virtual try-on requires a provider token. "
-                + "Add REPLICATE_API_TOKEN to your .env and restart.");
-            return ResponseEntity.ok(resp);
+        TryOnProvider provider;
+        if (providerId != null && !providerId.isBlank()) {
+            provider = providerRegistry.getProviderById(providerId);
+            if (provider == null) {
+                return ResponseEntity.badRequest()
+                    .body(errorBody("Unknown provider: " + providerId));
+            }
+            if (!provider.isConfigured()) {
+                Map<String, Object> resp = new LinkedHashMap<>();
+                resp.put("status", "provider_required");
+                resp.put("mode",   "provider_stub");
+                resp.put("preview_image_url", null);
+                resp.put("message",
+                    "Provider '" + providerId + "' is not configured. "
+                    + "Add the required API token to your .env and restart.");
+                return ResponseEntity.ok(resp);
+            }
+        } else {
+            provider = providerRegistry.getActiveProvider();
+            if (provider == null || !provider.isConfigured()) {
+                Map<String, Object> resp = new LinkedHashMap<>();
+                resp.put("status", "provider_required");
+                resp.put("mode",   "provider_stub");
+                resp.put("preview_image_url", null);
+                resp.put("message",
+                    "Real virtual try-on requires a provider token. "
+                    + "Add REPLICATE_API_TOKEN or FASHN_API_KEY to your .env and restart.");
+                return ResponseEntity.ok(resp);
+            }
         }
 
         if (!storage.hasModelPhoto()) {
@@ -259,7 +281,7 @@ public class ApiController {
         if ("image/jpg".equalsIgnoreCase(garmType)) garmType = "image/jpeg";
 
         TryOnRequest req = new TryOnRequest(
-            humanBytes, humanType, garmBytes, garmType, slot, garmentDes, bodyShape);
+            humanBytes, humanType, garmBytes, garmType, slot, garmentDes, bodyShape, containsModel);
 
         try {
             return ResponseEntity.ok(provider.generate(req));

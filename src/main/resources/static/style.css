@@ -2044,6 +2044,49 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
   margin: 8px 0 6px;
 }
 
+.prov-select-label {
+  font-size: .65rem;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 0 0 6px;
+}
+
+.prov-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.prov-select-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: .73rem;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+
+.prov-select-btn:hover {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+}
+
+.prov-select-btn.prov-select-active {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+  color: var(--accent-dark);
+  font-weight: 600;
+}
+
 .prov-others {
   display: flex;
   flex-wrap: wrap;

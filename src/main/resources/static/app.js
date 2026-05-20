@@ -21,6 +21,7 @@ const state = {
   tryOnPreview: { status: 'idle', mode: null, imageUrl: null, message: null },
   // Provider capability matrix (Issue #7)
   tryOnProviders: null,
+  selectedProviderId: null,
   // Scene check
   sceneCheckScene: null,
   sceneCheckVibe: null,
@@ -867,6 +868,9 @@ async function loadTryOnProviders() {
   try {
     const resp = await fetch(`${API}/api/try-on/providers`);
     state.tryOnProviders = await resp.json();
+    if (!state.selectedProviderId && state.tryOnProviders?.active_provider) {
+      state.selectedProviderId = state.tryOnProviders.active_provider;
+    }
     renderProviderCapability();
   } catch (_) {}
 }
@@ -875,41 +879,70 @@ function renderProviderCapability() {
   const el = document.getElementById('provider-capability-section');
   if (!el || !state.tryOnProviders) return;
 
-  const { active_provider, providers } = state.tryOnProviders;
-  const active = providers?.find(p => p.id === active_provider);
+  const { providers } = state.tryOnProviders;
+  const configured = (providers || []).filter(p => p.status === 'active' || p.status === 'not_configured');
+  const planned    = (providers || []).filter(p => p.status === 'planned');
 
-  const statusLabel = {
-    active:          '<span class="prov-badge prov-active">Active</span>',
-    not_configured:  '<span class="prov-badge prov-unconfigured">Token Missing</span>',
-    planned:         '<span class="prov-badge prov-planned">Planned</span>',
+  const statusBadge = {
+    active:         '<span class="prov-badge prov-active">Active</span>',
+    not_configured: '<span class="prov-badge prov-unconfigured">Token Missing</span>',
+    planned:        '<span class="prov-badge prov-planned">Planned</span>',
   };
 
-  const activeBlock = active ? `
+  // Provider selector — shown when more than one real provider exists
+  const selectorHtml = configured.length > 1 ? `
+    <p class="prov-select-label">Generate with:</p>
+    <div class="prov-selector">
+      ${configured.map(p => `
+        <button class="prov-select-btn${state.selectedProviderId === p.id ? ' prov-select-active' : ''}"
+          data-pid="${p.id}">
+          ${p.name} ${statusBadge[p.status] || ''}
+        </button>`).join('')}
+    </div>` : '';
+
+  // Details for the currently selected or only available provider
+  const displayId = state.selectedProviderId || (configured[0] && configured[0].id);
+  const displayed  = (providers || []).find(p => p.id === displayId);
+
+  const detailsHtml = displayed ? `
     <div class="prov-active-row">
-      <span class="prov-active-name">${active.name}</span>
-      ${statusLabel[active.status] || ''}
-      <span class="prov-garment-limit">Max ${active.max_garments} garment${active.max_garments !== 1 ? 's' : ''}</span>
+      <span class="prov-active-name">${displayed.name}</span>
+      ${configured.length <= 1 ? (statusBadge[displayed.status] || '') : ''}
+      <span class="prov-garment-limit">Max ${displayed.max_garments} garment${displayed.max_garments !== 1 ? 's' : ''}</span>
     </div>
     <ul class="prov-limitations">
-      ${(active.limitations || []).map(l => `<li>${l}</li>`).join('')}
+      ${(displayed.limitations || []).map(l => `<li>${l}</li>`).join('')}
     </ul>` : `
     <div class="prov-active-row">
       <span class="prov-active-name">No provider configured</span>
       <span class="prov-badge prov-unconfigured">Token Missing</span>
     </div>
-    <ul class="prov-limitations"><li>Add REPLICATE_API_TOKEN to .env and restart</li></ul>`;
+    <ul class="prov-limitations"><li>Add REPLICATE_API_TOKEN or FASHN_API_KEY to .env and restart</li></ul>`;
 
-  const otherProviders = (providers || [])
-    .filter(p => p.id !== active_provider)
-    .map(p => `<span class="prov-chip prov-chip-${p.status}" title="${p.description}">${p.name}</span>`)
-    .join('');
+  const plannedHtml = planned.length ? `
+    <p class="prov-others-label">Future providers</p>
+    <div class="prov-others">
+      ${planned.map(p => `<span class="prov-chip prov-chip-planned" title="${p.description}">${p.name}</span>`).join('')}
+    </div>` : '';
 
   el.innerHTML = `
     <div class="provider-capability-box">
       <p class="prov-heading">Try-On Provider</p>
-      ${activeBlock}
-      ${otherProviders ? `<p class="prov-others-label">Future providers</p><div class="prov-others">${otherProviders}</div>` : ''}
+      ${selectorHtml}
+      ${detailsHtml}
+      ${plannedHtml}
     </div>`;
+
+  // Wire selector buttons after render
+  el.querySelectorAll('.prov-select-btn[data-pid]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const p = (providers || []).find(p => p.id === btn.dataset.pid);
+      if (p && p.status === 'active') {
+        state.selectedProviderId = p.id;
+        renderProviderCapability();
+      }
+    });
+  });
 }
 
 /* ── Try-On Preview Flow (Issue #5) ──────────────────────────── */
@@ -990,10 +1023,12 @@ async function runTryOnGenerate() {
     if (!asset) throw new Error('Asset not found for slot ' + slot);
 
     const form = new FormData();
-    form.append('garm_img',    asset.file);
-    form.append('slot',        slot);
-    form.append('garment_des', asset.itemName || asset.garmentDescription || '');
-    if (state.model?.body_shape) form.append('body_shape', state.model.body_shape);
+    form.append('garm_img',       asset.file);
+    form.append('slot',           slot);
+    form.append('garment_des',    asset.itemName || asset.garmentDescription || '');
+    form.append('contains_model', asset.containsModel ? 'true' : 'false');
+    if (state.model?.body_shape)   form.append('body_shape',   state.model.body_shape);
+    if (state.selectedProviderId)  form.append('provider_id',  state.selectedProviderId);
 
     const resp   = await fetch(`${API}/api/try-on/generate`, { method: 'POST', body: form });
     const result = await resp.json();

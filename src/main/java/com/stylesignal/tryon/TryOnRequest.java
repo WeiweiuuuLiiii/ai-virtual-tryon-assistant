@@ -7,5 +7,6 @@ public record TryOnRequest(
     String garmImgType,
     String slot,
     String garmentDes,
-    String bodyShape
+    String bodyShape,
+    boolean containsModel
 ) {}
