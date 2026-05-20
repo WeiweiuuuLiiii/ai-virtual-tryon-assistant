@@ -990,6 +990,8 @@ function renderTryOnPreview() {
         </ul>
         <span class="tryon-roadmap-tag">Planned milestone: v0.7 — Real Garment Segmentation</span>
       </div>`;
+  } else if (status === 'failed' && stateEl && state.tryOnPreview.message) {
+    stateEl.innerHTML = `<p class="tryon-state-error">${state.tryOnPreview.message}</p>`;
   } else if (status === 'ready' && state.tryOnPreview.imageUrl) {
     const img = document.getElementById('tryon-preview-img');
     if (img) img.src = state.tryOnPreview.imageUrl;
@@ -1033,10 +1035,15 @@ async function runTryOnGenerate() {
     const resp   = await fetch(`${API}/api/try-on/generate`, { method: 'POST', body: form });
     const result = await resp.json();
 
-    state.tryOnPreview.status   = result.status            || 'provider_required';
-    state.tryOnPreview.mode     = result.mode              || 'provider_stub';
-    state.tryOnPreview.imageUrl = result.preview_image_url || null;
-    state.tryOnPreview.message  = result.message           || null;
+    if (!resp.ok) {
+      state.tryOnPreview.status  = 'failed';
+      state.tryOnPreview.message = result.message || result.error || 'Generation failed.';
+    } else {
+      state.tryOnPreview.status   = result.status            || 'provider_required';
+      state.tryOnPreview.mode     = result.mode              || 'provider_stub';
+      state.tryOnPreview.imageUrl = result.preview_image_url || null;
+      state.tryOnPreview.message  = result.message           || null;
+    }
   } catch (err) {
     state.tryOnPreview.status  = 'failed';
     state.tryOnPreview.message = err.message;

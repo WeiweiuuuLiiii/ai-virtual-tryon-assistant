@@ -37,14 +37,16 @@ public class FashnService {
 
     /**
      * Maps StyleSignal slot names to FASHN v1.6 category values.
-     * Returns null for unsupported slots (shoes, bag, unknown).
+     * Returns null for explicitly unsupported slots (shoes, bag).
+     * Returns "auto" for unknown/blank slots so FASHN can auto-detect.
      */
     public static String mapSlotToCategory(String slot) {
         return switch (slot == null ? "" : slot) {
             case "top", "outerwear" -> "tops";
             case "bottom"           -> "bottoms";
             case "dress"            -> "one-pieces";
-            default                 -> null; // shoes, bag → unsupported
+            case "shoes", "bag"     -> null;   // explicitly unsupported
+            default                 -> "auto"; // unknown/blank → let FASHN auto-detect
         };
     }
 
