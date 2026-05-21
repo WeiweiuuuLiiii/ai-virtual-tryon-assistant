@@ -1003,27 +1003,29 @@ function renderTryOnPreview() {
   if (status === 'provider_required' && stateEl) {
     stateEl.innerHTML = `
       <div class="tryon-provider-box">
-        <p class="tryon-provider-title">Real Try-On Provider Required</p>
-        <p class="tryon-provider-msg">${state.tryOnPreview.message || 'No virtual try-on provider is currently configured.'}</p>
-        <p class="tryon-provider-connect">To enable real try-on generation, connect a provider:</p>
+        <p class="tryon-provider-title">Try-On Provider Required</p>
+        <p class="tryon-provider-msg">${state.tryOnPreview.message || 'No try-on provider is currently configured.'}</p>
+        <p class="tryon-provider-connect">Add provider credentials to your .env to enable generation:</p>
         <ul class="tryon-provider-list">
-          <li>IDM-VTON — self-hosted open-source diffusion model</li>
-          <li>OOTDiffusion — self-hosted wardrobe diffusion</li>
-          <li>Replicate / HuggingFace — hosted inference API</li>
+          <li>FASHN_API_KEY — FASHN v1.6, single-garment image try-on</li>
+          <li>WAVESPEED_API_KEY — WaveSpeed, full-outfit video try-on (recommended)</li>
+          <li>REPLICATE_API_TOKEN — IDM-VTON via Replicate, single-garment</li>
         </ul>
-        <span class="tryon-roadmap-tag">Planned milestone: v0.7 — Real Garment Segmentation</span>
       </div>`;
   } else if (status === 'failed' && stateEl && state.tryOnPreview.message) {
     stateEl.innerHTML = `<p class="tryon-state-error">${state.tryOnPreview.message}</p>`;
   } else if (status === 'ready') {
-    const img   = document.getElementById('tryon-preview-img');
-    const video = document.getElementById('tryon-preview-video');
+    const img      = document.getElementById('tryon-preview-img');
+    const video    = document.getElementById('tryon-preview-video');
+    const readyBdg = document.getElementById('tryon-preview-ready-badge');
     if (state.tryOnPreview.videoUrl) {
       if (video) { video.src = state.tryOnPreview.videoUrl; video.classList.remove('hidden'); }
       if (img)   img.classList.add('hidden');
+      if (readyBdg) readyBdg.textContent = 'Full-Outfit Video Preview';
     } else if (state.tryOnPreview.imageUrl) {
       if (img)   { img.src = state.tryOnPreview.imageUrl; img.classList.remove('hidden'); }
       if (video) video.classList.add('hidden');
+      if (readyBdg) readyBdg.textContent = 'Preview Ready';
     }
   }
 }
@@ -1272,6 +1274,13 @@ function setupStudio() {
 
   // Wire generate try-on button
   document.getElementById('studio-generate-btn')?.addEventListener('click', runTryOnGenerate);
+
+  // Hero CTA buttons
+  document.getElementById('hero-build-btn')?.addEventListener('click', () => {
+    document.getElementById('studio-add-item-btn')?.focus();
+    document.querySelector('.studio-wardrobe-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+  document.getElementById('hero-model-btn')?.addEventListener('click', switchToModelTab);
 
   // Wire drag-and-drop on mannequin drop zones
   setupDragDrop();

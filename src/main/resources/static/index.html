@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>StyleSignal — Virtual Fitting Room</title>
+  <title>StyleSignal — AI Virtual Fitting Room</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,700;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/style.css" />
 </head>
@@ -16,21 +16,13 @@
         <span class="logo-serif">Style</span><span class="logo-sans">Signal</span>
       </div>
       <nav class="tab-nav" role="tablist">
-        <button class="tab-btn active" data-tab="model" role="tab">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="4"/><path d="M5.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/></svg>
-          My Model
-        </button>
-        <button class="tab-btn" data-tab="studio" role="tab">
+        <button class="tab-btn active" data-tab="studio" role="tab">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
           Try-On Studio
         </button>
-        <button class="tab-btn" data-tab="scene" role="tab">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
-          Scene Check
-        </button>
-        <button class="tab-btn" data-tab="buy" role="tab">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-          Buy or Skip
+        <button class="tab-btn" data-tab="model" role="tab">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="4"/><path d="M5.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/></svg>
+          My Model
         </button>
       </nav>
     </div>
@@ -38,8 +30,241 @@
 
   <main class="main">
 
+    <!-- ── TRY-ON STUDIO TAB (primary, default active) ── -->
+    <section id="tab-studio" class="tab-content active">
+
+      <!-- Studio Hero -->
+      <div class="studio-hero">
+        <div class="studio-hero-content">
+          <p class="studio-hero-eyebrow">AI Virtual Fitting Room</p>
+          <h1 class="studio-hero-headline">Your AI fitting room<br><em>for real outfits.</em></h1>
+          <p class="studio-hero-sub">Upload yourself, add real product images, preview the full look, and let AI help you decide before you buy.</p>
+          <div class="studio-hero-ctas">
+            <button class="btn btn-hero" id="hero-build-btn">Build My Look</button>
+            <button class="btn btn-hero-ghost" id="hero-model-btn">Set Up My Model</button>
+          </div>
+        </div>
+        <div class="studio-hero-modes">
+          <div class="studio-mode-card">
+            <p class="studio-mode-name">Quick Image Preview</p>
+            <p class="studio-mode-desc">Single garment · FASHN v1.6 · ~30 s</p>
+          </div>
+          <div class="studio-mode-card studio-mode-featured">
+            <span class="studio-mode-rec">Recommended</span>
+            <p class="studio-mode-name">Full Outfit Video</p>
+            <p class="studio-mode-desc">Multi-garment · WaveSpeed · 1–5 min</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Provider / Mode selector -->
+      <div id="provider-capability-section" class="provider-capability-section"></div>
+
+      <!-- Three-column fitting room layout -->
+      <div class="studio-layout">
+
+        <!-- ── LEFT: Wardrobe ── -->
+        <aside class="studio-wardrobe-panel">
+          <div class="studio-panel-hdr">
+            <span class="studio-panel-title">Wardrobe</span>
+            <button class="btn-add-item" id="studio-add-item-btn">+ Add Item</button>
+            <input type="file" id="studio-asset-input" accept="image/*" multiple hidden />
+          </div>
+          <p class="studio-asset-hint" id="studio-asset-hint">Upload clothing photos — drag cards to build your outfit.</p>
+          <div id="studio-asset-library" class="studio-asset-library">
+            <!-- Asset cards rendered by JS -->
+          </div>
+        </aside>
+
+        <!-- ── CENTER: Outfit Builder ── -->
+        <main class="studio-mannequin-panel">
+          <div class="studio-panel-hdr">
+            <span class="studio-panel-title">Outfit Builder</span>
+            <span class="studio-mock-pill">Assembly View</span>
+            <span id="studio-piece-count" class="studio-piece-count hidden"></span>
+          </div>
+
+          <div class="studio-stage" id="studio-stage">
+            <div id="studio-mannequin-svg" class="studio-mannequin-svg-inner"></div>
+
+            <div class="studio-dz" id="dz-top" data-slot="top">
+              <span class="dz-label">Drop Top</span>
+              <img class="dz-thumb garment-layer garment-layer-top hidden" id="dz-top-thumb" src="" alt="" />
+              <span class="dz-slot-label hidden" id="dz-top-slotlabel">Top</span>
+              <span class="mock-extracted-badge hidden" id="dz-top-badge">Mock</span>
+              <button class="dz-clear hidden" id="dz-top-clear" title="Remove">✕</button>
+            </div>
+
+            <div class="studio-dz" id="dz-bottom" data-slot="bottom">
+              <span class="dz-label">Drop Bottom</span>
+              <img class="dz-thumb garment-layer garment-layer-bottom hidden" id="dz-bottom-thumb" src="" alt="" />
+              <span class="dz-slot-label hidden" id="dz-bottom-slotlabel">Bottom</span>
+              <span class="mock-extracted-badge hidden" id="dz-bottom-badge">Mock</span>
+              <button class="dz-clear hidden" id="dz-bottom-clear" title="Remove">✕</button>
+            </div>
+
+            <div class="studio-dz" id="dz-shoes" data-slot="shoes">
+              <span class="dz-label">Drop Shoes</span>
+              <img class="dz-thumb garment-layer garment-layer-shoes hidden" id="dz-shoes-thumb" src="" alt="" />
+              <span class="dz-slot-label hidden" id="dz-shoes-slotlabel">Shoes</span>
+              <span class="mock-extracted-badge hidden" id="dz-shoes-badge">Mock</span>
+              <button class="dz-clear hidden" id="dz-shoes-clear" title="Remove">✕</button>
+            </div>
+          </div>
+
+          <div id="studio-extras" class="studio-extras"></div>
+
+          <div class="studio-generate-wrap">
+            <button class="btn btn-primary" id="studio-generate-btn" disabled style="width:100%;justify-content:center;margin-top:12px">
+              Generate Try-On Preview
+            </button>
+            <p class="studio-generate-hint">Select a provider above, add garments, then generate</p>
+          </div>
+        </main>
+
+        <!-- ── RIGHT: Generated Preview ── -->
+        <aside class="studio-preview-panel">
+          <div class="studio-panel-hdr">
+            <span class="studio-panel-title">Generated Preview</span>
+            <span id="tryon-status-badge" class="tryon-status-badge tryon-status-idle">Idle</span>
+          </div>
+
+          <div id="tryon-state-idle" class="tryon-state tryon-preview-idle-state">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity=".25"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <p class="tryon-state-msg">Build your outfit, then click <strong>Generate Try-On Preview</strong>.</p>
+            <p class="tryon-state-sub">A real provider must be configured to produce output.</p>
+          </div>
+
+          <div id="tryon-state-generating" class="tryon-state hidden">
+            <div class="tryon-generating-inner">
+              <div class="spinner"></div>
+              <span id="tryon-generating-msg">Requesting try-on generation…</span>
+            </div>
+          </div>
+
+          <div id="tryon-state-provider-required" class="tryon-state hidden">
+            <!-- Rendered dynamically by renderTryOnPreview() -->
+          </div>
+
+          <div id="tryon-state-ready" class="tryon-state hidden">
+            <img id="tryon-preview-img" class="tryon-preview-img" src="" alt="AI-generated try-on preview" />
+            <video id="tryon-preview-video" class="tryon-preview-img hidden" controls></video>
+            <div class="tryon-preview-ready-badge" id="tryon-preview-ready-badge"></div>
+          </div>
+
+          <div id="tryon-state-failed" class="tryon-state hidden">
+            <p class="tryon-state-error">Generation failed. Check server logs and try again.</p>
+          </div>
+        </aside>
+
+      </div>
+
+      <!-- ── AI Review Panel (below 3-column layout) ── -->
+      <div class="studio-ai-review">
+        <div class="studio-ai-review-hdr">
+          <div>
+            <h3 class="studio-ai-review-title">AI Review — Look Verdict</h3>
+            <p class="studio-ai-review-sub">Generate a try-on preview first. Then StyleSignal will help review the look for buy-worthiness, scene fit, and styling concerns.</p>
+          </div>
+        </div>
+        <div class="studio-ai-review-body">
+
+          <!-- Scene / Vibe / Location inputs -->
+          <div class="ai-review-input-col">
+            <p class="builder-sublabel">Scene</p>
+            <div class="studio-scene-pills" id="studio-scene-pills">
+              <button class="studio-scene-pill" data-value="class">📚 Class</button>
+              <button class="studio-scene-pill" data-value="travel/airport">✈️ Travel</button>
+              <button class="studio-scene-pill" data-value="dinner out">🍽 Dinner</button>
+              <button class="studio-scene-pill" data-value="date">✨ Date</button>
+              <button class="studio-scene-pill" data-value="interview">🤝 Interview</button>
+              <button class="studio-scene-pill" data-value="party">🎉 Party</button>
+              <button class="studio-scene-pill" data-value="shopping">🛍 Shopping</button>
+            </div>
+
+            <p class="builder-sublabel" style="margin-top:12px">Vibe</p>
+            <div class="studio-vibe-pills" id="studio-vibe-pills">
+              <button class="studio-vibe-pill" data-value="comfort">Comfort</button>
+              <button class="studio-vibe-pill" data-value="polished">Polished</button>
+              <button class="studio-vibe-pill" data-value="stand out">Stand Out</button>
+              <button class="studio-vibe-pill" data-value="low-key">Low-Key</button>
+            </div>
+
+            <div style="margin-top:12px">
+              <input id="studio-location" class="studio-location-input" placeholder="City for weather…" style="width:100%" />
+              <div id="studio-weather-mini" class="studio-weather-mini hidden" style="margin-top:6px">
+                <span id="studio-weather-mini-text"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Check button + Analysis result -->
+          <div class="ai-review-result-col">
+            <p class="studio-ai-idle-msg" id="studio-ai-idle-msg">Add garments and select a scene to enable AI Review.</p>
+            <button class="btn btn-primary" id="studio-check-btn" disabled style="width:100%;justify-content:center">
+              Run AI Review
+            </button>
+            <div id="studio-loading" class="loading-inline hidden" style="justify-content:center;margin-top:8px">
+              <div class="spinner sm"></div><span id="studio-loading-text">Analyzing…</span>
+            </div>
+
+            <div id="studio-analysis" class="studio-ai-result hidden">
+              <div class="ai-check-hdr" style="margin-top:16px">
+                <span class="ai-check-label">Look Verdict</span>
+                <span class="analysis-verdict-badge" id="analysis-verdict-badge"></span>
+                <div class="analysis-score-row">
+                  <div class="analysis-score-chip">
+                    <span class="analysis-score-num" id="ana-body-score">—</span>
+                    <span class="analysis-score-lbl">Body Fit</span>
+                  </div>
+                  <div class="analysis-score-chip">
+                    <span class="analysis-score-num" id="ana-style-score">—</span>
+                    <span class="analysis-score-lbl">Style Fit</span>
+                  </div>
+                  <div class="analysis-score-chip">
+                    <span class="analysis-score-num" id="ana-scene-score">—</span>
+                    <span class="analysis-score-lbl">Scene Fit</span>
+                  </div>
+                </div>
+              </div>
+
+              <div id="ana-body-notes-wrap" class="hidden">
+                <p class="analysis-tag-label">Body Fit Notes</p>
+                <ul class="analysis-bullets" id="ana-body-notes"></ul>
+              </div>
+
+              <ul class="analysis-bullets" id="ana-reasons"></ul>
+
+              <div class="analysis-scenes-row">
+                <div id="ana-best-wrap">
+                  <p class="analysis-tag-label">Best for</p>
+                  <div class="tag-row" id="ana-best-scenes"></div>
+                </div>
+                <div id="ana-avoid-wrap" class="hidden">
+                  <p class="analysis-tag-label avoid">Avoid for</p>
+                  <div class="tag-row" id="ana-avoid-scenes"></div>
+                </div>
+              </div>
+
+              <div id="ana-complete-wrap" class="hidden">
+                <p class="analysis-tag-label">Complete the Look</p>
+                <div class="analysis-complete-row" id="ana-complete-chips"></div>
+              </div>
+
+              <div id="ana-swaps-wrap" class="hidden">
+                <p class="analysis-tag-label">Swap Ideas</p>
+                <div class="analysis-swaps-row" id="ana-swaps"></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </section>
+
     <!-- ── MY MODEL TAB ── -->
-    <section id="tab-model" class="tab-content active">
+    <section id="tab-model" class="tab-content hidden">
 
       <!-- Empty state -->
       <div id="model-empty" class="center-pane">
@@ -62,7 +287,6 @@
           </div>
         </div>
 
-        <!-- Measurements (optional) -->
         <div id="model-measurements-form" class="measurements-form hidden">
           <p class="measurements-title">Measurements <span class="optional">(optional — improves fit advice)</span></p>
           <div class="measurements-grid">
@@ -113,10 +337,7 @@
           <button class="btn btn-outline" id="style-dna-toggle-btn">Style DNA</button>
         </div>
 
-        <!-- Two-panel layout: Reference Photo (left) + Fit Model mannequin (right) -->
         <div class="fit-model-layout">
-
-          <!-- LEFT: Reference Photo (small, secondary) -->
           <section class="reference-photo-panel">
             <h3>Reference Photo</h3>
             <div class="fit-ref-photo-wrap">
@@ -125,23 +346,18 @@
             <button class="btn btn-outline" id="update-model-btn" style="font-size:.78rem;padding:7px 12px;margin-top:12px;width:100%">Change Photo</button>
           </section>
 
-          <!-- RIGHT: My Fit Model (dominant visual) -->
           <section class="my-fit-model-panel">
             <div class="panel-header">
               <h3>My Fit Model</h3>
               <span class="ready-badge">Ready</span>
             </div>
-            <div id="fit-mannequin-svg" class="fit-mannequin-svg">
-              <!-- Injected by renderFitModelMannequin() -->
-            </div>
+            <div id="fit-mannequin-svg" class="fit-mannequin-svg"></div>
             <span id="model-shape-badge" class="model-shape-badge"></span>
             <div id="fit-proportion-chips" class="fit-proportion-chips"></div>
             <ul id="fit-notes-list" class="fit-notes-list"></ul>
           </section>
-
         </div>
 
-        <!-- Adjust Measurements (collapsible edit panel) -->
         <details class="fit-details-toggle" id="fit-measurements-edit">
           <summary>Adjust Measurements</summary>
           <div class="fit-analysis-inner">
@@ -182,7 +398,6 @@
           </div>
         </details>
 
-        <!-- Full Analysis (collapsible, below main view) -->
         <details class="fit-details-toggle" id="fit-analysis-details">
           <summary>Full Body Analysis &amp; Style Tips</summary>
           <div class="fit-analysis-inner">
@@ -206,11 +421,9 @@
           </div>
         </details>
 
-        <!-- Style DNA (collapsible) -->
         <details class="dna-details" id="style-dna-details">
           <summary>Style DNA — outfit photo analysis</summary>
           <div class="dna-details-inner">
-
             <div id="style-dna-content">
               <div id="style-dna-empty" class="style-dna-empty-notice">
                 <p>Upload outfit photos to build your Style DNA profile.</p>
@@ -222,16 +435,13 @@
                 <div id="style-preview-grid" class="preview-grid hidden"></div>
                 <div id="style-actions" class="hidden">
                   <p class="photo-count" id="style-count-label"></p>
-                  <button class="btn btn-primary" id="style-analyze-btn">
-                    Analyze My Style
-                  </button>
+                  <button class="btn btn-primary" id="style-analyze-btn">Analyze My Style</button>
                 </div>
                 <div id="style-loading" class="loading-inline hidden">
                   <div class="spinner sm"></div> Mapping your style DNA…
                 </div>
               </div>
 
-              <!-- Style DNA display -->
               <div id="style-dna-display" class="hidden">
                 <div>
                   <p class="dna-section-label">Your Style</p>
@@ -249,230 +459,23 @@
                 </div>
               </div>
             </div>
-
           </div>
         </details>
 
       </div>
     </section>
 
-    <!-- ── TRY-ON STUDIO TAB ── -->
-    <section id="tab-studio" class="tab-content hidden">
-
-      <!-- Three-column fitting room layout -->
-      <div class="studio-layout">
-
-        <!-- ── LEFT: Clothing Asset Library ── -->
-        <aside class="studio-wardrobe-panel">
-          <div class="studio-panel-hdr">
-            <span class="studio-panel-title">Wardrobe</span>
-            <button class="btn-add-item" id="studio-add-item-btn">+ Add Item</button>
-            <input type="file" id="studio-asset-input" accept="image/*" multiple hidden />
-          </div>
-          <p class="studio-asset-hint" id="studio-asset-hint">Upload clothing photos — drag cards to build your outfit.</p>
-          <div id="studio-asset-library" class="studio-asset-library">
-            <!-- Asset cards rendered by JS -->
-          </div>
-        </aside>
-
-        <!-- ── CENTER: Mannequin + Drop Zones ── -->
-        <main class="studio-mannequin-panel">
-          <div class="studio-panel-hdr">
-            <span class="studio-panel-title">Outfit Builder</span>
-            <span class="studio-mock-pill">Assembly View</span>
-            <span id="studio-piece-count" class="studio-piece-count hidden"></span>
-          </div>
-
-          <div class="studio-stage" id="studio-stage">
-            <!-- Mannequin SVG (rendered by JS from generateMannequinSVG) -->
-            <div id="studio-mannequin-svg" class="studio-mannequin-svg-inner"></div>
-
-            <!-- Drop zone: upper body (Top / Dress) -->
-            <div class="studio-dz" id="dz-top" data-slot="top">
-              <span class="dz-label">Drop Top</span>
-              <img class="dz-thumb garment-layer garment-layer-top hidden" id="dz-top-thumb" src="" alt="" />
-              <span class="dz-slot-label hidden" id="dz-top-slotlabel">Top</span>
-              <span class="mock-extracted-badge hidden" id="dz-top-badge">Mock</span>
-              <button class="dz-clear hidden" id="dz-top-clear" title="Remove">✕</button>
-            </div>
-
-            <!-- Drop zone: lower body (Bottoms) -->
-            <div class="studio-dz" id="dz-bottom" data-slot="bottom">
-              <span class="dz-label">Drop Bottom</span>
-              <img class="dz-thumb garment-layer garment-layer-bottom hidden" id="dz-bottom-thumb" src="" alt="" />
-              <span class="dz-slot-label hidden" id="dz-bottom-slotlabel">Bottom</span>
-              <span class="mock-extracted-badge hidden" id="dz-bottom-badge">Mock</span>
-              <button class="dz-clear hidden" id="dz-bottom-clear" title="Remove">✕</button>
-            </div>
-
-            <!-- Drop zone: feet (Shoes) -->
-            <div class="studio-dz" id="dz-shoes" data-slot="shoes">
-              <span class="dz-label">Drop Shoes</span>
-              <img class="dz-thumb garment-layer garment-layer-shoes hidden" id="dz-shoes-thumb" src="" alt="" />
-              <span class="dz-slot-label hidden" id="dz-shoes-slotlabel">Shoes</span>
-              <span class="mock-extracted-badge hidden" id="dz-shoes-badge">Mock</span>
-              <button class="dz-clear hidden" id="dz-shoes-clear" title="Remove">✕</button>
-            </div>
-          </div>
-
-          <!-- Extra items (outerwear, bag) assigned below mannequin -->
-          <div id="studio-extras" class="studio-extras"></div>
-
-          <!-- Generate Try-On Preview action -->
-          <div class="studio-generate-wrap">
-            <button class="btn btn-primary" id="studio-generate-btn" disabled style="width:100%;justify-content:center;margin-top:12px">
-              Generate Try-On Preview
-            </button>
-            <p class="studio-generate-hint">Real provider required — see below</p>
-          </div>
-        </main>
-
-        <!-- ── RIGHT: Scene + AI Check ── -->
-        <aside class="studio-check-panel">
-
-          <div class="studio-panel-hdr">
-            <span class="studio-panel-title">Scene</span>
-          </div>
-          <div class="studio-scene-pills" id="studio-scene-pills">
-            <button class="studio-scene-pill" data-value="class">📚 Class</button>
-            <button class="studio-scene-pill" data-value="travel/airport">✈️ Travel</button>
-            <button class="studio-scene-pill" data-value="dinner out">🍽 Dinner</button>
-            <button class="studio-scene-pill" data-value="date">✨ Date</button>
-            <button class="studio-scene-pill" data-value="interview">🤝 Interview</button>
-            <button class="studio-scene-pill" data-value="party">🎉 Party</button>
-            <button class="studio-scene-pill" data-value="shopping">🛍 Shopping</button>
-          </div>
-
-          <p class="builder-sublabel" style="margin-top:10px">Vibe</p>
-          <div class="studio-vibe-pills" id="studio-vibe-pills">
-            <button class="studio-vibe-pill" data-value="comfort">Comfort</button>
-            <button class="studio-vibe-pill" data-value="polished">Polished</button>
-            <button class="studio-vibe-pill" data-value="stand out">Stand Out</button>
-            <button class="studio-vibe-pill" data-value="low-key">Low-Key</button>
-          </div>
-
-          <div style="margin-top:10px">
-            <input id="studio-location" class="studio-location-input" placeholder="City for weather…" style="width:100%" />
-            <div id="studio-weather-mini" class="studio-weather-mini hidden" style="margin-top:5px">
-              <span id="studio-weather-mini-text"></span>
-            </div>
-          </div>
-
-          <div class="studio-check-divider"></div>
-
-          <p class="studio-ai-idle-msg" id="studio-ai-idle-msg">Build a look first, then ask AI to check it.</p>
-          <button class="btn btn-primary" id="studio-check-btn" disabled style="width:100%;justify-content:center">Check This Look</button>
-          <div id="studio-loading" class="loading-inline hidden" style="justify-content:center;margin-top:8px">
-            <div class="spinner sm"></div><span id="studio-loading-text">Analyzing…</span>
-          </div>
-
-          <!-- AI analysis result (shown after Check This Look) -->
-          <div id="studio-analysis" class="studio-ai-result hidden">
-            <div class="ai-check-hdr" style="margin-top:16px">
-              <span class="ai-check-label">AI Check</span>
-              <span class="analysis-verdict-badge" id="analysis-verdict-badge"></span>
-              <div class="analysis-score-row">
-                <div class="analysis-score-chip">
-                  <span class="analysis-score-num" id="ana-body-score">—</span>
-                  <span class="analysis-score-lbl">Body Fit</span>
-                </div>
-                <div class="analysis-score-chip">
-                  <span class="analysis-score-num" id="ana-style-score">—</span>
-                  <span class="analysis-score-lbl">Style Fit</span>
-                </div>
-                <div class="analysis-score-chip">
-                  <span class="analysis-score-num" id="ana-scene-score">—</span>
-                  <span class="analysis-score-lbl">Scene Fit</span>
-                </div>
-              </div>
-            </div>
-
-            <div id="ana-body-notes-wrap" class="hidden">
-              <p class="analysis-tag-label">Body Fit Notes</p>
-              <ul class="analysis-bullets" id="ana-body-notes"></ul>
-            </div>
-
-            <ul class="analysis-bullets" id="ana-reasons"></ul>
-
-            <div class="analysis-scenes-row">
-              <div id="ana-best-wrap">
-                <p class="analysis-tag-label">Best for</p>
-                <div class="tag-row" id="ana-best-scenes"></div>
-              </div>
-              <div id="ana-avoid-wrap" class="hidden">
-                <p class="analysis-tag-label avoid">Avoid for</p>
-                <div class="tag-row" id="ana-avoid-scenes"></div>
-              </div>
-            </div>
-
-            <div id="ana-complete-wrap" class="hidden">
-              <p class="analysis-tag-label">Complete the Look</p>
-              <div class="analysis-complete-row" id="ana-complete-chips"></div>
-            </div>
-
-            <div id="ana-swaps-wrap" class="hidden">
-              <p class="analysis-tag-label">Swap Ideas</p>
-              <div class="analysis-swaps-row" id="ana-swaps"></div>
-            </div>
-          </div>
-
-        </aside>
-
-      </div>
-
-      <!-- ── Provider Capability Matrix ── -->
-      <div id="provider-capability-section" class="provider-capability-section"></div>
-
-      <!-- ── Generated Try-On Preview (below three columns) ── -->
-      <div id="studio-tryon-preview" class="studio-tryon-preview-section">
-        <div class="tryon-preview-header">
-          <h3 class="tryon-preview-title">Generated Try-On Preview</h3>
-          <span id="tryon-status-badge" class="tryon-status-badge tryon-status-idle">Idle</span>
-        </div>
-
-        <div id="tryon-state-idle" class="tryon-state">
-          <p class="tryon-state-msg">Build your outfit above, then click <strong>Generate Try-On Preview</strong> to request a realistic preview of the selected garments on your fit model.</p>
-          <p class="tryon-state-sub">This calls the try-on generation endpoint. A real provider must be configured to produce output.</p>
-        </div>
-
-        <div id="tryon-state-generating" class="tryon-state hidden">
-          <div class="loading-inline" style="justify-content:center;padding:20px 0">
-            <div class="spinner"></div>
-            <span id="tryon-generating-msg" style="margin-left:10px">Requesting try-on generation…</span>
-          </div>
-        </div>
-
-        <div id="tryon-state-provider-required" class="tryon-state hidden">
-          <!-- Rendered dynamically by renderTryOnPreview() -->
-        </div>
-
-        <div id="tryon-state-ready" class="tryon-state hidden">
-          <img id="tryon-preview-img" class="tryon-preview-img" src="" alt="AI-generated try-on preview" />
-          <video id="tryon-preview-video" class="tryon-preview-img hidden" controls></video>
-        </div>
-
-        <div id="tryon-state-failed" class="tryon-state hidden">
-          <p class="tryon-state-error">Generation failed. Check server logs and try again.</p>
-        </div>
-      </div>
-
-    </section>
-
-    <!-- ── SCENE CHECK TAB ── -->
+    <!-- ── SCENE CHECK (hidden — integrated into AI Review in Studio) ── -->
     <section id="tab-scene" class="tab-content hidden">
       <div class="simulator-layout">
-
-        <!-- Input panel -->
         <div class="simulator-input">
           <h2>Scene Check</h2>
           <p class="muted">Describe what you're wearing. Pick a scene. We'll tell you if it works.</p>
-
           <div class="form-group">
             <label class="form-label">What are you wearing?</label>
             <textarea id="scene-outfit-desc" class="form-input form-textarea" rows="3"
               placeholder="e.g. cream knit sweater, straight dark jeans, white sneakers, minimal gold chain"></textarea>
           </div>
-
           <p class="sim-label">Pick a scene</p>
           <div class="scene-cards-grid" id="scene-check-cards">
             <button class="scene-card" data-value="class"><span class="scene-icon">📚</span><span class="scene-name">Class</span></button>
@@ -484,7 +487,6 @@
             <button class="scene-card" data-value="travel"><span class="scene-icon">✈️</span><span class="scene-name">Travel</span></button>
             <button class="scene-card" data-value="party"><span class="scene-icon">🎉</span><span class="scene-name">Party</span></button>
           </div>
-
           <p class="sim-label">Vibe</p>
           <div class="vibe-chips-row" id="scene-vibe-chips">
             <button class="vibe-chip" data-value="comfort">Comfort</button>
@@ -492,7 +494,6 @@
             <button class="vibe-chip" data-value="stand out">Stand Out</button>
             <button class="vibe-chip" data-value="low-key">Low-Key</button>
           </div>
-
           <div class="sim-secondary">
             <div class="form-group">
               <label class="form-label">Location <span class="optional">(for weather)</span></label>
@@ -514,21 +515,17 @@
               <span id="scene-weather-mock-badge" class="badge hidden">Demo data</span>
             </div>
           </div>
-
           <button class="btn btn-primary btn-block" id="scene-check-btn">Check This Outfit</button>
           <div id="scene-loading" class="loading-inline hidden">
             <div class="spinner sm"></div> Checking your outfit…
           </div>
         </div>
-
-        <!-- Result panel -->
         <div class="simulator-result" id="scene-result-panel">
           <div id="scene-empty-state" class="empty-result">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
             <p>Describe your outfit and pick a scene to check</p>
           </div>
           <div id="scene-result" class="hidden">
-            <!-- Verdict board -->
             <div class="look-board">
               <div class="look-board-meta">
                 <span class="look-meta-badge" id="scene-scene-badge"></span>
@@ -552,39 +549,29 @@
                 </div>
               </div>
             </div>
-
-            <!-- Short reasons -->
             <div class="card look-reasons-card">
               <p class="card-label">Feedback</p>
               <ul class="short-reasons-list" id="scene-short-reasons"></ul>
             </div>
-
-            <!-- Suggested swaps -->
             <div class="card verdict-card" id="scene-swaps-card">
               <p class="card-label">Suggested Swaps</p>
               <div id="scene-swaps"></div>
             </div>
-
-            <!-- Overall notes -->
             <div class="card" id="scene-notes-card">
               <p class="card-label">Overall</p>
               <p class="scene-overall-notes" id="scene-overall-notes"></p>
             </div>
           </div>
         </div>
-
       </div>
     </section>
 
-    <!-- ── BUY OR SKIP TAB ── -->
+    <!-- ── BUY OR SKIP (hidden — integrated into AI Review in Studio) ── -->
     <section id="tab-buy" class="tab-content hidden">
       <div class="two-col-layout">
-
-        <!-- Upload panel -->
         <div class="input-panel">
           <h2>Worth Buying?</h2>
           <p class="muted">Drop a photo of something you're eyeing. We'll tell you if it truly belongs in your wardrobe — or just looked good in the store.</p>
-
           <div class="upload-area" id="buy-drop-zone">
             <input type="file" id="buy-file-input" accept="image/*" hidden />
             <div id="buy-preview-container" class="hidden">
@@ -596,28 +583,20 @@
               <p class="upload-secondary">or <button class="link-btn" id="buy-browse-btn">browse</button></p>
             </div>
           </div>
-
-          <button class="btn btn-primary btn-block" id="buy-analyze-btn" disabled>
-            Should I Buy This?
-          </button>
+          <button class="btn btn-primary btn-block" id="buy-analyze-btn" disabled>Should I Buy This?</button>
           <div id="buy-loading" class="loading-inline hidden">
             <div class="spinner sm"></div> Checking against your wardrobe…
           </div>
         </div>
-
-        <!-- Verdict panel -->
         <div class="result-panel" id="buy-result-panel">
           <div id="buy-empty-state" class="empty-result">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
             <p>Drop a photo to get the verdict</p>
           </div>
           <div id="buy-result" class="hidden">
-            <!-- Item image at top -->
             <div class="buy-result-img-wrap" id="buy-result-img-wrap">
               <img id="buy-result-img" src="" alt="Item being evaluated" />
             </div>
-
-            <!-- Verdict Hero -->
             <div class="verdict-hero">
               <div class="verdict-hero-top">
                 <div id="buy-verdict-badge" class="verdict-badge"></div>
@@ -629,8 +608,6 @@
               </div>
               <p id="buy-verdict-headline" class="verdict-headline"></p>
             </div>
-
-            <!-- Scenes chips -->
             <div class="scenes-row">
               <div id="buy-best-scenes-wrap">
                 <p class="scenes-row-label">Best for</p>
@@ -641,26 +618,18 @@
                 <div id="buy-avoid-scenes" class="tag-row"></div>
               </div>
             </div>
-
-            <!-- 3 short reasons -->
             <div class="card verdict-card">
               <p class="card-label">The Verdict</p>
               <ul id="buy-short-reasons" class="short-reasons-list"></ul>
             </div>
-
-            <!-- Head-to-toe styling -->
             <div class="card verdict-card" id="buy-htt-card">
               <p class="card-label">Style It Like This</p>
               <div class="outfit-items" id="buy-htt-grid"></div>
             </div>
-
-            <!-- One caution -->
             <div class="card verdict-card caution-card" id="buy-concerns-card">
               <p class="card-label">One Caution</p>
               <p id="buy-concern-text"></p>
             </div>
-
-            <!-- Full analysis: collapsible -->
             <details class="result-details">
               <summary>Full Analysis</summary>
               <div class="result-details-body">
