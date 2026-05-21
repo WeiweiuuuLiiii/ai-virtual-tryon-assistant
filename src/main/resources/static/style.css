@@ -1637,6 +1637,106 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
   flex-shrink: 0;
 }
 
+/* ── Outfit mode switch ─────────────────────────────────────── */
+.outfit-mode-switch {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin: 6px 0 8px;
+}
+.mode-btn {
+  padding: 5px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: .72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.mode-btn:hover { border-color: var(--accent); color: var(--text); }
+.mode-btn.mode-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* ── Builder row: outerwear side + mannequin stage ───────────── */
+.studio-builder-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 auto;
+}
+
+/* Outerwear side slot */
+.studio-outerwear-slot {
+  width: 60px;
+  min-height: 220px;
+  align-self: stretch;
+  border: 2px dashed var(--border);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 4px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: border-color .15s, background .15s;
+  flex-shrink: 0;
+}
+.studio-outerwear-slot .outer-slot-label {
+  font-size: .58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--text-faint);
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  pointer-events: none;
+}
+.studio-outerwear-slot .dz-label {
+  font-size: .58rem;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  text-align: center;
+  pointer-events: none;
+}
+.studio-outerwear-slot .dz-slot-label {
+  font-size: .58rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+}
+.studio-outerwear-slot:hover { border-color: var(--accent); background: rgba(201,169,110,.07); }
+.studio-outerwear-slot.drag-over { border-color: var(--accent); background: rgba(201,169,110,.14); }
+.studio-outerwear-slot.has-item { border-style: solid; border-color: rgba(201,169,110,.35); }
+.studio-outerwear-slot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  opacity: .85;
+}
+.studio-outerwear-slot .dz-clear {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+}
+
+/* Dress drop zone — same position as combined top+bottom */
+#dz-dress { top: 19%; height: 64%; }
+
 /* ── Mannequin stage + drop zones ──────────────────────────── */
 .studio-stage {
   position: relative;
@@ -1912,6 +2012,33 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
   white-space: nowrap;
 }
 .btn-ambiguous-choice:hover { background: #fff3cd; }
+
+/* Hair accessory placement picker */
+.hair-placement-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  flex-wrap: wrap;
+}
+.hair-placement-label {
+  font-size: .72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.hair-placement-select {
+  font-size: .72rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 3px 6px;
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+}
 
 /* ── Right panel: scene + AI check ─────────────────────────── */
 .studio-check-divider {

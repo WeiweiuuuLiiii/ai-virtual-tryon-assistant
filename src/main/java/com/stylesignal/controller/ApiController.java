@@ -245,7 +245,9 @@ public class ApiController {
             @RequestParam(value = "garm_img_bag",            required = false) MultipartFile garmImgBag,
             @RequestParam(value = "garm_img_glasses",        required = false) MultipartFile garmImgGlasses,
             @RequestParam(value = "garm_img_earrings",       required = false) MultipartFile garmImgEarrings,
-            @RequestParam(value = "garm_img_hair_accessory", required = false) MultipartFile garmImgHairAccessory)
+            @RequestParam(value = "garm_img_hair_accessory", required = false) MultipartFile garmImgHairAccessory,
+            @RequestParam(value = "outfit_mode",             required = false) String outfitMode,
+            @RequestParam(value = "hair_accessory_placement",required = false) String hairAccessoryPlacement)
             throws Exception {
 
         log.info("POST /api/try-on/generate — slot={}, provider={}", slot, providerId);
@@ -332,7 +334,8 @@ public class ApiController {
         }
 
         TryOnRequest req = new TryOnRequest(
-            humanBytes, humanType, garmBytes, garmType, slot, garmentDes, bodyShape, containsModel, garments);
+            humanBytes, humanType, garmBytes, garmType, slot, garmentDes, bodyShape, containsModel, garments,
+            outfitMode, hairAccessoryPlacement);
 
         try {
             return ResponseEntity.ok(provider.generate(req));

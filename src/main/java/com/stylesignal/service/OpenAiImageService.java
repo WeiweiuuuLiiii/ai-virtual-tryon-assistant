@@ -56,10 +56,11 @@ public class OpenAiImageService {
      * @return           response map with status, preview_image_url (data URI), etc.
      */
     public Map<String, Object> generateTryOn(
-            byte[] humanBytes, String humanType, List<GarmentItem> garments) throws Exception {
+            byte[] humanBytes, String humanType, List<GarmentItem> garments,
+            String outfitMode, String hairAccessoryPlacement) throws Exception {
 
         String boundary = "----OpenAiBoundary" + UUID.randomUUID().toString().replace("-", "");
-        String prompt   = buildPrompt(garments);
+        String prompt   = buildPrompt(garments, outfitMode, hairAccessoryPlacement);
         byte[] body     = buildMultipartBody(boundary, prompt, humanBytes, humanType, garments);
 
         log.info("Sending GPT Image try-on request — model={}, garments={}", model, garments.size());
@@ -96,7 +97,7 @@ public class OpenAiImageService {
     // Prompt
     // ---------------------------------------------------------------------------
 
-    private String buildPrompt(List<GarmentItem> garments) {
+    private String buildPrompt(List<GarmentItem> garments, String outfitMode, String hairAccessoryPlacement) {
         StringBuilder sb = new StringBuilder();
         sb.append("Photorealistic virtual try-on: dress the person from the first image ");
         sb.append("in the exact garments and accessories shown in the following reference images. ");
@@ -106,12 +107,31 @@ public class OpenAiImageService {
         sb.append("Use each uploaded reference item according to its slot label. ");
         sb.append("Place accessories naturally on the same person. ");
         sb.append("If an accessory is uploaded, apply it as that accessory only. ");
+
+        // Dress mode stability guardrails
+        if ("dress".equalsIgnoreCase(outfitMode)) {
+            sb.append("Main outfit mode: Dress look. ");
+            sb.append("The dress is the main garment and must be worn as the primary clothing item. ");
+            sb.append("Do not replace the dress with a top and bottom outfit. ");
+            sb.append("Do not omit the dress. ");
+            sb.append("Preserve the dress color, silhouette, neckline, length, fabric, and visible details as much as possible. ");
+        }
+
         sb.append("Preserve the person's exact face, skin tone, body shape, and identity. ");
         sb.append("Reproduce each garment's exact color, pattern, texture, cut, and fit. ");
         sb.append("For glasses: place them on the person's face at the eyes. ");
         sb.append("For earrings: place them on the earlobes. ");
-        sb.append("For hair accessory: place it in or on the hair appropriately. ");
         sb.append("For bag: show the person holding or wearing it as intended. ");
+
+        // Hair accessory placement
+        if (hairAccessoryPlacement != null && !hairAccessoryPlacement.isBlank()
+                && !"auto".equalsIgnoreCase(hairAccessoryPlacement)) {
+            String placementText = hairAccessoryPlacement.replace('_', ' ');
+            sb.append("Hair accessory placement: ").append(placementText).append(" of the hair. ");
+        } else {
+            sb.append("For hair accessory: place it in or on the hair appropriately, based on the reference image. ");
+        }
+
         sb.append("Do not confuse accessory types — do not turn earrings into glasses or vice versa. ");
         sb.append("Do not turn bags into clothing. ");
         sb.append("Do not invent extra accessories not provided. ");

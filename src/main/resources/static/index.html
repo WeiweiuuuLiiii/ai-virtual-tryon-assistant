@@ -84,34 +84,66 @@
             <span id="studio-piece-count" class="studio-piece-count hidden"></span>
           </div>
 
-          <div class="studio-stage" id="studio-stage">
-            <div id="studio-mannequin-svg" class="studio-mannequin-svg-inner"></div>
+          <!-- Mode switch: Top+Bottom vs Dress -->
+          <div class="outfit-mode-switch" id="outfit-mode-switch">
+            <button class="mode-btn mode-active" id="mode-btn-top-bottom" data-mode="top_bottom">Top + Bottom + Shoes</button>
+            <button class="mode-btn" id="mode-btn-dress" data-mode="dress">Dress + Shoes</button>
+          </div>
 
-            <div class="studio-dz" id="dz-top" data-slot="top">
-              <span class="dz-label">Drop Top</span>
-              <img class="dz-thumb garment-layer garment-layer-top hidden" id="dz-top-thumb" src="" alt="" />
-              <span class="dz-slot-label hidden" id="dz-top-slotlabel">Top</span>
-              <span class="mock-extracted-badge hidden" id="dz-top-badge">Mock</span>
-              <button class="dz-clear hidden" id="dz-top-clear" title="Remove">✕</button>
+          <!-- Builder row: outerwear side slot + mannequin stage -->
+          <div class="studio-builder-row">
+
+            <!-- Outerwear side slot — always visible in both modes -->
+            <div class="studio-outerwear-slot" id="dz-outerwear" data-slot="outerwear">
+              <span class="outer-slot-label">Coat / Layer</span>
+              <span class="dz-label">Drop Outerwear</span>
+              <img class="dz-thumb hidden" id="dz-outerwear-thumb" src="" alt="" />
+              <span class="dz-slot-label hidden" id="dz-outerwear-slotlabel">Outerwear</span>
+              <button class="dz-clear hidden" id="dz-outerwear-clear" title="Remove">✕</button>
             </div>
 
-            <div class="studio-dz" id="dz-bottom" data-slot="bottom">
-              <span class="dz-label">Drop Bottom</span>
-              <img class="dz-thumb garment-layer garment-layer-bottom hidden" id="dz-bottom-thumb" src="" alt="" />
-              <span class="dz-slot-label hidden" id="dz-bottom-slotlabel">Bottom</span>
-              <span class="mock-extracted-badge hidden" id="dz-bottom-badge">Mock</span>
-              <button class="dz-clear hidden" id="dz-bottom-clear" title="Remove">✕</button>
-            </div>
+            <!-- Mannequin stage — all drop zones always in DOM, mode controls visibility -->
+            <div class="studio-stage" id="studio-stage">
+              <div id="studio-mannequin-svg" class="studio-mannequin-svg-inner"></div>
 
-            <div class="studio-dz" id="dz-shoes" data-slot="shoes">
-              <span class="dz-label">Drop Shoes</span>
-              <img class="dz-thumb garment-layer garment-layer-shoes hidden" id="dz-shoes-thumb" src="" alt="" />
-              <span class="dz-slot-label hidden" id="dz-shoes-slotlabel">Shoes</span>
-              <span class="mock-extracted-badge hidden" id="dz-shoes-badge">Mock</span>
-              <button class="dz-clear hidden" id="dz-shoes-clear" title="Remove">✕</button>
+              <!-- Top+Bottom mode slots (visible by default) -->
+              <div class="studio-dz" id="dz-top" data-slot="top">
+                <span class="dz-label">Drop Top</span>
+                <img class="dz-thumb garment-layer garment-layer-top hidden" id="dz-top-thumb" src="" alt="" />
+                <span class="dz-slot-label hidden" id="dz-top-slotlabel">Top</span>
+                <span class="mock-extracted-badge hidden" id="dz-top-badge">Mock</span>
+                <button class="dz-clear hidden" id="dz-top-clear" title="Remove">✕</button>
+              </div>
+
+              <div class="studio-dz" id="dz-bottom" data-slot="bottom">
+                <span class="dz-label">Drop Bottom</span>
+                <img class="dz-thumb garment-layer garment-layer-bottom hidden" id="dz-bottom-thumb" src="" alt="" />
+                <span class="dz-slot-label hidden" id="dz-bottom-slotlabel">Bottom</span>
+                <span class="mock-extracted-badge hidden" id="dz-bottom-badge">Mock</span>
+                <button class="dz-clear hidden" id="dz-bottom-clear" title="Remove">✕</button>
+              </div>
+
+              <!-- Dress mode slot (hidden by default, shown in dress mode) -->
+              <div class="studio-dz studio-dz-dress hidden" id="dz-dress" data-slot="dress">
+                <span class="dz-label">Drop Dress</span>
+                <img class="dz-thumb garment-layer garment-layer-dress hidden" id="dz-dress-thumb" src="" alt="" />
+                <span class="dz-slot-label hidden" id="dz-dress-slotlabel">Dress</span>
+                <span class="mock-extracted-badge hidden" id="dz-dress-badge">Mock</span>
+                <button class="dz-clear hidden" id="dz-dress-clear" title="Remove">✕</button>
+              </div>
+
+              <!-- Shoes — always visible in both modes -->
+              <div class="studio-dz" id="dz-shoes" data-slot="shoes">
+                <span class="dz-label">Drop Shoes</span>
+                <img class="dz-thumb garment-layer garment-layer-shoes hidden" id="dz-shoes-thumb" src="" alt="" />
+                <span class="dz-slot-label hidden" id="dz-shoes-slotlabel">Shoes</span>
+                <span class="mock-extracted-badge hidden" id="dz-shoes-badge">Mock</span>
+                <button class="dz-clear hidden" id="dz-shoes-clear" title="Remove">✕</button>
+              </div>
             </div>
           </div>
 
+          <!-- Accessories row (bag, glasses, earrings, hair accessory) — rendered by JS -->
           <div id="studio-extras" class="studio-extras"></div>
 
           <div class="studio-generate-wrap">

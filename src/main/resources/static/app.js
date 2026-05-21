@@ -11,6 +11,8 @@ const state = {
   clothingAssets: [],       // [{ id, file, rawImageUrl, cleanAssetUrl, extractionStatus, detectedType, itemName, garmentDescription, garmentLayerReady, containsModel, cleanupNeeded, userTypeOverride, type }]
   slotAssignments: { top: null, bottom: null, dress: null, outerwear: null, shoes: null, bag: null, glasses: null, earrings: null, hair_accessory: null },
   draggedAssetId: null,
+  outfitMode: 'top_bottom',         // 'top_bottom' | 'dress'
+  hairAccessoryPlacement: 'auto',   // 'auto' | 'top_of_head' | 'left_side' | 'right_side' | 'back_bun' | 'forehead_headband'
   // Studio — legacy (kept for API compatibility)
   studioItems: { top: null, bottom: null, dress: null, outerwear: null, shoes: null, bag: null, glasses: null, earrings: null, hair_accessory: null },
   studioScene:  null,
@@ -593,10 +595,20 @@ const ASSET_TYPES = [
   { key: 'earrings',       label: 'Earrings',  emoji: '✨' },
   { key: 'hair_accessory', label: 'Hair Acc.', emoji: '🎀' },
 ];
-const MAIN_DZ_SLOTS         = ['top', 'bottom', 'shoes'];
-const CLOTHING_EXTRA_SLOTS  = ['dress', 'outerwear'];
-const ACCESSORY_SLOTS       = ['bag', 'glasses', 'earrings', 'hair_accessory'];
-const EXTRA_DZ_SLOTS        = [...CLOTHING_EXTRA_SLOTS, ...ACCESSORY_SLOTS];
+// Slots wired to the mannequin stage drop zones (all always in DOM):
+const ALL_STAGE_SLOTS   = ['top', 'bottom', 'dress', 'shoes'];
+// Accessory slots rendered in the compact row below the stage:
+const ACCESSORY_SLOTS   = ['bag', 'glasses', 'earrings', 'hair_accessory'];
+// Legacy alias kept for callers that still reference it:
+const EXTRA_DZ_SLOTS    = ACCESSORY_SLOTS;
+
+// Mode-aware helpers — call at runtime, not as constants, so they read current state.
+function getActiveMainSlots() {
+  return state.outfitMode === 'dress' ? ['dress', 'shoes'] : ['top', 'bottom', 'shoes'];
+}
+function getActiveSendSlots() {
+  return [...getActiveMainSlots(), 'outerwear', ...ACCESSORY_SLOTS];
+}
 let _assetIdCounter  = 0;
 
 function _guessType(file) {
@@ -787,50 +799,55 @@ function unassignSlot(slotKey) {
   updateGenerateButton();
 }
 
-function updateDropZones() {
-  MAIN_DZ_SLOTS.forEach(slot => {
-    const zone       = document.getElementById(`dz-${slot}`);
-    const thumb      = document.getElementById(`dz-${slot}-thumb`);
-    const clearBtn   = document.getElementById(`dz-${slot}-clear`);
-    const badge      = document.getElementById(`dz-${slot}-badge`);
-    const slotLabel  = document.getElementById(`dz-${slot}-slotlabel`);
-    const dzLabel    = zone?.querySelector('.dz-label');
-    if (!zone) return;
-    const assetId = state.slotAssignments[slot];
-    if (assetId) {
-      const asset = state.clothingAssets.find(a => a.id === assetId);
-      if (asset) {
-        // Use clean asset for the overlay; fall back to raw while analysis is pending
-        const displayUrl = asset.cleanAssetUrl || asset.rawImageUrl;
-        if (thumb) { thumb.src = displayUrl; thumb.classList.remove('hidden'); }
-        clearBtn?.classList.remove('hidden');
-        if (badge) {
-          badge.classList.remove('hidden');
-          if (asset.cleanAssetUrl) {
-            if (asset.extractionStatus === 'failed') {
-              badge.textContent = 'Fallback Preview';
-            } else if (asset.containsModel || asset.cleanupNeeded) {
-              badge.textContent = 'Needs Cleanup';
-            } else {
-              badge.textContent = 'Mock Clean';
-            }
-          } else {
-            badge.textContent = 'Raw';
-          }
+function _applyZoneAsset(slot) {
+  const zone      = document.getElementById(`dz-${slot}`);
+  const thumb     = document.getElementById(`dz-${slot}-thumb`);
+  const clearBtn  = document.getElementById(`dz-${slot}-clear`);
+  const badge     = document.getElementById(`dz-${slot}-badge`);
+  const slotLabel = document.getElementById(`dz-${slot}-slotlabel`);
+  const dzLabel   = zone?.querySelector('.dz-label');
+  if (!zone) return;
+  const assetId = state.slotAssignments[slot];
+  if (assetId) {
+    const asset = state.clothingAssets.find(a => a.id === assetId);
+    if (asset) {
+      const displayUrl = asset.cleanAssetUrl || asset.rawImageUrl;
+      if (thumb) { thumb.src = displayUrl; thumb.classList.remove('hidden'); }
+      clearBtn?.classList.remove('hidden');
+      if (badge) {
+        badge.classList.remove('hidden');
+        if (asset.cleanAssetUrl) {
+          badge.textContent = asset.extractionStatus === 'failed' ? 'Fallback Preview'
+            : (asset.containsModel || asset.cleanupNeeded) ? 'Needs Cleanup' : 'Mock Clean';
+        } else {
+          badge.textContent = 'Raw';
         }
-        slotLabel?.classList.remove('hidden');
-        dzLabel?.classList.add('hidden');
-        zone.classList.add('has-item');
       }
-    } else {
-      if (thumb) { thumb.src = ''; thumb.classList.add('hidden'); }
-      clearBtn?.classList.add('hidden');
-      badge?.classList.add('hidden');
-      slotLabel?.classList.add('hidden');
-      dzLabel?.classList.remove('hidden');
-      zone.classList.remove('has-item');
+      slotLabel?.classList.remove('hidden');
+      dzLabel?.classList.add('hidden');
+      zone.classList.add('has-item');
+      return;
     }
-  });
+  }
+  if (thumb) { thumb.src = ''; thumb.classList.add('hidden'); }
+  clearBtn?.classList.add('hidden');
+  badge?.classList.add('hidden');
+  slotLabel?.classList.add('hidden');
+  dzLabel?.classList.remove('hidden');
+  zone.classList.remove('has-item');
+}
+
+function updateDropZones() {
+  const isDressMode = state.outfitMode === 'dress';
+
+  // Show/hide mode-specific stage slots
+  document.getElementById('dz-top')?.classList.toggle('hidden', isDressMode);
+  document.getElementById('dz-bottom')?.classList.toggle('hidden', isDressMode);
+  document.getElementById('dz-dress')?.classList.toggle('hidden', !isDressMode);
+
+  // Update content for all stage slots + outerwear
+  ALL_STAGE_SLOTS.forEach(slot => _applyZoneAsset(slot));
+  _applyZoneAsset('outerwear');
 }
 
 function updateStudioExtras() {
@@ -838,59 +855,67 @@ function updateStudioExtras() {
   if (!wrap) return;
   wrap.innerHTML = '';
 
-  function makeExtraGroup(label, slots) {
-    const group = document.createElement('div');
-    group.className = 'studio-extra-group';
-    group.innerHTML = `<p class="studio-extra-group-label">${label}</p>`;
-    const row = document.createElement('div');
-    row.className = 'studio-extra-row';
-    slots.forEach(slot => {
-      const t       = ASSET_TYPES.find(x => x.key === slot) || ASSET_TYPES[0];
-      const assetId = state.slotAssignments[slot];
-      const asset   = assetId ? state.clothingAssets.find(a => a.id === assetId) : null;
-      const slotEl  = document.createElement('div');
-      slotEl.className   = 'studio-extra-slot';
-      slotEl.dataset.slot = slot;
-      if (asset) {
-        slotEl.classList.add('has-item');
-        slotEl.innerHTML = `
-          <img src="${asset.rawImageUrl}" alt="${t.label}" />
-          <span class="studio-extra-label">${t.emoji} ${t.label}</span>
-          <button class="dz-clear studio-extra-clear" title="Remove">✕</button>`;
-        slotEl.querySelector('.studio-extra-clear').addEventListener('click', e => {
-          e.stopPropagation();
-          unassignSlot(slot);
-        });
-      } else {
-        slotEl.innerHTML = `<span class="studio-extra-empty">${t.emoji}<br><small>${t.label}</small></span>`;
-      }
-      slotEl.addEventListener('dragover', e => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'copy';
-        slotEl.classList.add('drag-over');
+  // Accessories row — compact slots for bag, glasses, earrings, hair_accessory
+  const row = document.createElement('div');
+  row.className = 'studio-extra-row';
+  ACCESSORY_SLOTS.forEach(slot => {
+    const t       = ASSET_TYPES.find(x => x.key === slot) || ASSET_TYPES[0];
+    const assetId = state.slotAssignments[slot];
+    const asset   = assetId ? state.clothingAssets.find(a => a.id === assetId) : null;
+    const slotEl  = document.createElement('div');
+    slotEl.className    = 'studio-extra-slot';
+    slotEl.dataset.slot = slot;
+    if (asset) {
+      slotEl.classList.add('has-item');
+      slotEl.innerHTML = `
+        <img src="${asset.rawImageUrl}" alt="${t.label}" />
+        <span class="studio-extra-label">${t.emoji} ${t.label}</span>
+        <button class="dz-clear studio-extra-clear" title="Remove">✕</button>`;
+      slotEl.querySelector('.studio-extra-clear').addEventListener('click', e => {
+        e.stopPropagation();
+        unassignSlot(slot);
       });
-      slotEl.addEventListener('dragleave', e => {
-        if (!slotEl.contains(e.relatedTarget)) slotEl.classList.remove('drag-over');
-      });
-      slotEl.addEventListener('drop', e => {
-        e.preventDefault();
-        slotEl.classList.remove('drag-over');
-        const id = e.dataTransfer.getData('text/plain');
-        if (id) assignAssetToSlot(id, slot);
-      });
-      row.appendChild(slotEl);
-    });
-    group.appendChild(row);
-    wrap.appendChild(group);
-  }
+    } else {
+      slotEl.innerHTML = `<span class="studio-extra-empty">${t.emoji}<br><small>${t.label}</small></span>`;
+    }
+    slotEl.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; slotEl.classList.add('drag-over'); });
+    slotEl.addEventListener('dragleave', e => { if (!slotEl.contains(e.relatedTarget)) slotEl.classList.remove('drag-over'); });
+    slotEl.addEventListener('drop', e => { e.preventDefault(); slotEl.classList.remove('drag-over'); const id = e.dataTransfer.getData('text/plain'); if (id) assignAssetToSlot(id, slot); });
+    row.appendChild(slotEl);
+  });
+  wrap.appendChild(row);
 
-  makeExtraGroup('Clothing', CLOTHING_EXTRA_SLOTS);
-  makeExtraGroup('Accessories', ACCESSORY_SLOTS);
+  // Hair accessory placement picker — only shown when hair_accessory is assigned
+  if (state.slotAssignments.hair_accessory) {
+    renderHairPlacement(wrap);
+  }
+}
+
+function renderHairPlacement(container) {
+  const PLACEMENTS = [
+    { value: 'auto',              label: 'Auto' },
+    { value: 'top_of_head',       label: 'Top of Head' },
+    { value: 'left_side',         label: 'Left Side' },
+    { value: 'right_side',        label: 'Right Side' },
+    { value: 'back_bun',          label: 'Back / Bun' },
+    { value: 'forehead_headband', label: 'Forehead / Headband' },
+  ];
+  const el = document.createElement('div');
+  el.className = 'hair-placement-row';
+  el.innerHTML = `<span class="hair-placement-label">🎀 Hair accessory placement</span>
+    <select class="hair-placement-select" id="hair-placement-select">
+      ${PLACEMENTS.map(p => `<option value="${p.value}"${p.value === state.hairAccessoryPlacement ? ' selected' : ''}>${p.label}</option>`).join('')}
+    </select>`;
+  el.querySelector('#hair-placement-select').addEventListener('change', e => {
+    state.hairAccessoryPlacement = e.target.value;
+  });
+  container.appendChild(el);
 }
 
 function updateStudioPieceCount() {
-  const count = Object.values(state.slotAssignments).filter(Boolean).length;
-  const el    = document.getElementById('studio-piece-count');
+  const active = getActiveSendSlots();
+  const count  = Object.entries(state.slotAssignments).filter(([s, id]) => !!id && active.includes(s)).length;
+  const el     = document.getElementById('studio-piece-count');
   if (!el) return;
   if (count > 0) {
     el.textContent = `${count} piece${count !== 1 ? 's' : ''}`;
@@ -909,7 +934,8 @@ function updateCheckButton() {
 }
 
 function setupDragDrop() {
-  MAIN_DZ_SLOTS.forEach(slot => {
+  // Wire all stage slots + outerwear — done once at startup; mode visibility is CSS/class-based.
+  [...ALL_STAGE_SLOTS, 'outerwear'].forEach(slot => {
     const zone     = document.getElementById(`dz-${slot}`);
     const clearBtn = document.getElementById(`dz-${slot}-clear`);
     if (!zone) return;
@@ -1040,7 +1066,8 @@ function renderProviderCapability() {
 function updateGenerateButton() {
   const btn = document.getElementById('studio-generate-btn');
   if (!btn) return;
-  const hasItems = Object.values(state.slotAssignments).some(Boolean);
+  const active   = getActiveSendSlots();
+  const hasItems = Object.entries(state.slotAssignments).some(([s, id]) => !!id && active.includes(s));
   btn.disabled = !hasItems;
 }
 
@@ -1161,8 +1188,20 @@ function renderTryOnPreview() {
 }
 
 async function runTryOnGenerate() {
-  const filledSlots = Object.entries(state.slotAssignments).filter(([, id]) => !!id);
+  // Only send slots that are active in the current mode
+  const activeSendSlots = getActiveSendSlots();
+  const filledSlots = Object.entries(state.slotAssignments)
+    .filter(([slot, id]) => !!id && activeSendSlots.includes(slot));
   if (filledSlots.length === 0) return;
+
+  // Dress mode: dress must be assigned before generating
+  if (state.outfitMode === 'dress' && !state.slotAssignments.dress) {
+    state.tryOnPreview.status  = 'failed';
+    state.tryOnPreview.message = 'Add a dress before generating a Dress look.';
+    renderTryOnPreview();
+    updateGenerateButton();
+    return;
+  }
 
   // Derive rules from selected provider's capability metadata
   const provCap        = getSelectedProviderCapability();
@@ -1220,6 +1259,10 @@ async function runTryOnGenerate() {
     const form = new FormData();
     if (state.selectedProviderId)  form.append('provider_id',  state.selectedProviderId);
     if (state.model?.body_shape)   form.append('body_shape',   state.model.body_shape);
+    form.append('outfit_mode', state.outfitMode);
+    if (state.slotAssignments.hair_accessory && state.hairAccessoryPlacement) {
+      form.append('hair_accessory_placement', state.hairAccessoryPlacement);
+    }
 
     if (isMultiGarment) {
       // Multi-garment: send per-slot files; unsupported slots already rejected above.
@@ -1360,7 +1403,32 @@ async function analyzeGarmentAsset(id, file) {
   }
 }
 
+function switchOutfitMode(mode) {
+  if (mode === state.outfitMode) return;
+  state.outfitMode = mode;
+  // Clear conflicting slot assignments when switching mode
+  if (mode === 'dress') {
+    state.slotAssignments.top    = null;
+    state.slotAssignments.bottom = null;
+  } else {
+    state.slotAssignments.dress  = null;
+  }
+  // Update mode button styles
+  document.getElementById('mode-btn-top-bottom')?.classList.toggle('mode-active', mode === 'top_bottom');
+  document.getElementById('mode-btn-dress')?.classList.toggle('mode-active', mode === 'dress');
+  updateDropZones();
+  updateStudioExtras();
+  renderAssetLibrary();
+  updateStudioPieceCount();
+  updateGenerateButton();
+}
+
 function setupStudio() {
+  // Mode switch buttons
+  document.querySelectorAll('#outfit-mode-switch .mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchOutfitMode(btn.dataset.mode));
+  });
+
   // Scene pills
   document.querySelectorAll('#studio-scene-pills .studio-scene-pill').forEach(pill => {
     pill.addEventListener('click', () => {
