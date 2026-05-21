@@ -1451,11 +1451,9 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
   padding: 16px;
 }
 
-/* Wardrobe panel: flex column so header stays fixed and asset list scrolls */
+/* Wardrobe panel: stable height — asset list scrolls internally */
 .studio-wardrobe-panel {
-  display: flex;
-  flex-direction: column;
-  max-height: 85vh;
+  overflow: hidden; /* clip any residual list overflow so the card never expands past its height */
 }
 
 .studio-mannequin-panel {
@@ -1523,10 +1521,9 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
   display: flex;
   flex-direction: column;
   gap: 10px;
-  flex: 1;
-  min-height: 0;      /* allows flex child to shrink below content size so overflow-y works */
+  max-height: 620px;  /* ~3 cards × 198px + 2 gaps × 10px; library never grows past this */
   overflow-y: auto;
-  padding-right: 4px; /* room for scrollbar */
+  padding-right: 4px;
   scroll-behavior: smooth;
 }
 .studio-asset-library::-webkit-scrollbar { width: 4px; }
@@ -1573,7 +1570,7 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
 
 .asset-thumb {
   width: 100%;
-  aspect-ratio: 3/4;
+  height: 130px;      /* fixed height (was aspect-ratio: 3/4 → 251px); keeps ~3 cards in the scroll area */
   object-fit: cover;
   display: block;
   pointer-events: none;
