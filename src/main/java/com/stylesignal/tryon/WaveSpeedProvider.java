@@ -75,25 +75,52 @@ public class WaveSpeedProvider implements TryOnProvider {
             return resp;
         }
 
+        // TODO: add cleanup or expiration policy for hosted provider input images.
+
         // Upload model image to Cloudinary to obtain a public HTTPS URL.
-        log.info("Uploading model image to Cloudinary for WaveSpeed...");
-        String humanUrl = cloudinary.upload(req.humanImgBytes(), req.humanImgType());
+        // Cloudinary upload exceptions are caught here to prevent raw provider error
+        // text (which may contain internal details) from reaching the frontend.
+        String humanUrl;
+        try {
+            log.info("Uploading model image to Cloudinary for WaveSpeed...");
+            humanUrl = cloudinary.upload(req.humanImgBytes(), req.humanImgType());
+        } catch (Exception e) {
+            log.warn("Cloudinary upload failed for WaveSpeed input image.");
+            Map<String, Object> resp = new LinkedHashMap<>();
+            resp.put("status",            "failed");
+            resp.put("mode",              "wavespeed_outfit");
+            resp.put("preview_image_url", null);
+            resp.put("preview_video_url", null);
+            resp.put("message",           "Could not upload images for WaveSpeed. Please try again.");
+            return resp;
+        }
 
         // Upload garment images in stable slot order (top, outerwear, bottom, dress, shoes).
         // Unsupported slots (bag) are already rejected by the frontend guard before this point.
-        List<String>     clothesUrls = new ArrayList<>();
-        List<GarmentItem> garments   = req.garments() != null ? req.garments() : List.of();
+        List<String>      clothesUrls = new ArrayList<>();
+        List<GarmentItem> garments    = req.garments() != null ? req.garments() : List.of();
 
-        if (!garments.isEmpty()) {
-            for (GarmentItem g : garments) {
-                if (!SLOT_ORDER.contains(g.slot())) continue; // defense-in-depth: skip unsupported
-                log.info("Uploading {} garment to Cloudinary for WaveSpeed...", g.slot());
-                clothesUrls.add(cloudinary.upload(g.bytes(), g.type()));
+        try {
+            if (!garments.isEmpty()) {
+                for (GarmentItem g : garments) {
+                    if (!SLOT_ORDER.contains(g.slot())) continue; // defense-in-depth: skip unsupported
+                    log.info("Uploading {} garment to Cloudinary for WaveSpeed...", g.slot());
+                    clothesUrls.add(cloudinary.upload(g.bytes(), g.type()));
+                }
+            } else if (req.garmImgBytes() != null) {
+                // Single-garment fallback for the legacy garm_img path (edge case)
+                log.info("Uploading single garment to Cloudinary for WaveSpeed...");
+                clothesUrls.add(cloudinary.upload(req.garmImgBytes(), req.garmImgType()));
             }
-        } else if (req.garmImgBytes() != null) {
-            // Single-garment fallback for the legacy garm_img path (edge case)
-            log.info("Uploading single garment to Cloudinary for WaveSpeed...");
-            clothesUrls.add(cloudinary.upload(req.garmImgBytes(), req.garmImgType()));
+        } catch (Exception e) {
+            log.warn("Cloudinary upload failed for WaveSpeed input image.");
+            Map<String, Object> resp = new LinkedHashMap<>();
+            resp.put("status",            "failed");
+            resp.put("mode",              "wavespeed_outfit");
+            resp.put("preview_image_url", null);
+            resp.put("preview_video_url", null);
+            resp.put("message",           "Could not upload images for WaveSpeed. Please try again.");
+            return resp;
         }
 
         if (clothesUrls.isEmpty()) {
