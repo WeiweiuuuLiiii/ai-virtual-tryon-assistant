@@ -77,7 +77,7 @@ public class GptImageTryOnProvider implements TryOnProvider {
             log.info("GPT Image try-on requested — {} garment(s)", garments.size());
             return openAi.generateTryOn(req.humanImgBytes(), req.humanImgType(), garments);
         } catch (Exception e) {
-            log.warn("GPT Image generation failed: {}", e.getMessage());
+            log.warn("GPT Image generation failed.");
             return failResponse("GPT Image generation failed. Please try again.");
         }
     }

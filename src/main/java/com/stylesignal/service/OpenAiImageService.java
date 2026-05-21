@@ -37,7 +37,7 @@ public class OpenAiImageService {
     @Value("${openai.api.key:}")
     private String apiKey;
 
-    @Value("${openai.image.model:gpt-image-1}")
+    @Value("${openai.image.model:gpt-image-2}")
     private String model;
 
     private final HttpClient   http   = HttpClient.newHttpClient();
@@ -73,11 +73,10 @@ public class OpenAiImageService {
 
         HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
         if (resp.statusCode() != 200) {
-            // Log a sanitized excerpt — never log response bodies that may contain keys.
-            log.warn("OpenAI Images API returned HTTP {}", resp.statusCode());
-            String snippet = resp.body().length() > 300 ? resp.body().substring(0, 300) : resp.body();
+            // Log only the status code — never include response body (may contain error details).
+            log.warn("OpenAI Images API request failed — HTTP {}, model={}", resp.statusCode(), model);
             throw new RuntimeException(
-                "OpenAI Images API error (HTTP " + resp.statusCode() + "): " + snippet);
+                "OpenAI Images API request failed (HTTP " + resp.statusCode() + ").");
         }
 
         Map<String, Object> result = mapper.readValue(resp.body(), new TypeReference<>() {});
