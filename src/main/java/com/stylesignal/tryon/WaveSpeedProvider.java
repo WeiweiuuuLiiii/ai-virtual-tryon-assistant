@@ -133,6 +133,22 @@ public class WaveSpeedProvider implements TryOnProvider {
             return resp;
         }
 
-        return wavespeed.generateOutfitTryOn(humanUrl, clothesUrls);
+        try {
+            return wavespeed.generateOutfitTryOn(humanUrl, clothesUrls);
+        } catch (Exception e) {
+            String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+            if (msg.contains("poll") || msg.contains("timeout")) {
+                log.warn("WaveSpeed polling failed.");
+            } else {
+                log.warn("WaveSpeed request failed.");
+            }
+            Map<String, Object> resp = new LinkedHashMap<>();
+            resp.put("status",            "failed");
+            resp.put("mode",              "wavespeed_outfit");
+            resp.put("preview_image_url", null);
+            resp.put("preview_video_url", null);
+            resp.put("message",           "WaveSpeed generation failed. Please try again.");
+            return resp;
+        }
     }
 }

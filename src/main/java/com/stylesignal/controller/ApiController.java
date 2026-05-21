@@ -288,13 +288,16 @@ public class ApiController {
         String humanType  = "image/jpeg"; // model photos are stored as JPEG
 
         // ── Build garments list from per-slot params (stable order: top, outerwear, bottom, dress, shoes) ──
+        // Use a mutable map so null values (absent slots) do not throw NPE — Map.entry() disallows null.
+        Map<String, MultipartFile> slotFiles = new LinkedHashMap<>();
+        slotFiles.put("top",       garmImgTop);
+        slotFiles.put("outerwear", garmImgOuterwear);
+        slotFiles.put("bottom",    garmImgBottom);
+        slotFiles.put("dress",     garmImgDress);
+        slotFiles.put("shoes",     garmImgShoes);
+
         List<GarmentItem> garments = new ArrayList<>();
-        for (var entry : List.of(
-                Map.entry("top",       garmImgTop),
-                Map.entry("outerwear", garmImgOuterwear),
-                Map.entry("bottom",    garmImgBottom),
-                Map.entry("dress",     garmImgDress),
-                Map.entry("shoes",     garmImgShoes))) {
+        for (Map.Entry<String, MultipartFile> entry : slotFiles.entrySet()) {
             MultipartFile f = entry.getValue();
             if (f != null && !f.isEmpty()) {
                 String t = f.getContentType() != null ? f.getContentType().toLowerCase() : "image/jpeg";
