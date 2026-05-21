@@ -749,6 +749,8 @@ function renderAssetLibrary() {
       card.classList.remove('dragging');
       state.draggedAssetId = null;
       renderAssetLibrary();
+      updateDropZones();
+      updateStudioExtras();
     });
     card.querySelector('.asset-delete-btn').addEventListener('click', e => {
       e.stopPropagation();
@@ -1627,6 +1629,9 @@ function setupStudio() {
   // Render mannequin (body shape from model if available)
   renderStudioMannequin();
 
+  // Initial render of all studio state — accessories row must appear on first load.
+  updateDropZones();
+  updateStudioExtras();
   updateCheckButton();
   updateGenerateButton();
   renderTryOnPreview();
