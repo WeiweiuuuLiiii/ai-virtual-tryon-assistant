@@ -1,8 +1,12 @@
 package com.stylesignal.tryon;
 
+import com.stylesignal.service.CloudinaryUploadService;
 import com.stylesignal.service.WaveSpeedService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -10,14 +14,18 @@ import java.util.Map;
 @Component
 public class WaveSpeedProvider implements TryOnProvider {
 
+    private static final Logger log = LoggerFactory.getLogger(WaveSpeedProvider.class);
+
     // Stable slot order for clothes_images[]: top, outerwear, bottom, dress, shoes.
-    // Bag is excluded — WaveSpeedService does not support it.
+    // Bag is excluded — WaveSpeed does not support it.
     static final List<String> SLOT_ORDER = List.of("top", "outerwear", "bottom", "dress", "shoes");
 
-    private final WaveSpeedService wavespeed;
+    private final WaveSpeedService        wavespeed;
+    private final CloudinaryUploadService cloudinary;
 
-    public WaveSpeedProvider(WaveSpeedService wavespeed) {
-        this.wavespeed = wavespeed;
+    public WaveSpeedProvider(WaveSpeedService wavespeed, CloudinaryUploadService cloudinary) {
+        this.wavespeed  = wavespeed;
+        this.cloudinary = cloudinary;
     }
 
     @Override
@@ -42,7 +50,7 @@ public class WaveSpeedProvider implements TryOnProvider {
                 "May change background or pose",
                 "Face identity may drift with dark or blurry input photos",
                 "Garment list is not strict slot control — results are AI-synthesised",
-                "Requires provider-accessible image URLs (not supported for local-only deployments)",
+                "Requires Cloudinary credentials for provider-accessible image hosting",
                 "Bag slot not supported"
             ),
             "video",
@@ -53,19 +61,51 @@ public class WaveSpeedProvider implements TryOnProvider {
 
     @Override
     public Map<String, Object> generate(TryOnRequest req) throws Exception {
-        // WaveSpeed requires publicly accessible image URLs.
-        // In the current local-dev setup the model photo and garment images are
-        // served from localhost, which WaveSpeed's cloud infrastructure cannot reach.
-        // Return a clear limitation message rather than attempting a doomed request.
-        Map<String, Object> resp = new LinkedHashMap<>();
-        resp.put("status",            "failed");
-        resp.put("mode",              "wavespeed_outfit");
-        resp.put("preview_image_url", null);
-        resp.put("preview_video_url", null);
-        resp.put("message",
-            "WaveSpeed requires provider-accessible image URLs. "
-            + "Local uploads need a public upload/hosting step before this provider "
-            + "can run inside the local app.");
-        return resp;
+        // Cloudinary is required to convert local image bytes into provider-accessible HTTPS URLs.
+        if (!cloudinary.isConfigured()) {
+            Map<String, Object> resp = new LinkedHashMap<>();
+            resp.put("status",            "failed");
+            resp.put("mode",              "wavespeed_outfit");
+            resp.put("preview_image_url", null);
+            resp.put("preview_video_url", null);
+            resp.put("message",
+                "WaveSpeed requires provider-accessible image URLs. "
+                + "Add CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET "
+                + "to your .env to enable automatic image hosting for WaveSpeed.");
+            return resp;
+        }
+
+        // Upload model image to Cloudinary to obtain a public HTTPS URL.
+        log.info("Uploading model image to Cloudinary for WaveSpeed...");
+        String humanUrl = cloudinary.upload(req.humanImgBytes(), req.humanImgType());
+
+        // Upload garment images in stable slot order (top, outerwear, bottom, dress, shoes).
+        // Unsupported slots (bag) are already rejected by the frontend guard before this point.
+        List<String>     clothesUrls = new ArrayList<>();
+        List<GarmentItem> garments   = req.garments() != null ? req.garments() : List.of();
+
+        if (!garments.isEmpty()) {
+            for (GarmentItem g : garments) {
+                if (!SLOT_ORDER.contains(g.slot())) continue; // defense-in-depth: skip unsupported
+                log.info("Uploading {} garment to Cloudinary for WaveSpeed...", g.slot());
+                clothesUrls.add(cloudinary.upload(g.bytes(), g.type()));
+            }
+        } else if (req.garmImgBytes() != null) {
+            // Single-garment fallback for the legacy garm_img path (edge case)
+            log.info("Uploading single garment to Cloudinary for WaveSpeed...");
+            clothesUrls.add(cloudinary.upload(req.garmImgBytes(), req.garmImgType()));
+        }
+
+        if (clothesUrls.isEmpty()) {
+            Map<String, Object> resp = new LinkedHashMap<>();
+            resp.put("status",            "failed");
+            resp.put("mode",              "wavespeed_outfit");
+            resp.put("preview_image_url", null);
+            resp.put("preview_video_url", null);
+            resp.put("message",           "No supported garment images provided for WaveSpeed generation.");
+            return resp;
+        }
+
+        return wavespeed.generateOutfitTryOn(humanUrl, clothesUrls);
     }
 }
