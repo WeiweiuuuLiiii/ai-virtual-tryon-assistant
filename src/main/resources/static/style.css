@@ -3193,6 +3193,18 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
   height: 40px;
   border-width: 3px;
 }
+.btn-cancel-generation {
+  display: block;
+  margin: 0 auto 20px;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  font-size: .78rem;
+  padding: 7px 18px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.btn-cancel-generation:hover { border-color: var(--text-faint); color: var(--text); }
 
 /* Ready state: fill the panel */
 #tryon-state-ready {

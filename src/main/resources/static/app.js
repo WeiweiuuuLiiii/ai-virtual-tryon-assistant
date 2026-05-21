@@ -13,6 +13,8 @@ const state = {
   draggedAssetId: null,
   outfitMode: 'top_bottom',         // 'top_bottom' | 'dress'
   hairAccessoryPlacement: 'auto',   // 'auto' | 'top_of_head' | 'left_side' | 'right_side' | 'back_bun' | 'forehead_headband'
+  generationRequestId: 0,           // incremented each time generation starts; used for stale result protection
+  activeAbortController: null,      // AbortController for the current in-flight generation fetch
   // Studio — legacy (kept for API compatibility)
   studioItems: { top: null, bottom: null, dress: null, outerwear: null, shoes: null, bag: null, glasses: null, earrings: null, hair_accessory: null },
   studioScene:  null,
@@ -653,9 +655,11 @@ function addClothingAsset(file) {
 function removeClothingAsset(id) {
   const asset = state.clothingAssets.find(a => a.id === id);
   if (!asset) return;
+  const wasHairAccessory = state.slotAssignments.hair_accessory === id;
   Object.keys(state.slotAssignments).forEach(s => {
     if (state.slotAssignments[s] === id) state.slotAssignments[s] = null;
   });
+  if (wasHairAccessory) state.hairAccessoryPlacement = 'auto';
   URL.revokeObjectURL(asset.rawImageUrl);
   state.clothingAssets = state.clothingAssets.filter(a => a.id !== id);
   renderAssetLibrary();
@@ -1246,6 +1250,13 @@ async function runTryOnGenerate() {
     return;
   }
 
+  // Abort any previous in-flight generation and stamp this one with a unique id.
+  if (state.activeAbortController) state.activeAbortController.abort();
+  state.generationRequestId++;
+  const myId       = state.generationRequestId;
+  const controller = new AbortController();
+  state.activeAbortController = controller;
+
   state.tryOnPreview.status   = 'generating';
   state.tryOnPreview.imageUrl = null;
   state.tryOnPreview.videoUrl = null;
@@ -1280,8 +1291,10 @@ async function runTryOnGenerate() {
       form.append('contains_model', asset.containsModel ? 'true' : 'false');
     }
 
-    const resp   = await fetch(`${API}/api/try-on/generate`, { method: 'POST', body: form });
+    const resp = await fetch(`${API}/api/try-on/generate`, { method: 'POST', body: form, signal: controller.signal });
+    if (myId !== state.generationRequestId) return;
     const result = await resp.json();
+    if (myId !== state.generationRequestId) return;
 
     if (!resp.ok) {
       state.tryOnPreview.status  = 'failed';
@@ -1294,12 +1307,31 @@ async function runTryOnGenerate() {
       state.tryOnPreview.message  = result.message           || null;
     }
   } catch (err) {
+    // AbortError = user cancelled; stale id = superseded by a newer generation — both are silent.
+    if (err.name === 'AbortError' || myId !== state.generationRequestId) return;
     state.tryOnPreview.status  = 'failed';
     state.tryOnPreview.message = err.message;
   } finally {
-    renderTryOnPreview();
-    updateGenerateButton();
+    if (myId === state.generationRequestId) {
+      state.activeAbortController = null;
+      renderTryOnPreview();
+      updateGenerateButton();
+    }
   }
+}
+
+function cancelGeneration() {
+  if (state.activeAbortController) {
+    state.activeAbortController.abort();
+    state.activeAbortController = null;
+  }
+  state.generationRequestId++;
+  state.tryOnPreview.status   = 'idle';
+  state.tryOnPreview.imageUrl = null;
+  state.tryOnPreview.videoUrl = null;
+  state.tryOnPreview.message  = null;
+  renderTryOnPreview();
+  updateGenerateButton();
 }
 
 /* ── Garment Clean Asset Pipeline (Issue #4) ─────────────────── */
@@ -1495,8 +1527,9 @@ function setupStudio() {
   // Check This Look button
   document.getElementById('studio-check-btn')?.addEventListener('click', runSceneAnalysis);
 
-  // Wire generate try-on button
+  // Wire generate try-on button and cancel button
   document.getElementById('studio-generate-btn')?.addEventListener('click', runTryOnGenerate);
+  document.getElementById('cancel-generation-btn')?.addEventListener('click', cancelGeneration);
 
   // Hero CTA buttons
   document.getElementById('hero-build-btn')?.addEventListener('click', () => {
