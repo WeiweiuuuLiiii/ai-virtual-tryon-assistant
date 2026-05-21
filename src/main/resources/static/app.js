@@ -1017,40 +1017,53 @@ function renderTryOnPreview() {
   } else if (status === 'ready') {
     const img           = document.getElementById('tryon-preview-img');
     const video         = document.getElementById('tryon-preview-video');
+    const canvas        = document.getElementById('tryon-preview-canvas');
     const readyBdg      = document.getElementById('tryon-preview-ready-badge');
     const videoNote     = document.getElementById('tryon-video-note');
     const fullMotionRow = document.getElementById('tryon-full-motion-row');
     if (state.tryOnPreview.videoUrl) {
-      if (img) img.classList.add('hidden');
+      // WaveSpeed video path: show canvas still-frame, keep video fully hidden.
+      if (img)   img.classList.add('hidden');
+      if (video) { video.removeAttribute('controls'); video.classList.add('hidden'); }
       if (videoNote)     videoNote.classList.remove('hidden');
       if (fullMotionRow) fullMotionRow.classList.remove('hidden');
       if (readyBdg)      readyBdg.textContent = 'Stable Outfit Preview';
-      if (video) {
-        // Strip controls so the paused frame looks like a still image, not a video player
-        video.removeAttribute('controls');
-        video.classList.remove('hidden');
-        // Only re-seek when the source actually changes to avoid resetting on re-render
+      if (video && canvas) {
         if (video.dataset.loadedSrc !== state.tryOnPreview.videoUrl) {
+          // New video source: load, seek to 0.75s, draw frame to canvas.
           video.dataset.loadedSrc = state.tryOnPreview.videoUrl;
+          canvas.classList.add('hidden'); // hide until frame is captured
           video.src = state.tryOnPreview.videoUrl;
-          video.pause();
-          // Seek to a stable early frame once metadata is available
-          const seekOnce = () => {
+          video.muted = true;
+          const onMeta = () => {
             video.currentTime = 0.75;
-            video.pause();
-            video.removeEventListener('loadedmetadata', seekOnce);
+            video.removeEventListener('loadedmetadata', onMeta);
           };
-          video.addEventListener('loadedmetadata', seekOnce);
+          const onSeeked = () => {
+            canvas.width  = video.videoWidth  || 480;
+            canvas.height = video.videoHeight || 640;
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            canvas.classList.remove('hidden');
+            video.pause();
+            video.removeEventListener('seeked', onSeeked);
+          };
+          video.addEventListener('loadedmetadata', onMeta);
+          video.addEventListener('seeked', onSeeked);
           video.load();
+        } else {
+          // Same source already loaded — canvas already has the frame, just show it.
+          canvas.classList.remove('hidden');
         }
       }
     } else if (state.tryOnPreview.imageUrl) {
+      // FASHN / IDM-VTON image path: unchanged.
       if (img)   { img.src = state.tryOnPreview.imageUrl; img.classList.remove('hidden'); }
       if (video) {
         video.removeAttribute('controls');
         video.classList.add('hidden');
         delete video.dataset.loadedSrc;
       }
+      if (canvas) canvas.classList.add('hidden');
       if (videoNote)     videoNote.classList.add('hidden');
       if (fullMotionRow) fullMotionRow.classList.add('hidden');
       if (readyBdg)      readyBdg.textContent = 'Preview Ready';
@@ -1311,11 +1324,15 @@ function setupStudio() {
   document.getElementById('hero-model-btn')?.addEventListener('click', switchToModelTab);
 
   // Full-motion preview button: reveals controls and plays the full video on demand
+  // View Full Motion Preview: swap canvas still for the actual video player.
   document.getElementById('tryon-full-motion-btn')?.addEventListener('click', () => {
-    const video = document.getElementById('tryon-preview-video');
-    const row   = document.getElementById('tryon-full-motion-row');
+    const video  = document.getElementById('tryon-preview-video');
+    const canvas = document.getElementById('tryon-preview-canvas');
+    const row    = document.getElementById('tryon-full-motion-row');
     if (!video) return;
+    if (canvas) canvas.classList.add('hidden');
     video.setAttribute('controls', '');
+    video.classList.remove('hidden');
     video.currentTime = 0;
     video.play().catch(() => {});
     if (row) row.classList.add('hidden');

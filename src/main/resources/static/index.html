@@ -147,8 +147,11 @@
           </div>
 
           <div id="tryon-state-ready" class="tryon-state hidden">
+            <!-- Canvas shows the captured still frame for WaveSpeed results. -->
+            <!-- It looks like an image — no video chrome, no right-click affordances. -->
+            <canvas id="tryon-preview-canvas" class="tryon-preview-canvas hidden"></canvas>
             <img id="tryon-preview-img" class="tryon-preview-img" src="" alt="AI-generated try-on preview" />
-            <!-- No controls by default: video stays paused at the stable early frame -->
+            <!-- Video is kept hidden; revealed only when the user clicks View Full Motion Preview -->
             <video id="tryon-preview-video" class="tryon-preview-img hidden"></video>
             <div class="tryon-preview-ready-badge" id="tryon-preview-ready-badge"></div>
             <p id="tryon-video-note" class="tryon-video-note hidden">

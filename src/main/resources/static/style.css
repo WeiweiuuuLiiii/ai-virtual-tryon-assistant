@@ -3000,6 +3000,18 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
   margin-top: 8px;
   display: block;
 }
+/* Canvas still-frame: width:auto so aspect ratio from HTML attrs is preserved,
+   max-width/max-height keep it within the panel. object-fit doesn't apply to canvas. */
+#tryon-state-ready canvas.tryon-preview-canvas {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: 520px;
+  margin: 8px auto 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: #F5F3F0;
+}
 .tryon-preview-ready-badge {
   margin-top: 8px;
   font-size: .65rem;
