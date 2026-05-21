@@ -1024,13 +1024,15 @@ function renderTryOnPreview() {
     const videoNote     = document.getElementById('tryon-video-note');
     const fullMotionRow = document.getElementById('tryon-full-motion-row');
     const stableActions = document.getElementById('tryon-stable-actions');
+    const imageActions  = document.getElementById('tryon-image-actions');
     if (state.tryOnPreview.videoUrl) {
       // WaveSpeed video path: show canvas still-frame, keep video fully hidden.
-      if (img)   img.classList.add('hidden');
-      if (video) { video.removeAttribute('controls'); video.classList.add('hidden'); }
-      if (videoNote)     videoNote.classList.remove('hidden');
+      if (img)         img.classList.add('hidden');
+      if (video)       { video.removeAttribute('controls'); video.classList.add('hidden'); }
+      if (imageActions) imageActions.classList.add('hidden');
+      if (videoNote)   videoNote.classList.remove('hidden');
       if (fullMotionRow) fullMotionRow.classList.remove('hidden');
-      if (readyBdg)      readyBdg.textContent = 'Stable Outfit Preview';
+      if (readyBdg)    readyBdg.textContent = 'Stable Outfit Preview';
       if (video && canvas) {
         if (video.dataset.loadedSrc !== state.tryOnPreview.videoUrl) {
           // New source: seek to first frame (0.01s avoids browser seek-to-0 edge cases),
@@ -1063,7 +1065,7 @@ function renderTryOnPreview() {
         }
       }
     } else if (state.tryOnPreview.imageUrl) {
-      // FASHN / IDM-VTON image path: unchanged.
+      // GPT Image / FASHN / IDM-VTON image path.
       if (img)   { img.src = state.tryOnPreview.imageUrl; img.classList.remove('hidden'); }
       if (video) {
         video.removeAttribute('controls');
@@ -1072,6 +1074,7 @@ function renderTryOnPreview() {
       }
       if (canvas)        canvas.classList.add('hidden');
       if (stableActions) stableActions.classList.add('hidden');
+      if (imageActions)  imageActions.classList.remove('hidden');
       if (videoNote)     videoNote.classList.add('hidden');
       if (fullMotionRow) fullMotionRow.classList.add('hidden');
       if (readyBdg)      readyBdg.textContent = 'Preview Ready';
@@ -1338,28 +1341,39 @@ function setupStudio() {
     const lightboxImg     = document.getElementById('tryon-lightbox-img');
     const lightboxVideo   = document.getElementById('tryon-lightbox-video');
     const lightboxCaption = document.getElementById('tryon-lightbox-caption');
-    if (!canvas || !lightbox || canvas.width === 0) return;
+    if (!lightbox) return;
 
-    // canvas.toDataURL() throws SecurityError when the video source is cross-origin
-    // and the server did not send CORS headers, causing canvas taint.
-    // In that case fall back to showing the raw video URL in a <video> element.
-    try {
-      const dataUrl = canvas.toDataURL('image/png');
-      if (lightboxImg)   { lightboxImg.src = dataUrl; lightboxImg.classList.remove('hidden'); }
-      if (lightboxVideo) { lightboxVideo.pause(); lightboxVideo.removeAttribute('src'); lightboxVideo.classList.add('hidden'); }
-      if (lightboxCaption) lightboxCaption.textContent = 'Stable Outfit Preview — First Frame';
-    } catch (_) {
-      if (lightboxImg) lightboxImg.classList.add('hidden');
-      if (lightboxVideo && state.tryOnPreview.videoUrl) {
-        lightboxVideo.src         = state.tryOnPreview.videoUrl;
-        lightboxVideo.currentTime = 0.01;
-        lightboxVideo.classList.remove('hidden');
+    // Canvas path (WaveSpeed stable preview): canvas is visible with a captured frame.
+    if (canvas && !canvas.classList.contains('hidden') && canvas.width > 0) {
+      // canvas.toDataURL() throws SecurityError when the video is cross-origin without CORS.
+      // Fall back to showing the raw video URL in a <video> element.
+      try {
+        const dataUrl = canvas.toDataURL('image/png');
+        if (lightboxImg)   { lightboxImg.src = dataUrl; lightboxImg.classList.remove('hidden'); }
+        if (lightboxVideo) { lightboxVideo.pause(); lightboxVideo.removeAttribute('src'); lightboxVideo.classList.add('hidden'); }
+        if (lightboxCaption) lightboxCaption.textContent = 'Stable Outfit Preview — First Frame';
+      } catch (_) {
+        if (lightboxImg) lightboxImg.classList.add('hidden');
+        if (lightboxVideo && state.tryOnPreview.videoUrl) {
+          lightboxVideo.src         = state.tryOnPreview.videoUrl;
+          lightboxVideo.currentTime = 0.01;
+          lightboxVideo.classList.remove('hidden');
+        }
+        if (lightboxCaption) lightboxCaption.textContent = 'Stable Outfit Preview — video (still export unavailable)';
       }
-      if (lightboxCaption) lightboxCaption.textContent = 'Stable Outfit Preview — video (still export unavailable)';
+      lightbox.classList.remove('hidden');
+      document.body.classList.add('lightbox-open');
+      return;
     }
 
-    lightbox.classList.remove('hidden');
-    document.body.classList.add('lightbox-open');
+    // Image path (GPT Image / FASHN / IDM-VTON): use the image URL directly.
+    if (state.tryOnPreview.imageUrl) {
+      if (lightboxImg)   { lightboxImg.src = state.tryOnPreview.imageUrl; lightboxImg.classList.remove('hidden'); }
+      if (lightboxVideo) { lightboxVideo.pause(); lightboxVideo.removeAttribute('src'); lightboxVideo.classList.add('hidden'); }
+      if (lightboxCaption) lightboxCaption.textContent = 'Try-On Preview';
+      lightbox.classList.remove('hidden');
+      document.body.classList.add('lightbox-open');
+    }
   };
   const closeLightbox = () => {
     const lightboxVideo = document.getElementById('tryon-lightbox-video');
@@ -1368,9 +1382,13 @@ function setupStudio() {
     document.body.classList.remove('lightbox-open');
   };
 
-  // Clicking the canvas or the "View Larger Preview" button opens the lightbox.
+  // Canvas (WaveSpeed) or its button opens the lightbox.
   document.getElementById('tryon-preview-canvas')?.addEventListener('click', openLightbox);
   document.getElementById('tryon-view-larger-btn')?.addEventListener('click', openLightbox);
+
+  // Image result (GPT Image / FASHN / IDM-VTON): clicking image or button opens lightbox.
+  document.getElementById('tryon-preview-img')?.addEventListener('click', openLightbox);
+  document.getElementById('tryon-img-view-larger-btn')?.addEventListener('click', openLightbox);
 
   // Close on ✕ button, backdrop click, or Escape key.
   document.getElementById('tryon-lightbox-close')?.addEventListener('click', closeLightbox);

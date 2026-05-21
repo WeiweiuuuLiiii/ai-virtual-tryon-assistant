@@ -3014,6 +3014,10 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
   background: #F5F3F0;
   cursor: zoom-in;
 }
+/* Image results (GPT Image / FASHN / IDM-VTON) are also enlargeable. */
+#tryon-state-ready img.tryon-preview-img:not(.hidden) {
+  cursor: zoom-in;
+}
 /* Stable-preview action row (View Larger Preview) */
 .tryon-stable-actions {
   margin-top: 8px;
