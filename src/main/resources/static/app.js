@@ -686,8 +686,9 @@ function renderAssetLibrary() {
   state.clothingAssets.forEach(asset => {
     const t    = ASSET_TYPES.find(x => x.key === asset.type) || ASSET_TYPES[0];
     const card = document.createElement('div');
+    const needsItemChoice = asset.ambiguous && !asset.userTypeOverride && asset.possibleTypes.length > 1;
     card.className   = 'asset-card';
-    card.draggable   = true;
+    card.draggable   = !needsItemChoice;
     card.dataset.assetId = asset.id;
     const assigned = Object.values(state.slotAssignments).includes(asset.id);
     if (assigned) card.classList.add('asset-assigned');
@@ -697,9 +698,9 @@ function renderAssetLibrary() {
     const modelBadge  = asset.containsModel
       ? `<span class="asset-model-warning">has model</span>` : '';
 
-    const ambiguousPicker = (asset.ambiguous && !asset.userTypeOverride && asset.possibleTypes.length > 1)
+    const ambiguousPicker = needsItemChoice
       ? `<div class="asset-ambiguous-picker">
-          <p class="asset-ambiguous-label">What is this?</p>
+          <p class="asset-ambiguous-label">Which item do you want to use?</p>
           <div class="asset-ambiguous-btns">${asset.possibleTypes.map(k => {
             const at = ASSET_TYPES.find(x => x.key === k) || { emoji: '?', label: k };
             return `<button class="btn-ambiguous-choice" data-choice="${k}">${at.emoji} ${at.label}</button>`;
@@ -758,6 +759,12 @@ function resolveAmbiguousType(assetId, chosenType) {
 }
 
 function assignAssetToSlot(assetId, slotKey) {
+  const asset = state.clothingAssets.find(a => a.id === assetId);
+  if (!asset) return;
+  if (asset.ambiguous && !asset.userTypeOverride && asset.possibleTypes.length > 1) {
+    showToast('Choose which item to use from this image before assigning it.', true);
+    return;
+  }
   Object.keys(state.slotAssignments).forEach(s => {
     if (state.slotAssignments[s] === assetId) state.slotAssignments[s] = null;
   });
@@ -1191,6 +1198,15 @@ async function runTryOnGenerate() {
     return;
   }
 
+  if (filledSlots.length > maxGarments) {
+    const provName = provCap?.name || 'This provider';
+    state.tryOnPreview.status  = 'failed';
+    state.tryOnPreview.message = `${provName} supports up to ${maxGarments} items. Remove extra items before generating.`;
+    renderTryOnPreview();
+    updateGenerateButton();
+    return;
+  }
+
   state.tryOnPreview.status   = 'generating';
   state.tryOnPreview.imageUrl = null;
   state.tryOnPreview.videoUrl = null;
@@ -1310,6 +1326,11 @@ async function analyzeGarmentAsset(id, file) {
     asset.possibleTypes = possibleTypes;
     asset.confidence    = meta.confidence ?? 0;
     asset.ambiguous     = isAmbiguous;
+    if (isAmbiguous && !asset.userTypeOverride) {
+      Object.keys(state.slotAssignments).forEach(slot => {
+        if (state.slotAssignments[slot] === asset.id) state.slotAssignments[slot] = null;
+      });
+    }
     if (meta.detected_type && ASSET_TYPES.find(t => t.key === meta.detected_type)) {
       asset.detectedType = meta.detected_type;
       // Only auto-assign type if the user hasn't overridden AND the detection is unambiguous

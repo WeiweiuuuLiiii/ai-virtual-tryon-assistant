@@ -19,6 +19,9 @@ public class WaveSpeedProvider implements TryOnProvider {
     // Stable slot order for clothes_images[]: clothing only.
     // Accessories (bag, glasses, earrings, hair_accessory) are excluded — not reliably supported.
     static final List<String> SLOT_ORDER = List.of("top", "outerwear", "bottom", "dress", "shoes");
+    private static final String ACCESSORY_LIMIT_MESSAGE =
+        "WaveSpeed is not reliable for small accessories yet. "
+        + "Use GPT Image Static Try-On for bags, glasses, earrings, or hair accessories.";
 
     private final WaveSpeedService        wavespeed;
     private final CloudinaryUploadService cloudinary;
@@ -62,18 +65,22 @@ public class WaveSpeedProvider implements TryOnProvider {
 
     @Override
     public Map<String, Object> generate(TryOnRequest req) throws Exception {
+        List<GarmentItem> garments = req.garments() != null ? req.garments() : List.of();
+        boolean hasUnsupportedGarment = garments.stream()
+            .anyMatch(g -> !SLOT_ORDER.contains(g.slot()));
+        boolean hasUnsupportedSingle = req.garmImgBytes() != null
+            && req.slot() != null
+            && !SLOT_ORDER.contains(req.slot());
+        if (hasUnsupportedGarment || hasUnsupportedSingle) {
+            return failedResponse(ACCESSORY_LIMIT_MESSAGE);
+        }
+
         // Cloudinary is required to convert local image bytes into provider-accessible HTTPS URLs.
         if (!cloudinary.isConfigured()) {
-            Map<String, Object> resp = new LinkedHashMap<>();
-            resp.put("status",            "failed");
-            resp.put("mode",              "wavespeed_outfit");
-            resp.put("preview_image_url", null);
-            resp.put("preview_video_url", null);
-            resp.put("message",
+            return failedResponse(
                 "WaveSpeed requires provider-accessible image URLs. "
                 + "Add CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET "
                 + "to your .env to enable automatic image hosting for WaveSpeed.");
-            return resp;
         }
 
         // TODO: add cleanup or expiration policy for hosted provider input images.
@@ -97,9 +104,7 @@ public class WaveSpeedProvider implements TryOnProvider {
         }
 
         // Upload garment images in stable slot order (top, outerwear, bottom, dress, shoes).
-        // Unsupported slots (bag) are already rejected by the frontend guard before this point.
         List<String>      clothesUrls = new ArrayList<>();
-        List<GarmentItem> garments    = req.garments() != null ? req.garments() : List.of();
 
         try {
             if (!garments.isEmpty()) {
@@ -151,5 +156,15 @@ public class WaveSpeedProvider implements TryOnProvider {
             resp.put("message",           "WaveSpeed generation failed. Please try again.");
             return resp;
         }
+    }
+
+    private Map<String, Object> failedResponse(String message) {
+        Map<String, Object> resp = new LinkedHashMap<>();
+        resp.put("status",            "failed");
+        resp.put("mode",              "wavespeed_outfit");
+        resp.put("preview_image_url", null);
+        resp.put("preview_video_url", null);
+        resp.put("message",           message);
+        return resp;
     }
 }

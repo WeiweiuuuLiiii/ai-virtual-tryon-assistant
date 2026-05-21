@@ -19,6 +19,7 @@ public class GptImageTryOnProvider implements TryOnProvider {
         "top", "outerwear", "bottom", "dress", "shoes",
         "bag", "glasses", "earrings", "hair_accessory");
     static final List<String> UNSUPPORTED_SLOTS = List.of();
+    private static final int MAX_ITEMS = 8;
 
     private final OpenAiImageService openAi;
 
@@ -38,7 +39,7 @@ public class GptImageTryOnProvider implements TryOnProvider {
             "gpt_image_static_tryon",
             "GPT Image Static Try-On",
             openAi.isConfigured() ? "active" : "not_configured",
-            8,
+            MAX_ITEMS,
             SUPPORTED_SLOTS,
             UNSUPPORTED_SLOTS,
             "OpenAI GPT Image high-fidelity static outfit preview. "
@@ -74,6 +75,9 @@ public class GptImageTryOnProvider implements TryOnProvider {
 
         if (garments.isEmpty()) {
             return failResponse("No supported garment images provided for GPT Image generation.");
+        }
+        if (garments.size() > MAX_ITEMS) {
+            return failResponse("GPT Image Static Try-On supports up to 8 items. Remove one item and try again.");
         }
 
         try {
