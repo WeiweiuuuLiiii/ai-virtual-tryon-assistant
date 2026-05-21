@@ -875,6 +875,13 @@ async function loadTryOnProviders() {
   } catch (_) {}
 }
 
+function getSelectedProviderCapability() {
+  if (!state.tryOnProviders?.providers) return null;
+  const id = state.selectedProviderId;
+  if (!id) return state.tryOnProviders.providers[0] || null;
+  return state.tryOnProviders.providers.find(p => p.id === id) || null;
+}
+
 function renderProviderCapability() {
   const el = document.getElementById('provider-capability-section');
   if (!el || !state.tryOnProviders) return;
@@ -971,7 +978,10 @@ function renderTryOnPreview() {
     const labels = {
       idle:              { text: 'Idle',              cls: 'tryon-status-idle' },
       generating:        { text: 'Generating…',       cls: 'tryon-status-generating' },
-      ready:             { text: 'Preview Ready',     cls: 'tryon-status-ready' },
+      ready:             {
+        text: state.tryOnPreview.videoUrl ? 'Generated Full-Outfit Video Preview' : 'Preview Ready',
+        cls:  'tryon-status-ready'
+      },
       failed:            { text: 'Failed',            cls: 'tryon-status-failed' },
       provider_required: { text: 'Provider Required', cls: 'tryon-status-provider' },
     };
@@ -983,8 +993,9 @@ function renderTryOnPreview() {
   if (status === 'generating') {
     const msgEl = document.getElementById('tryon-generating-msg');
     if (msgEl) {
-      msgEl.textContent = state.selectedProviderId === 'wavespeed_ai_virtual_outfit_tryon'
-        ? 'Generating full outfit preview... This may take 1–5 minutes. WaveSpeed may adjust pose or background. Please keep this page open.'
+      const cap = getSelectedProviderCapability();
+      msgEl.textContent = cap?.output_type === 'video'
+        ? 'Generating full outfit preview... This may take 1–5 minutes. AI-generated — may adjust pose or background. Please keep this page open.'
         : 'Requesting try-on generation…';
     }
   }
@@ -1021,28 +1032,32 @@ async function runTryOnGenerate() {
   const filledSlots = Object.entries(state.slotAssignments).filter(([, id]) => !!id);
   if (filledSlots.length === 0) return;
 
-  const isWaveSpeed = state.selectedProviderId === 'wavespeed_ai_virtual_outfit_tryon';
+  // Derive rules from selected provider's capability metadata
+  const provCap        = getSelectedProviderCapability();
+  const maxGarments    = provCap?.max_garments    ?? 1;
+  const unsupportedSls = provCap?.unsupported_slots ?? [];
+  const isMultiGarment = maxGarments > 1;
 
-  // Single-garment constraint for FASHN / IDM-VTON; WaveSpeed supports multiple garments.
-  if (filledSlots.length > 1 && !isWaveSpeed) {
+  // Unsupported slot check — generalized for all providers (Fix 4)
+  const unsupportedFilled = filledSlots.filter(([s]) => unsupportedSls.includes(s));
+  if (unsupportedFilled.length > 0) {
+    const slotStr  = unsupportedFilled.map(([s]) => s).join(', ');
+    const provName = provCap?.name || 'This provider';
     state.tryOnPreview.status  = 'failed';
-    state.tryOnPreview.message = 'v1 real try-on supports one garment at a time. Remove extra garments before generating.';
+    state.tryOnPreview.message = `${provName} does not support: ${slotStr}. Remove this item before generating.`;
     renderTryOnPreview();
     updateGenerateButton();
     return;
   }
 
-  // WaveSpeed: bag is unsupported — ensure at least one supported slot is filled.
-  if (isWaveSpeed) {
-    const waveSpeedSlots = ['top', 'outerwear', 'bottom', 'dress', 'shoes'];
-    const hasSupported = filledSlots.some(([s]) => waveSpeedSlots.includes(s));
-    if (!hasSupported) {
-      state.tryOnPreview.status  = 'failed';
-      state.tryOnPreview.message = 'WaveSpeed does not support bags. Add a top, bottom, dress, outerwear, or shoes.';
-      renderTryOnPreview();
-      updateGenerateButton();
-      return;
-    }
+  // Single-garment constraint — derived from max_garments capability field (Fix 2)
+  if (filledSlots.length > 1 && !isMultiGarment) {
+    const provName = provCap?.name || 'This provider';
+    state.tryOnPreview.status  = 'failed';
+    state.tryOnPreview.message = `${provName} supports one garment at a time. Remove extra garments before generating.`;
+    renderTryOnPreview();
+    updateGenerateButton();
+    return;
   }
 
   state.tryOnPreview.status   = 'generating';
@@ -1059,12 +1074,9 @@ async function runTryOnGenerate() {
     if (state.selectedProviderId)  form.append('provider_id',  state.selectedProviderId);
     if (state.model?.body_shape)   form.append('body_shape',   state.model.body_shape);
 
-    if (isWaveSpeed) {
-      // Multi-garment: send per-slot files in stable order (top, outerwear, bottom, dress, shoes).
-      // Bag is unsupported by WaveSpeed and excluded.
-      const waveSpeedSlots = ['top', 'outerwear', 'bottom', 'dress', 'shoes'];
+    if (isMultiGarment) {
+      // Multi-garment: send per-slot files; unsupported slots already rejected above.
       filledSlots.forEach(([slot, assetId]) => {
-        if (!waveSpeedSlots.includes(slot)) return;
         const asset = state.clothingAssets.find(a => a.id === assetId);
         if (asset) form.append(`garm_img_${slot}`, asset.file);
       });

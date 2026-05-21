@@ -35,7 +35,10 @@ public class FashnV16Provider implements TryOnProvider {
                 "Supports one garment at a time",
                 "Shoes and bags are not supported",
                 "Full outfit try-on requires a future multi-garment provider"
-            )
+            ),
+            "image",
+            false,
+            false
         );
     }
 

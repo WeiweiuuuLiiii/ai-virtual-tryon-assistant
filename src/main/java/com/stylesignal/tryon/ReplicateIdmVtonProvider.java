@@ -34,7 +34,10 @@ public class ReplicateIdmVtonProvider implements TryOnProvider {
             List.of(
                 "Supports one garment at a time",
                 "Full outfit try-on requires a future multi-garment provider"
-            )
+            ),
+            "image",
+            false,
+            false
         );
     }
 

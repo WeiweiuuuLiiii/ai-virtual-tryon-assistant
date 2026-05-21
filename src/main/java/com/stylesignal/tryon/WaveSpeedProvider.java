@@ -44,7 +44,10 @@ public class WaveSpeedProvider implements TryOnProvider {
                 "Garment list is not strict slot control — results are AI-synthesised",
                 "Requires provider-accessible image URLs (not supported for local-only deployments)",
                 "Bag slot not supported"
-            )
+            ),
+            "video",
+            true,
+            true
         );
     }
 

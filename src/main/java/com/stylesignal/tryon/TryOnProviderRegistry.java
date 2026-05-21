@@ -61,14 +61,17 @@ public class TryOnProviderRegistry {
 
     private static Map<String, Object> capToMap(TryOnCapability c) {
         Map<String, Object> m = new LinkedHashMap<>();
-        m.put("id",                c.id());
-        m.put("name",              c.name());
-        m.put("status",            c.status());
-        m.put("max_garments",      c.maxGarments());
-        m.put("supported_slots",   c.supportedSlots());
-        m.put("unsupported_slots", c.unsupportedSlots());
-        m.put("description",       c.description());
-        m.put("limitations",       c.limitations());
+        m.put("id",                    c.id());
+        m.put("name",                  c.name());
+        m.put("status",                c.status());
+        m.put("max_garments",          c.maxGarments());
+        m.put("supported_slots",       c.supportedSlots());
+        m.put("unsupported_slots",     c.unsupportedSlots());
+        m.put("description",           c.description());
+        m.put("limitations",           c.limitations());
+        m.put("output_type",           c.outputType());
+        m.put("supports_multi_garment", c.supportsMultiGarment());
+        m.put("supports_full_outfit",  c.supportsFullOutfit());
         return m;
     }
 
@@ -77,14 +80,17 @@ public class TryOnProviderRegistry {
             List<String> supportedSlots, List<String> unsupportedSlots,
             String description, List<String> limitations) {
         Map<String, Object> m = new LinkedHashMap<>();
-        m.put("id",                id);
-        m.put("name",              name);
-        m.put("status",            "planned");
-        m.put("max_garments",      maxGarments);
-        m.put("supported_slots",   supportedSlots);
-        m.put("unsupported_slots", unsupportedSlots);
-        m.put("description",       description);
-        m.put("limitations",       limitations);
+        m.put("id",                    id);
+        m.put("name",                  name);
+        m.put("status",                "planned");
+        m.put("max_garments",          maxGarments);
+        m.put("supported_slots",       supportedSlots);
+        m.put("unsupported_slots",     unsupportedSlots);
+        m.put("description",           description);
+        m.put("limitations",           limitations);
+        m.put("output_type",           "image");
+        m.put("supports_multi_garment", false);
+        m.put("supports_full_outfit",  false);
         return m;
     }
 }
