@@ -718,7 +718,9 @@
     <div class="tryon-lightbox-panel">
       <button class="tryon-lightbox-close" id="tryon-lightbox-close" aria-label="Close enlarged preview">&#215;</button>
       <img id="tryon-lightbox-img" class="tryon-lightbox-img" src="" alt="Enlarged stable outfit preview" />
-      <p class="tryon-lightbox-caption">Stable Outfit Preview &mdash; First Frame</p>
+      <!-- Fallback shown when canvas pixel export is blocked by cross-origin restrictions -->
+      <video id="tryon-lightbox-video" class="tryon-lightbox-img hidden" controls></video>
+      <p class="tryon-lightbox-caption" id="tryon-lightbox-caption">Stable Outfit Preview &mdash; First Frame</p>
     </div>
   </div>
 

@@ -3077,7 +3077,8 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
   transition: color .12s;
 }
 .tryon-lightbox-close:hover { color: #fff; }
-.tryon-lightbox-img {
+.tryon-lightbox-img,
+.tryon-lightbox-video {
   display: block;
   max-width: 88vw;
   max-height: 84vh;

@@ -1329,18 +1329,39 @@ function setupStudio() {
   });
   document.getElementById('hero-model-btn')?.addEventListener('click', switchToModelTab);
 
-  // Full-motion preview button: reveals controls and plays the full video on demand
   // Lightbox helpers
   const openLightbox = () => {
-    const canvas      = document.getElementById('tryon-preview-canvas');
-    const lightbox    = document.getElementById('tryon-lightbox');
-    const lightboxImg = document.getElementById('tryon-lightbox-img');
-    if (!canvas || !lightbox || !lightboxImg || canvas.width === 0) return;
-    lightboxImg.src = canvas.toDataURL('image/png');
+    const canvas          = document.getElementById('tryon-preview-canvas');
+    const lightbox        = document.getElementById('tryon-lightbox');
+    const lightboxImg     = document.getElementById('tryon-lightbox-img');
+    const lightboxVideo   = document.getElementById('tryon-lightbox-video');
+    const lightboxCaption = document.getElementById('tryon-lightbox-caption');
+    if (!canvas || !lightbox || canvas.width === 0) return;
+
+    // canvas.toDataURL() throws SecurityError when the video source is cross-origin
+    // and the server did not send CORS headers, causing canvas taint.
+    // In that case fall back to showing the raw video URL in a <video> element.
+    try {
+      const dataUrl = canvas.toDataURL('image/png');
+      if (lightboxImg)   { lightboxImg.src = dataUrl; lightboxImg.classList.remove('hidden'); }
+      if (lightboxVideo) { lightboxVideo.pause(); lightboxVideo.removeAttribute('src'); lightboxVideo.classList.add('hidden'); }
+      if (lightboxCaption) lightboxCaption.textContent = 'Stable Outfit Preview — First Frame';
+    } catch (_) {
+      if (lightboxImg) lightboxImg.classList.add('hidden');
+      if (lightboxVideo && state.tryOnPreview.videoUrl) {
+        lightboxVideo.src         = state.tryOnPreview.videoUrl;
+        lightboxVideo.currentTime = 0.01;
+        lightboxVideo.classList.remove('hidden');
+      }
+      if (lightboxCaption) lightboxCaption.textContent = 'Stable Outfit Preview — video (still export unavailable)';
+    }
+
     lightbox.classList.remove('hidden');
     document.body.classList.add('lightbox-open');
   };
   const closeLightbox = () => {
+    const lightboxVideo = document.getElementById('tryon-lightbox-video');
+    if (lightboxVideo) { lightboxVideo.pause(); lightboxVideo.removeAttribute('src'); }
     document.getElementById('tryon-lightbox')?.classList.add('hidden');
     document.body.classList.remove('lightbox-open');
   };
