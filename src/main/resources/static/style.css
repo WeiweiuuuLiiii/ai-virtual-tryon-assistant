@@ -1451,6 +1451,13 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
   padding: 16px;
 }
 
+/* Wardrobe panel: flex column so header stays fixed and asset list scrolls */
+.studio-wardrobe-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: 85vh;
+}
+
 .studio-mannequin-panel {
   display: flex;
   flex-direction: column;
@@ -1516,10 +1523,16 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-height: 560px;
+  flex: 1;
+  min-height: 0;      /* allows flex child to shrink below content size so overflow-y works */
   overflow-y: auto;
-  padding-right: 2px;
+  padding-right: 4px; /* room for scrollbar */
+  scroll-behavior: smooth;
 }
+.studio-asset-library::-webkit-scrollbar { width: 4px; }
+.studio-asset-library::-webkit-scrollbar-track { background: transparent; }
+.studio-asset-library::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+.studio-asset-library::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
 
 /* Draggable asset card */
 .asset-card {
