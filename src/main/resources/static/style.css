@@ -1532,6 +1532,28 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
   user-select: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
+.asset-delete-btn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.52);
+  color: #fff;
+  border: none;
+  font-size: .8rem;
+  line-height: 22px;
+  text-align: center;
+  padding: 0;
+  cursor: pointer;
+  z-index: 4;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.asset-delete-btn:hover { background: #c0392b; }
 .asset-card:hover { border-color: var(--accent); box-shadow: var(--shadow-md); }
 .asset-card.dragging { opacity: 0.45; cursor: grabbing; }
 .asset-card.asset-assigned { border-color: var(--success); }
@@ -1547,7 +1569,7 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
 .asset-card-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   padding: 6px 8px;
   gap: 6px;
   background: var(--surface);
@@ -1566,17 +1588,6 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
   text-align: left;
 }
 .asset-type-btn:hover { background: var(--accent); color: #fff; }
-.asset-remove-btn {
-  background: none;
-  border: none;
-  font-size: .8rem;
-  color: var(--text-faint);
-  cursor: pointer;
-  padding: 3px 5px;
-  border-radius: 4px;
-  line-height: 1;
-}
-.asset-remove-btn:hover { color: #c0392b; background: #fdf0ee; }
 
 /* ── Garment extraction metadata (Issue #4) ─────────────────── */
 .asset-card-info {

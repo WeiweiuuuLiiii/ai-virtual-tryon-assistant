@@ -698,6 +698,8 @@ function renderAssetLibrary() {
     return;
   }
   hint?.classList.add('hidden');
+  // Skip re-render while a card drag is in progress — destroying the source element orphans the drag.
+  if (state.draggedAssetId) return;
   lib.innerHTML = '';
   state.clothingAssets.forEach(asset => {
     const t    = ASSET_TYPES.find(x => x.key === asset.type) || ASSET_TYPES[0];
@@ -719,11 +721,12 @@ function renderAssetLibrary() {
           <p class="asset-ambiguous-label">Which item do you want to use?</p>
           <div class="asset-ambiguous-btns">${asset.possibleTypes.map(k => {
             const at = ASSET_TYPES.find(x => x.key === k) || { emoji: '?', label: k };
-            return `<button class="btn-ambiguous-choice" data-choice="${k}">${at.emoji} ${at.label}</button>`;
+            return `<button class="btn-ambiguous-choice" data-choice="${k}" draggable="false">${at.emoji} ${at.label}</button>`;
           }).join('')}</div>
         </div>` : '';
 
     card.innerHTML = `
+      <button class="asset-delete-btn" title="Remove item" draggable="false">×</button>
       <img class="asset-thumb" src="${asset.rawImageUrl}" alt="${t.label}" draggable="false" />
       <div class="asset-card-info">
         <p class="asset-item-name" title="${nameDisplay}">${nameDisplay}</p>
@@ -734,8 +737,7 @@ function renderAssetLibrary() {
         ${ambiguousPicker}
       </div>
       <div class="asset-card-footer">
-        <button class="asset-type-btn" title="Click to change type">${t.emoji} ${t.label}</button>
-        <button class="asset-remove-btn" title="Remove">✕</button>
+        <button class="asset-type-btn" title="Click to change type" draggable="false">${t.emoji} ${t.label}</button>
       </div>`;
     card.addEventListener('dragstart', e => {
       e.dataTransfer.setData('text/plain', asset.id);
@@ -746,14 +748,16 @@ function renderAssetLibrary() {
     card.addEventListener('dragend', () => {
       card.classList.remove('dragging');
       state.draggedAssetId = null;
+      renderAssetLibrary();
+    });
+    card.querySelector('.asset-delete-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      e.preventDefault();
+      removeClothingAsset(asset.id);
     });
     card.querySelector('.asset-type-btn').addEventListener('click', e => {
       e.stopPropagation();
       cycleAssetType(asset.id);
-    });
-    card.querySelector('.asset-remove-btn').addEventListener('click', e => {
-      e.stopPropagation();
-      removeClothingAsset(asset.id);
     });
     card.querySelectorAll('.btn-ambiguous-choice').forEach(btn => {
       btn.addEventListener('click', e => {
@@ -857,6 +861,8 @@ function updateDropZones() {
 function updateStudioExtras() {
   const wrap = document.getElementById('studio-extras');
   if (!wrap) return;
+  // Skip re-render while a drag is active — destroying accessory slot elements drops the drag.
+  if (state.draggedAssetId) return;
   wrap.innerHTML = '';
 
   // Accessories row — compact slots for bag, glasses, earrings, hair_accessory
