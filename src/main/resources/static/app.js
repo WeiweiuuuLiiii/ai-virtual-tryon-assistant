@@ -9,10 +9,10 @@ const state = {
   uploadedStylePhotos: [],
   // Studio — clothing asset library
   clothingAssets: [],       // [{ id, file, rawImageUrl, cleanAssetUrl, extractionStatus, detectedType, itemName, garmentDescription, garmentLayerReady, containsModel, cleanupNeeded, userTypeOverride, type }]
-  slotAssignments: { top: null, bottom: null, dress: null, outerwear: null, shoes: null, bag: null },
+  slotAssignments: { top: null, bottom: null, dress: null, outerwear: null, shoes: null, bag: null, glasses: null, earrings: null, hair_accessory: null },
   draggedAssetId: null,
   // Studio — legacy (kept for API compatibility)
-  studioItems: { top: null, bottom: null, dress: null, outerwear: null, shoes: null, bag: null },
+  studioItems: { top: null, bottom: null, dress: null, outerwear: null, shoes: null, bag: null, glasses: null, earrings: null, hair_accessory: null },
   studioScene:  null,
   studioVibe:   null,
   studioWeather: null,
@@ -583,24 +583,32 @@ function renderStyleDNA(p) {
 /* ── Clothing Asset Library (Issue #2) ───────────────────────── */
 
 const ASSET_TYPES = [
-  { key: 'top',       label: 'Top',       emoji: '👕' },
-  { key: 'bottom',    label: 'Bottom',    emoji: '👖' },
-  { key: 'dress',     label: 'Dress',     emoji: '👗' },
-  { key: 'outerwear', label: 'Layer',     emoji: '🧥' },
-  { key: 'shoes',     label: 'Shoes',     emoji: '👟' },
-  { key: 'bag',       label: 'Bag',       emoji: '👜' },
+  { key: 'top',            label: 'Top',       emoji: '👕' },
+  { key: 'bottom',         label: 'Bottom',    emoji: '👖' },
+  { key: 'dress',          label: 'Dress',     emoji: '👗' },
+  { key: 'outerwear',      label: 'Layer',     emoji: '🧥' },
+  { key: 'shoes',          label: 'Shoes',     emoji: '👟' },
+  { key: 'bag',            label: 'Bag',       emoji: '👜' },
+  { key: 'glasses',        label: 'Glasses',   emoji: '👓' },
+  { key: 'earrings',       label: 'Earrings',  emoji: '✨' },
+  { key: 'hair_accessory', label: 'Hair Acc.', emoji: '🎀' },
 ];
-const MAIN_DZ_SLOTS  = ['top', 'bottom', 'shoes'];
-const EXTRA_DZ_SLOTS = ['dress', 'outerwear', 'bag'];
+const MAIN_DZ_SLOTS         = ['top', 'bottom', 'shoes'];
+const CLOTHING_EXTRA_SLOTS  = ['dress', 'outerwear'];
+const ACCESSORY_SLOTS       = ['bag', 'glasses', 'earrings', 'hair_accessory'];
+const EXTRA_DZ_SLOTS        = [...CLOTHING_EXTRA_SLOTS, ...ACCESSORY_SLOTS];
 let _assetIdCounter  = 0;
 
 function _guessType(file) {
   const n = file.name.toLowerCase();
-  if (/shoe|boot|sneaker|heel|loafer|sandal/.test(n)) return 'shoes';
-  if (/pant|jean|skirt|short|trouser|bottom/.test(n))  return 'bottom';
-  if (/dress|gown|romper/.test(n))                     return 'dress';
-  if (/jacket|coat|outer|blazer|cardigan/.test(n))     return 'outerwear';
-  if (/bag|purse|clutch|tote/.test(n))                 return 'bag';
+  if (/shoe|boot|sneaker|heel|loafer|sandal/.test(n))   return 'shoes';
+  if (/pant|jean|skirt|short|trouser|bottom/.test(n))   return 'bottom';
+  if (/dress|gown|romper/.test(n))                      return 'dress';
+  if (/jacket|coat|outer|blazer|cardigan/.test(n))      return 'outerwear';
+  if (/bag|purse|clutch|tote|handbag/.test(n))          return 'bag';
+  if (/glass|sunglass|spectacle|eyewear/.test(n))       return 'glasses';
+  if (/earring|stud|hoop|dangle/.test(n))               return 'earrings';
+  if (/hair|headband|clip|barrette|scrunchie|bow/.test(n)) return 'hair_accessory';
   return 'top';
 }
 
@@ -620,6 +628,9 @@ function addClothingAsset(file) {
     containsModel:       false,
     cleanupNeeded:       false,
     userTypeOverride:    false,
+    ambiguous:           false,
+    possibleTypes:       [],
+    confidence:          0,
     type: _guessType(file),
   });
   renderAssetLibrary();
@@ -686,6 +697,15 @@ function renderAssetLibrary() {
     const modelBadge  = asset.containsModel
       ? `<span class="asset-model-warning">has model</span>` : '';
 
+    const ambiguousPicker = (asset.ambiguous && !asset.userTypeOverride && asset.possibleTypes.length > 1)
+      ? `<div class="asset-ambiguous-picker">
+          <p class="asset-ambiguous-label">What is this?</p>
+          <div class="asset-ambiguous-btns">${asset.possibleTypes.map(k => {
+            const at = ASSET_TYPES.find(x => x.key === k) || { emoji: '?', label: k };
+            return `<button class="btn-ambiguous-choice" data-choice="${k}">${at.emoji} ${at.label}</button>`;
+          }).join('')}</div>
+        </div>` : '';
+
     card.innerHTML = `
       <img class="asset-thumb" src="${asset.rawImageUrl}" alt="${t.label}" draggable="false" />
       <div class="asset-card-info">
@@ -694,6 +714,7 @@ function renderAssetLibrary() {
           <span class="asset-status-chip asset-status-${asset.extractionStatus}">${statusInfo.label}</span>
           ${modelBadge}
         </div>
+        ${ambiguousPicker}
       </div>
       <div class="asset-card-footer">
         <button class="asset-type-btn" title="Click to change type">${t.emoji} ${t.label}</button>
@@ -717,8 +738,23 @@ function renderAssetLibrary() {
       e.stopPropagation();
       removeClothingAsset(asset.id);
     });
+    card.querySelectorAll('.btn-ambiguous-choice').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        resolveAmbiguousType(asset.id, btn.dataset.choice);
+      });
+    });
     lib.appendChild(card);
   });
+}
+
+function resolveAmbiguousType(assetId, chosenType) {
+  const asset = state.clothingAssets.find(a => a.id === assetId);
+  if (!asset) return;
+  asset.type             = chosenType;
+  asset.userTypeOverride = true;
+  asset.ambiguous        = false;
+  renderAssetLibrary();
 }
 
 function assignAssetToSlot(assetId, slotKey) {
@@ -794,20 +830,55 @@ function updateStudioExtras() {
   const wrap = document.getElementById('studio-extras');
   if (!wrap) return;
   wrap.innerHTML = '';
-  EXTRA_DZ_SLOTS.forEach(slot => {
-    const assetId = state.slotAssignments[slot];
-    if (!assetId) return;
-    const asset = state.clothingAssets.find(a => a.id === assetId);
-    if (!asset) return;
-    const t    = ASSET_TYPES.find(x => x.key === slot) || ASSET_TYPES[0];
-    const chip = document.createElement('div');
-    chip.className = 'studio-extra-chip';
-    chip.innerHTML = `<img src="${asset.rawImageUrl}" alt="${t.label}" />
-      <span>${t.emoji} ${t.label}</span>
-      <button class="dz-clear" title="Remove">✕</button>`;
-    chip.querySelector('.dz-clear').addEventListener('click', () => unassignSlot(slot));
-    wrap.appendChild(chip);
-  });
+
+  function makeExtraGroup(label, slots) {
+    const group = document.createElement('div');
+    group.className = 'studio-extra-group';
+    group.innerHTML = `<p class="studio-extra-group-label">${label}</p>`;
+    const row = document.createElement('div');
+    row.className = 'studio-extra-row';
+    slots.forEach(slot => {
+      const t       = ASSET_TYPES.find(x => x.key === slot) || ASSET_TYPES[0];
+      const assetId = state.slotAssignments[slot];
+      const asset   = assetId ? state.clothingAssets.find(a => a.id === assetId) : null;
+      const slotEl  = document.createElement('div');
+      slotEl.className   = 'studio-extra-slot';
+      slotEl.dataset.slot = slot;
+      if (asset) {
+        slotEl.classList.add('has-item');
+        slotEl.innerHTML = `
+          <img src="${asset.rawImageUrl}" alt="${t.label}" />
+          <span class="studio-extra-label">${t.emoji} ${t.label}</span>
+          <button class="dz-clear studio-extra-clear" title="Remove">✕</button>`;
+        slotEl.querySelector('.studio-extra-clear').addEventListener('click', e => {
+          e.stopPropagation();
+          unassignSlot(slot);
+        });
+      } else {
+        slotEl.innerHTML = `<span class="studio-extra-empty">${t.emoji}<br><small>${t.label}</small></span>`;
+      }
+      slotEl.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+        slotEl.classList.add('drag-over');
+      });
+      slotEl.addEventListener('dragleave', e => {
+        if (!slotEl.contains(e.relatedTarget)) slotEl.classList.remove('drag-over');
+      });
+      slotEl.addEventListener('drop', e => {
+        e.preventDefault();
+        slotEl.classList.remove('drag-over');
+        const id = e.dataTransfer.getData('text/plain');
+        if (id) assignAssetToSlot(id, slot);
+      });
+      row.appendChild(slotEl);
+    });
+    group.appendChild(row);
+    wrap.appendChild(group);
+  }
+
+  makeExtraGroup('Clothing', CLOTHING_EXTRA_SLOTS);
+  makeExtraGroup('Accessories', ACCESSORY_SLOTS);
 }
 
 function updateStudioPieceCount() {
@@ -1095,10 +1166,16 @@ async function runTryOnGenerate() {
   // Unsupported slot check — generalized for all providers (Fix 4)
   const unsupportedFilled = filledSlots.filter(([s]) => unsupportedSls.includes(s));
   if (unsupportedFilled.length > 0) {
-    const slotStr  = unsupportedFilled.map(([s]) => s).join(', ');
-    const provName = provCap?.name || 'This provider';
+    const slotStr   = unsupportedFilled.map(([s]) => s).join(', ');
+    const provName  = provCap?.name || 'This provider';
+    const isWaveSpeed = provCap?.id === 'wavespeed_ai_virtual_outfit_tryon';
+    const accessorySlots = ['bag', 'glasses', 'earrings', 'hair_accessory'];
+    const hasAccessory = unsupportedFilled.some(([s]) => accessorySlots.includes(s));
+    const hint = (isWaveSpeed && hasAccessory)
+      ? ' WaveSpeed is not reliable for small accessories yet. Use GPT Image Static Try-On for bags, glasses, earrings, or hair accessories.'
+      : '';
     state.tryOnPreview.status  = 'failed';
-    state.tryOnPreview.message = `${provName} does not support: ${slotStr}. Remove this item before generating.`;
+    state.tryOnPreview.message = `${provName} does not support: ${slotStr}. Remove this item before generating.${hint}`;
     renderTryOnPreview();
     updateGenerateButton();
     return;
@@ -1172,12 +1249,15 @@ function generateMockCleanAsset(rawImageUrl, type) {
   // Type-aware crop regions [xStart, yStart, xEnd, yEnd] as fractions of image dimensions.
   // Isolates the relevant garment area — for model photos, removes face / off-body regions.
   const CROP_REGIONS = {
-    top:       [0.08, 0.08, 0.92, 0.62],  // upper torso only
-    bottom:    [0.08, 0.35, 0.92, 0.95],  // waist-to-ankle
-    shoes:     [0.08, 0.52, 0.92, 1.00],  // feet area
-    dress:     [0.05, 0.05, 0.95, 0.90],  // tall garment, neck-to-hem
-    outerwear: [0.05, 0.05, 0.95, 0.88],  // same as dress
-    bag:       [0.12, 0.12, 0.88, 0.88],  // center square for accessories
+    top:            [0.08, 0.08, 0.92, 0.62],  // upper torso only
+    bottom:         [0.08, 0.35, 0.92, 0.95],  // waist-to-ankle
+    shoes:          [0.08, 0.52, 0.92, 1.00],  // feet area
+    dress:          [0.05, 0.05, 0.95, 0.90],  // tall garment, neck-to-hem
+    outerwear:      [0.05, 0.05, 0.95, 0.88],  // same as dress
+    bag:            [0.12, 0.12, 0.88, 0.88],  // center square for accessories
+    glasses:        [0.15, 0.15, 0.85, 0.85],  // center square for small accessories
+    earrings:       [0.15, 0.15, 0.85, 0.85],  // center square for small accessories
+    hair_accessory: [0.10, 0.10, 0.90, 0.90],  // slightly wider for hair pieces
   };
   const [x0, y0, x1, y1] = CROP_REGIONS[type] || CROP_REGIONS.top;
 
@@ -1223,10 +1303,17 @@ async function analyzeGarmentAsset(id, file) {
     if (!asset) return;
 
     // Apply Claude-detected metadata
+    const possibleTypes = Array.isArray(meta.possible_types)
+      ? meta.possible_types.filter(t => ASSET_TYPES.find(x => x.key === t))
+      : [];
+    const isAmbiguous = !!meta.ambiguous && possibleTypes.length > 1;
+    asset.possibleTypes = possibleTypes;
+    asset.confidence    = meta.confidence ?? 0;
+    asset.ambiguous     = isAmbiguous;
     if (meta.detected_type && ASSET_TYPES.find(t => t.key === meta.detected_type)) {
       asset.detectedType = meta.detected_type;
-      // Only update the user-visible type if the user hasn't manually overridden it
-      if (!asset.userTypeOverride) asset.type = meta.detected_type;
+      // Only auto-assign type if the user hasn't overridden AND the detection is unambiguous
+      if (!asset.userTypeOverride && !isAmbiguous) asset.type = meta.detected_type;
     }
     asset.itemName           = meta.item_name           || null;
     asset.garmentDescription = meta.garment_description || null;

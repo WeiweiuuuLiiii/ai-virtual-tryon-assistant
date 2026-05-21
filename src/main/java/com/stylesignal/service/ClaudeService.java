@@ -377,18 +377,32 @@ public class ClaudeService {
         String b64 = Base64.getEncoder().encodeToString(photo.getBytes());
 
         String prompt = """
-            You are a garment analysis AI. Analyze this clothing product image.
+            You are a garment and accessory analysis AI. Analyze this image.
 
             Determine:
-            1. The garment type — one of exactly: top, bottom, dress, outerwear, shoes, bag
-            2. A descriptive item name with color and style (e.g. "White Cotton Crew-Neck T-Shirt", "Dark Wash Straight-Leg Jeans")
-            3. A one-sentence garment description (≤20 words)
-            4. Whether the photo contains a person or model wearing the item (true) vs. a flat lay or isolated product shot (false)
-            5. Whether background removal or cleanup would significantly improve this image for try-on overlay use
-            6. Which mannequin slot this garment belongs in (top, bottom, shoes — use these three for main slots)
+            1. The primary item type — one of exactly: top, bottom, dress, outerwear, shoes, bag, glasses, earrings, hair_accessory
+            2. All possible item types visible in the image (list every item type you can identify)
+            3. Confidence in your primary guess (0.0–1.0)
+            4. Whether the image is ambiguous (multiple distinct item types clearly visible — e.g. a model wearing both glasses and earrings, or a flat-lay with a bag and sunglasses)
+            5. A descriptive item name with color and style (e.g. "Black Rectangular Frame Glasses", "Gold Hoop Earrings")
+            6. A one-sentence description (≤20 words)
+            7. Whether the photo shows a person wearing the item (true) vs. a product shot (false)
+            8. Whether background removal would help for try-on overlay use
+            9. Which main mannequin slot this belongs in (top, bottom, or shoes — for clothing; or the exact accessory type for accessories)
+
+            Type definitions:
+            - top: shirts, blouses, t-shirts, sweaters, hoodies
+            - bottom: pants, jeans, skirts, shorts
+            - dress: full dresses, jumpsuits, rompers
+            - outerwear: coats, jackets, blazers, vests
+            - shoes: all footwear
+            - bag: handbags, backpacks, clutches, wallets
+            - glasses: sunglasses, eyeglasses, spectacles
+            - earrings: any ear jewelry
+            - hair_accessory: headbands, hair clips, scrunchies, hats, caps, beanies
 
             Return ONLY valid JSON:
-            {"detected_type":"top","item_name":"","garment_description":"","contains_model":false,"cleanup_needed":false,"suggested_slot":"top","extraction_status":"mock"}
+            {"detected_type":"top","possible_types":["top"],"confidence":0.95,"ambiguous":false,"item_name":"","garment_description":"","contains_model":false,"cleanup_needed":false,"suggested_slot":"top","extraction_status":"mock"}
             """;
 
         List<Object> content = List.of(

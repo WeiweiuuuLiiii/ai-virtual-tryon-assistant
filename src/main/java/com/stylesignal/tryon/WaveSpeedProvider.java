@@ -16,8 +16,8 @@ public class WaveSpeedProvider implements TryOnProvider {
 
     private static final Logger log = LoggerFactory.getLogger(WaveSpeedProvider.class);
 
-    // Stable slot order for clothes_images[]: top, outerwear, bottom, dress, shoes.
-    // Bag is excluded — WaveSpeed does not support it.
+    // Stable slot order for clothes_images[]: clothing only.
+    // Accessories (bag, glasses, earrings, hair_accessory) are excluded — not reliably supported.
     static final List<String> SLOT_ORDER = List.of("top", "outerwear", "bottom", "dress", "shoes");
 
     private final WaveSpeedService        wavespeed;
@@ -42,16 +42,17 @@ public class WaveSpeedProvider implements TryOnProvider {
             wavespeed.isConfigured() ? "active" : "not_configured",
             8,
             List.of("top", "outerwear", "bottom", "dress", "shoes"),
-            List.of("bag"),
-            "WaveSpeed AI multi-garment full-outfit try-on. Recommended for full outfit generation. "
-                + "AI-generated preview — may adjust pose or background. Generation takes 1–5 minutes.",
+            List.of("bag", "glasses", "earrings", "hair_accessory"),
+            "WaveSpeed AI multi-garment full-outfit try-on. Recommended for full clothing generation. "
+                + "AI-generated preview — may adjust pose or background. Generation takes 1–5 minutes. "
+                + "Not reliable for small accessories — use GPT Image for bags, glasses, earrings, and hair accessories.",
             List.of(
                 "Slow generation: typically 1–5 minutes per request",
                 "May change background or pose",
                 "Face identity may drift with dark or blurry input photos",
                 "Garment list is not strict slot control — results are AI-synthesised",
                 "Requires Cloudinary credentials for provider-accessible image hosting",
-                "Bag slot not supported"
+                "Accessories (bag, glasses, earrings, hair accessory) not supported — use GPT Image instead"
             ),
             "video",
             true,

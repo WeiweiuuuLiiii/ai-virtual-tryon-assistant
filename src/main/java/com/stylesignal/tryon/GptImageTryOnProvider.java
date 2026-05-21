@@ -14,8 +14,11 @@ public class GptImageTryOnProvider implements TryOnProvider {
 
     private static final Logger log = LoggerFactory.getLogger(GptImageTryOnProvider.class);
 
-    static final List<String> SUPPORTED_SLOTS   = List.of("top", "outerwear", "bottom", "dress", "shoes");
-    static final List<String> UNSUPPORTED_SLOTS = List.of("bag");
+    // All styling slots — clothing + full accessories
+    static final List<String> SUPPORTED_SLOTS   = List.of(
+        "top", "outerwear", "bottom", "dress", "shoes",
+        "bag", "glasses", "earrings", "hair_accessory");
+    static final List<String> UNSUPPORTED_SLOTS = List.of();
 
     private final OpenAiImageService openAi;
 
@@ -35,17 +38,17 @@ public class GptImageTryOnProvider implements TryOnProvider {
             "gpt_image_static_tryon",
             "GPT Image Static Try-On",
             openAi.isConfigured() ? "active" : "not_configured",
-            5,
+            8,
             SUPPORTED_SLOTS,
             UNSUPPORTED_SLOTS,
             "OpenAI GPT Image high-fidelity static outfit preview. "
-                + "Prioritizes face/body identity preservation and garment color/silhouette accuracy. "
-                + "Returns a single static image. Experimental.",
+                + "Supports full styling: clothing + bag, glasses, earrings, and hair accessories. "
+                + "Prioritizes face/body identity preservation. Returns a single static image. Experimental.",
             List.of(
                 "Experimental — output quality varies by image",
                 "Generation time: 15–60 seconds",
-                "Bag slot not supported",
                 "Data URI response (~1 MB) — may be slow on low-bandwidth connections",
+                "Accessory placement is AI-synthesised and may not be pixel-perfect",
                 "Requires OPENAI_API_KEY"
             ),
             "image",

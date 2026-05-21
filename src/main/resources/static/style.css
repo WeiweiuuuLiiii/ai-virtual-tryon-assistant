@@ -1791,46 +1791,127 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
 }
 .dz-clear:hover { background: #c0392b; }
 
-/* Extra items below mannequin */
+/* Extra items below mannequin — grouped Clothing / Accessories */
 .studio-extras {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-direction: column;
+  gap: 10px;
   margin-top: 12px;
-  justify-content: center;
   width: 100%;
 }
-.studio-extra-chip {
+.studio-extra-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.studio-extra-group-label {
+  font-size: .68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--text-faint);
+  margin: 0;
+}
+.studio-extra-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.studio-extra-slot {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
-  gap: 6px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 5px 8px;
-  font-size: .75rem;
-  color: var(--text-muted);
+  justify-content: center;
   cursor: default;
-  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+  transition: border-color .15s, background .15s;
 }
-.studio-extra-chip img {
-  width: 28px;
-  height: 28px;
+.studio-extra-slot.drag-over {
+  border-color: var(--accent);
+  background: #faf8ff;
+}
+.studio-extra-slot.has-item {
+  border-style: solid;
+  border-color: var(--border);
+}
+.studio-extra-slot img {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-  border-radius: 4px;
 }
-.studio-extra-chip .dz-clear {
-  position: static;
-  background: transparent;
-  color: var(--text-faint);
-  cursor: pointer;
+.studio-extra-label {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0,0,0,.45);
+  color: #fff;
+  font-size: .6rem;
+  text-align: center;
+  padding: 2px 0;
+  pointer-events: none;
+}
+.studio-extra-empty {
   font-size: .7rem;
-  width: auto;
-  height: auto;
-  border-radius: 3px;
-  padding: 1px 3px;
+  color: var(--text-faint);
+  text-align: center;
+  line-height: 1.3;
+  pointer-events: none;
 }
-.studio-extra-chip .dz-clear:hover { background: #fdf0ee; color: #c0392b; }
+.studio-extra-clear {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: rgba(0,0,0,.45);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  font-size: .55rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.studio-extra-clear:hover { background: rgba(192,57,43,.8); }
+
+/* Ambiguous item type picker */
+.asset-ambiguous-picker {
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: var(--radius-sm);
+}
+.asset-ambiguous-label {
+  font-size: .7rem;
+  font-weight: 600;
+  color: #7a5600;
+  margin: 0 0 4px;
+}
+.asset-ambiguous-btns {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.btn-ambiguous-choice {
+  font-size: .68rem;
+  padding: 3px 7px;
+  border: 1px solid #d4a017;
+  background: #fff;
+  color: #7a5600;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-ambiguous-choice:hover { background: #fff3cd; }
 
 /* ── Right panel: scene + AI check ─────────────────────────── */
 .studio-check-divider {

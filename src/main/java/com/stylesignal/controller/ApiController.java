@@ -236,12 +236,16 @@ public class ApiController {
             @RequestParam(value = "body_shape",        required = false)              String bodyShape,
             @RequestParam(value = "contains_model",    required = false,
                           defaultValue = "false")                                     boolean containsModel,
-            // Per-slot garment images for multi-garment providers (stable order: top, outerwear, bottom, dress, shoes)
-            @RequestParam(value = "garm_img_top",       required = false) MultipartFile garmImgTop,
-            @RequestParam(value = "garm_img_outerwear", required = false) MultipartFile garmImgOuterwear,
-            @RequestParam(value = "garm_img_bottom",    required = false) MultipartFile garmImgBottom,
-            @RequestParam(value = "garm_img_dress",     required = false) MultipartFile garmImgDress,
-            @RequestParam(value = "garm_img_shoes",     required = false) MultipartFile garmImgShoes)
+            // Per-slot garment images for multi-garment providers (stable order: top, outerwear, bottom, dress, shoes, bag, glasses, earrings, hair_accessory)
+            @RequestParam(value = "garm_img_top",            required = false) MultipartFile garmImgTop,
+            @RequestParam(value = "garm_img_outerwear",      required = false) MultipartFile garmImgOuterwear,
+            @RequestParam(value = "garm_img_bottom",         required = false) MultipartFile garmImgBottom,
+            @RequestParam(value = "garm_img_dress",          required = false) MultipartFile garmImgDress,
+            @RequestParam(value = "garm_img_shoes",          required = false) MultipartFile garmImgShoes,
+            @RequestParam(value = "garm_img_bag",            required = false) MultipartFile garmImgBag,
+            @RequestParam(value = "garm_img_glasses",        required = false) MultipartFile garmImgGlasses,
+            @RequestParam(value = "garm_img_earrings",       required = false) MultipartFile garmImgEarrings,
+            @RequestParam(value = "garm_img_hair_accessory", required = false) MultipartFile garmImgHairAccessory)
             throws Exception {
 
         log.info("POST /api/try-on/generate — slot={}, provider={}", slot, providerId);
@@ -287,14 +291,18 @@ public class ApiController {
         byte[] humanBytes = storage.loadModelPhotoBytes();
         String humanType  = "image/jpeg"; // model photos are stored as JPEG
 
-        // ── Build garments list from per-slot params (stable order: top, outerwear, bottom, dress, shoes) ──
+        // ── Build garments list from per-slot params (stable order: top, outerwear, bottom, dress, shoes, bag, glasses, earrings, hair_accessory) ──
         // Use a mutable map so null values (absent slots) do not throw NPE — Map.entry() disallows null.
         Map<String, MultipartFile> slotFiles = new LinkedHashMap<>();
-        slotFiles.put("top",       garmImgTop);
-        slotFiles.put("outerwear", garmImgOuterwear);
-        slotFiles.put("bottom",    garmImgBottom);
-        slotFiles.put("dress",     garmImgDress);
-        slotFiles.put("shoes",     garmImgShoes);
+        slotFiles.put("top",            garmImgTop);
+        slotFiles.put("outerwear",      garmImgOuterwear);
+        slotFiles.put("bottom",         garmImgBottom);
+        slotFiles.put("dress",          garmImgDress);
+        slotFiles.put("shoes",          garmImgShoes);
+        slotFiles.put("bag",            garmImgBag);
+        slotFiles.put("glasses",        garmImgGlasses);
+        slotFiles.put("earrings",       garmImgEarrings);
+        slotFiles.put("hair_accessory", garmImgHairAccessory);
 
         List<GarmentItem> garments = new ArrayList<>();
         for (Map.Entry<String, MultipartFile> entry : slotFiles.entrySet()) {

@@ -99,18 +99,18 @@ public class OpenAiImageService {
     private String buildPrompt(List<GarmentItem> garments) {
         StringBuilder sb = new StringBuilder();
         sb.append("Photorealistic virtual try-on: dress the person from the first image ");
-        sb.append("in the exact garments shown in the following reference images. ");
-        if (!garments.isEmpty()) {
-            sb.append("Reference garments provided: ");
-            for (int i = 0; i < garments.size(); i++) {
-                sb.append(garments.get(i).slot());
-                if (i < garments.size() - 1) sb.append(", ");
-            }
-            sb.append(". ");
+        sb.append("in the exact garments and accessories shown in the following reference images. ");
+        for (int i = 0; i < garments.size(); i++) {
+            sb.append("Reference image ").append(i + 2).append(": ").append(garments.get(i).slot()).append(". ");
         }
         sb.append("Preserve the person's exact face, skin tone, body shape, and identity. ");
         sb.append("Reproduce each garment's exact color, pattern, texture, cut, and fit. ");
-        sb.append("Do not invent, alter, or stylize any garment or body part. ");
+        sb.append("For glasses: place them on the person's face at the eyes. ");
+        sb.append("For earrings: place them on the earlobes. ");
+        sb.append("For hair accessory: place it in or on the hair appropriately. ");
+        sb.append("For bag: show the person holding or wearing it as intended. ");
+        sb.append("Do not confuse accessory types — do not turn earrings into glasses or vice versa. ");
+        sb.append("Do not invent, alter, or stylize any garment or accessory or body part. ");
         sb.append("Output must look like a real fashion photograph. ");
         sb.append("No cartoon, illustration, painting, rendering, or artistic stylization.");
         return sb.toString();
