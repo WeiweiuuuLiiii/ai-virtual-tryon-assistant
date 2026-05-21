@@ -3204,3 +3204,99 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
   .studio-ai-review-hdr { padding: 18px 20px 16px; }
   .ai-review-input-col, .ai-review-result-col { padding: 16px 20px; }
 }
+
+/* ── AI Review: Buy / Maybe / Skip subsection ─────────────────── */
+.ai-review-buy-section {
+  margin-bottom: 0;
+}
+.ai-review-section-label {
+  font-size: .6rem;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.28);
+  margin-bottom: 12px;
+  display: block;
+}
+.buy-skip-empty {
+  background: rgba(255,255,255,.04);
+  border: 1px dashed rgba(255,255,255,.12);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+}
+.buy-skip-empty p {
+  font-size: .78rem;
+  color: rgba(255,255,255,.35);
+  line-height: 1.6;
+  margin: 0;
+}
+.buy-skip-verdict-row {
+  margin-bottom: 14px;
+}
+.buy-skip-verdict-badge {
+  display: inline-block;
+  font-size: .9rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 8px 24px;
+  border-radius: var(--radius-sm);
+}
+.bsv-buy  { background: rgba(45,125,70,.25);  color: #7FD9A4; border: 1px solid rgba(45,125,70,.4); }
+.bsv-maybe{ background: rgba(183,119,13,.25); color: #E8B84B; border: 1px solid rgba(183,119,13,.4); }
+.bsv-skip { background: rgba(192,57,43,.25);  color: #FF8A80; border: 1px solid rgba(192,57,43,.4); }
+.buy-skip-details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.buy-skip-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.buy-skip-detail-label {
+  font-size: .58rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.28);
+}
+.buy-skip-detail-text {
+  font-size: .82rem;
+  color: rgba(255,255,255,.65);
+  line-height: 1.5;
+  margin: 0;
+}
+.buy-skip-scores-row {
+  display: flex;
+  gap: 8px;
+}
+.buy-skip-score-chip {
+  flex: 1;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: var(--radius-sm);
+  padding: 8px 6px;
+  text-align: center;
+}
+.buy-skip-score-num {
+  display: block;
+  font-size: .95rem;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1;
+  margin-bottom: 3px;
+}
+.buy-skip-score-lbl {
+  font-size: .52rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: rgba(255,255,255,.28);
+}
+.ai-review-divider {
+  border: none;
+  border-top: 1px solid rgba(255,255,255,.08);
+  margin: 18px 0;
+}

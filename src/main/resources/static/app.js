@@ -1576,6 +1576,49 @@ function renderStudioAnalysis(r) {
 
   document.getElementById('studio-analysis').classList.remove('hidden');
   document.getElementById('studio-ai-idle-msg')?.classList.add('hidden');
+
+  // ── Buy / Maybe / Skip subsection ──────────────────────────────
+  const bsvMap = {
+    works:       { cls: 'bsv-buy',   label: 'Buy' },
+    adjust:      { cls: 'bsv-maybe', label: 'Maybe' },
+    'not ideal': { cls: 'bsv-skip',  label: 'Skip' },
+    clash:       { cls: 'bsv-skip',  label: 'Skip' },
+  };
+  const bsv = bsvMap[verdict] || bsvMap.adjust;
+  const bsvBadge = document.getElementById('bsv-badge');
+  if (bsvBadge) { bsvBadge.textContent = bsv.label; bsvBadge.className = `buy-skip-verdict-badge ${bsv.cls}`; }
+
+  // "Why it works" — first two short reasons joined
+  const whyText = (r.short_reasons || []).slice(0, 2).join(' ');
+  const whyEl = document.getElementById('bsv-why');
+  if (whyEl) whyEl.textContent = whyText || '—';
+
+  // "Concerns" — body fit notes or avoid scenes as fallback
+  const concernsText = (r.body_fit_notes || []).join(' ');
+  const concernsEl = document.getElementById('bsv-concerns');
+  if (concernsEl) concernsEl.textContent = concernsText || '';
+  document.getElementById('bsv-concerns-row')?.classList.toggle('hidden', !concernsText);
+
+  // Scores
+  document.getElementById('bsv-scene-fit').textContent = fmtScore(r.scene_fit_score);
+  document.getElementById('bsv-style-fit').textContent = fmtScore(r.style_fit_score);
+
+  // "Styling tip" — first suggested swap or first complete-the-look entry
+  const swapSrc2 = r.suggested_swaps || [];
+  const ctlSrc   = Object.values(r.complete_the_look || {}).filter(Boolean);
+  let tipText = '';
+  if (swapSrc2.length > 0) {
+    const s = swapSrc2[0];
+    tipText = typeof s === 'string' ? s : `${s.item || s.from || ''} → ${s.swap || s.to || ''}`;
+  } else if (ctlSrc.length > 0) {
+    tipText = String(ctlSrc[0]);
+  }
+  const tipEl = document.getElementById('bsv-tip');
+  if (tipEl) tipEl.textContent = tipText || '';
+  document.getElementById('bsv-tip-row')?.classList.toggle('hidden', !tipText);
+
+  document.getElementById('buy-skip-empty')?.classList.add('hidden');
+  document.getElementById('buy-skip-result')?.classList.remove('hidden');
 }
 
 /* ── Scene Check ─────────────────────────────────────────────── */

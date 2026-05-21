@@ -198,8 +198,50 @@
             </div>
           </div>
 
-          <!-- Check button + Analysis result -->
+          <!-- Check button + Buy/Maybe/Skip + Analysis result -->
           <div class="ai-review-result-col">
+
+            <!-- Buy / Maybe / Skip subsection -->
+            <div class="ai-review-buy-section">
+              <p class="ai-review-section-label">Buy / Maybe / Skip</p>
+
+              <div id="buy-skip-empty" class="buy-skip-empty">
+                <p>Generate a try-on preview first. Then StyleSignal will help decide whether this look is worth buying, maybe worth styling differently, or better to skip.</p>
+              </div>
+
+              <div id="buy-skip-result" class="hidden">
+                <div class="buy-skip-verdict-row">
+                  <span class="buy-skip-verdict-badge" id="bsv-badge"></span>
+                </div>
+                <div class="buy-skip-details">
+                  <div class="buy-skip-detail-item" id="bsv-why-row">
+                    <span class="buy-skip-detail-label">Why it works</span>
+                    <p class="buy-skip-detail-text" id="bsv-why"></p>
+                  </div>
+                  <div class="buy-skip-detail-item hidden" id="bsv-concerns-row">
+                    <span class="buy-skip-detail-label">Concerns</span>
+                    <p class="buy-skip-detail-text" id="bsv-concerns"></p>
+                  </div>
+                  <div class="buy-skip-scores-row">
+                    <div class="buy-skip-score-chip">
+                      <span class="buy-skip-score-num" id="bsv-scene-fit">—</span>
+                      <span class="buy-skip-score-lbl">Scene Fit</span>
+                    </div>
+                    <div class="buy-skip-score-chip">
+                      <span class="buy-skip-score-num" id="bsv-style-fit">—</span>
+                      <span class="buy-skip-score-lbl">Style Fit</span>
+                    </div>
+                  </div>
+                  <div class="buy-skip-detail-item hidden" id="bsv-tip-row">
+                    <span class="buy-skip-detail-label">Styling tip</span>
+                    <p class="buy-skip-detail-text" id="bsv-tip"></p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="ai-review-divider"></div>
+
             <p class="studio-ai-idle-msg" id="studio-ai-idle-msg">Add garments and select a scene to enable AI Review.</p>
             <button class="btn btn-primary" id="studio-check-btn" disabled style="width:100%;justify-content:center">
               Run AI Review
