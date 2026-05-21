@@ -3011,7 +3011,90 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: #F5F3F0;
+  cursor: zoom-in;
 }
+/* Stable-preview action row (View Larger Preview) */
+.tryon-stable-actions {
+  margin-top: 8px;
+  text-align: center;
+}
+.btn-view-larger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: .73rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn-view-larger:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+/* Lightbox overlay */
+.tryon-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tryon-lightbox.hidden {
+  display: none;
+}
+.tryon-lightbox-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,.84);
+  cursor: pointer;
+}
+.tryon-lightbox-panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 92vw;
+  max-height: 92vh;
+}
+.tryon-lightbox-close {
+  position: absolute;
+  top: -40px;
+  right: 0;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,.65);
+  font-size: 1.8rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: color .12s;
+}
+.tryon-lightbox-close:hover { color: #fff; }
+.tryon-lightbox-img {
+  display: block;
+  max-width: 88vw;
+  max-height: 84vh;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 24px 80px rgba(0,0,0,.65);
+}
+.tryon-lightbox-caption {
+  margin-top: 12px;
+  font-size: .68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: rgba(255,255,255,.4);
+}
+/* Prevent body scroll when lightbox is open */
+body.lightbox-open { overflow: hidden; }
 .tryon-preview-ready-badge {
   margin-top: 8px;
   font-size: .65rem;

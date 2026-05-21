@@ -1021,6 +1021,7 @@ function renderTryOnPreview() {
     const readyBdg      = document.getElementById('tryon-preview-ready-badge');
     const videoNote     = document.getElementById('tryon-video-note');
     const fullMotionRow = document.getElementById('tryon-full-motion-row');
+    const stableActions = document.getElementById('tryon-stable-actions');
     if (state.tryOnPreview.videoUrl) {
       // WaveSpeed video path: show canvas still-frame, keep video fully hidden.
       if (img)   img.classList.add('hidden');
@@ -1030,13 +1031,15 @@ function renderTryOnPreview() {
       if (readyBdg)      readyBdg.textContent = 'Stable Outfit Preview';
       if (video && canvas) {
         if (video.dataset.loadedSrc !== state.tryOnPreview.videoUrl) {
-          // New video source: load, seek to 0.75s, draw frame to canvas.
+          // New source: seek to first frame (0.01s avoids browser seek-to-0 edge cases),
+          // draw to canvas, then keep video hidden.
           video.dataset.loadedSrc = state.tryOnPreview.videoUrl;
-          canvas.classList.add('hidden'); // hide until frame is captured
+          canvas.classList.add('hidden');
+          if (stableActions) stableActions.classList.add('hidden');
           video.src = state.tryOnPreview.videoUrl;
           video.muted = true;
           const onMeta = () => {
-            video.currentTime = 0.75;
+            video.currentTime = 0.01;
             video.removeEventListener('loadedmetadata', onMeta);
           };
           const onSeeked = () => {
@@ -1044,6 +1047,7 @@ function renderTryOnPreview() {
             canvas.height = video.videoHeight || 640;
             canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
             canvas.classList.remove('hidden');
+            if (stableActions) stableActions.classList.remove('hidden');
             video.pause();
             video.removeEventListener('seeked', onSeeked);
           };
@@ -1053,6 +1057,7 @@ function renderTryOnPreview() {
         } else {
           // Same source already loaded — canvas already has the frame, just show it.
           canvas.classList.remove('hidden');
+          if (stableActions) stableActions.classList.remove('hidden');
         }
       }
     } else if (state.tryOnPreview.imageUrl) {
@@ -1063,7 +1068,8 @@ function renderTryOnPreview() {
         video.classList.add('hidden');
         delete video.dataset.loadedSrc;
       }
-      if (canvas) canvas.classList.add('hidden');
+      if (canvas)        canvas.classList.add('hidden');
+      if (stableActions) stableActions.classList.add('hidden');
       if (videoNote)     videoNote.classList.add('hidden');
       if (fullMotionRow) fullMotionRow.classList.add('hidden');
       if (readyBdg)      readyBdg.textContent = 'Preview Ready';
@@ -1324,13 +1330,39 @@ function setupStudio() {
   document.getElementById('hero-model-btn')?.addEventListener('click', switchToModelTab);
 
   // Full-motion preview button: reveals controls and plays the full video on demand
+  // Lightbox helpers
+  const openLightbox = () => {
+    const canvas      = document.getElementById('tryon-preview-canvas');
+    const lightbox    = document.getElementById('tryon-lightbox');
+    const lightboxImg = document.getElementById('tryon-lightbox-img');
+    if (!canvas || !lightbox || !lightboxImg || canvas.width === 0) return;
+    lightboxImg.src = canvas.toDataURL('image/png');
+    lightbox.classList.remove('hidden');
+    document.body.classList.add('lightbox-open');
+  };
+  const closeLightbox = () => {
+    document.getElementById('tryon-lightbox')?.classList.add('hidden');
+    document.body.classList.remove('lightbox-open');
+  };
+
+  // Clicking the canvas or the "View Larger Preview" button opens the lightbox.
+  document.getElementById('tryon-preview-canvas')?.addEventListener('click', openLightbox);
+  document.getElementById('tryon-view-larger-btn')?.addEventListener('click', openLightbox);
+
+  // Close on ✕ button, backdrop click, or Escape key.
+  document.getElementById('tryon-lightbox-close')?.addEventListener('click', closeLightbox);
+  document.getElementById('tryon-lightbox-backdrop')?.addEventListener('click', closeLightbox);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
   // View Full Motion Preview: swap canvas still for the actual video player.
   document.getElementById('tryon-full-motion-btn')?.addEventListener('click', () => {
-    const video  = document.getElementById('tryon-preview-video');
-    const canvas = document.getElementById('tryon-preview-canvas');
-    const row    = document.getElementById('tryon-full-motion-row');
+    const video         = document.getElementById('tryon-preview-video');
+    const canvas        = document.getElementById('tryon-preview-canvas');
+    const stableActions = document.getElementById('tryon-stable-actions');
+    const row           = document.getElementById('tryon-full-motion-row');
     if (!video) return;
-    if (canvas) canvas.classList.add('hidden');
+    if (canvas)        canvas.classList.add('hidden');
+    if (stableActions) stableActions.classList.add('hidden');
     video.setAttribute('controls', '');
     video.classList.remove('hidden');
     video.currentTime = 0;

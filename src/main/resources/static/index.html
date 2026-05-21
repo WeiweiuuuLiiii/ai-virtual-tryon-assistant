@@ -147,16 +147,18 @@
           </div>
 
           <div id="tryon-state-ready" class="tryon-state hidden">
-            <!-- Canvas shows the captured still frame for WaveSpeed results. -->
-            <!-- It looks like an image — no video chrome, no right-click affordances. -->
-            <canvas id="tryon-preview-canvas" class="tryon-preview-canvas hidden"></canvas>
+            <!-- Canvas: captured first frame — no video chrome, no right-click affordances. Click to enlarge. -->
+            <canvas id="tryon-preview-canvas" class="tryon-preview-canvas hidden" title="Click to enlarge"></canvas>
             <img id="tryon-preview-img" class="tryon-preview-img" src="" alt="AI-generated try-on preview" />
             <!-- Video is kept hidden; revealed only when the user clicks View Full Motion Preview -->
             <video id="tryon-preview-video" class="tryon-preview-img hidden"></video>
             <div class="tryon-preview-ready-badge" id="tryon-preview-ready-badge"></div>
             <p id="tryon-video-note" class="tryon-video-note hidden">
-              Showing the most stable early frame from the generated try-on. Full motion preview may include AI drift, pose changes, or face/detail changes.
+              Showing the most stable first frame from the generated try-on. Full motion preview may include AI drift, pose changes, or face/detail changes.
             </p>
+            <div id="tryon-stable-actions" class="tryon-stable-actions hidden">
+              <button class="btn-view-larger" id="tryon-view-larger-btn">&#8689; View Larger Preview</button>
+            </div>
             <div id="tryon-full-motion-row" class="tryon-full-motion-row hidden">
               <button class="btn-full-motion" id="tryon-full-motion-btn">
                 &#9654; View Full Motion Preview
@@ -709,6 +711,16 @@
 
   <!-- Toast -->
   <div id="toast" class="toast" role="alert" aria-live="polite"></div>
+
+  <!-- Lightbox for enlarged stable preview -->
+  <div id="tryon-lightbox" class="tryon-lightbox hidden" role="dialog" aria-modal="true" aria-label="Enlarged stable outfit preview">
+    <div class="tryon-lightbox-backdrop" id="tryon-lightbox-backdrop"></div>
+    <div class="tryon-lightbox-panel">
+      <button class="tryon-lightbox-close" id="tryon-lightbox-close" aria-label="Close enlarged preview">&#215;</button>
+      <img id="tryon-lightbox-img" class="tryon-lightbox-img" src="" alt="Enlarged stable outfit preview" />
+      <p class="tryon-lightbox-caption">Stable Outfit Preview &mdash; First Frame</p>
+    </div>
+  </div>
 
   <script src="/app.js"></script>
 </body>
