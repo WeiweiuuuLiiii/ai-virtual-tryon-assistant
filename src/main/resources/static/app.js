@@ -1369,11 +1369,6 @@ async function analyzeGarmentAsset(id, file) {
     asset.possibleTypes = possibleTypes;
     asset.confidence    = meta.confidence ?? 0;
     asset.ambiguous     = isAmbiguous;
-    if (isAmbiguous && !asset.userTypeOverride) {
-      Object.keys(state.slotAssignments).forEach(slot => {
-        if (state.slotAssignments[slot] === asset.id) state.slotAssignments[slot] = null;
-      });
-    }
     if (meta.detected_type && ASSET_TYPES.find(t => t.key === meta.detected_type)) {
       asset.detectedType = meta.detected_type;
       // Only auto-assign type if the user hasn't overridden AND the detection is unambiguous
