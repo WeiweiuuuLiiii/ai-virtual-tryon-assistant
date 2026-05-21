@@ -2023,6 +2023,7 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
 .prov-unconfigured { background: var(--warning-bg);  color: var(--warning); }
 .prov-planned      { background: rgba(100,100,120,.10); color: var(--text-faint); }
 .prov-recommended  { background: #e8f0fb; color: #2c5fb3; }
+.prov-hifi         { background: #f0eaff; color: #6b35c0; }
 
 .prov-limitations {
   margin: 0 0 10px;

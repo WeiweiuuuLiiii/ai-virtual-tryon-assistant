@@ -895,7 +895,8 @@ function renderProviderCapability() {
     not_configured: '<span class="prov-badge prov-unconfigured">Token Missing</span>',
     planned:        '<span class="prov-badge prov-planned">Planned</span>',
   };
-  const WAVESPEED_ID = 'wavespeed_ai_virtual_outfit_tryon';
+  const WAVESPEED_ID  = 'wavespeed_ai_virtual_outfit_tryon';
+  const GPT_IMAGE_ID  = 'gpt_image_static_tryon';
 
   // Provider selector — shown when more than one real provider exists
   const selectorHtml = configured.length > 1 ? `
@@ -906,6 +907,7 @@ function renderProviderCapability() {
           data-pid="${p.id}">
           ${p.name}
           ${p.id === WAVESPEED_ID ? '<span class="prov-badge prov-recommended">Full Outfit</span>' : ''}
+          ${p.id === GPT_IMAGE_ID  ? '<span class="prov-badge prov-hifi">High Fidelity</span>'   : ''}
           ${statusBadge[p.status] || ''}
         </button>`).join('')}
     </div>` : '';
