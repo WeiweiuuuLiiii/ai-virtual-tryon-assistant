@@ -979,7 +979,7 @@ function renderTryOnPreview() {
       idle:              { text: 'Idle',              cls: 'tryon-status-idle' },
       generating:        { text: 'Generating…',       cls: 'tryon-status-generating' },
       ready:             {
-        text: state.tryOnPreview.videoUrl ? 'Generated Full-Outfit Video Preview' : 'Preview Ready',
+        text: state.tryOnPreview.videoUrl ? 'Stable Outfit Preview' : 'Preview Ready',
         cls:  'tryon-status-ready'
       },
       failed:            { text: 'Failed',            cls: 'tryon-status-failed' },
@@ -1018,13 +1018,33 @@ function renderTryOnPreview() {
     const img      = document.getElementById('tryon-preview-img');
     const video    = document.getElementById('tryon-preview-video');
     const readyBdg = document.getElementById('tryon-preview-ready-badge');
+    const videoNote = document.getElementById('tryon-video-note');
     if (state.tryOnPreview.videoUrl) {
-      if (video) { video.src = state.tryOnPreview.videoUrl; video.classList.remove('hidden'); }
-      if (img)   img.classList.add('hidden');
-      if (readyBdg) readyBdg.textContent = 'Full-Outfit Video Preview';
+      if (img) img.classList.add('hidden');
+      if (videoNote) videoNote.classList.remove('hidden');
+      if (readyBdg) readyBdg.textContent = 'Stable Outfit Preview';
+      if (video) {
+        video.classList.remove('hidden');
+        // Only re-seek when the source actually changes to avoid resetting on re-render
+        if (video.dataset.loadedSrc !== state.tryOnPreview.videoUrl) {
+          video.dataset.loadedSrc = state.tryOnPreview.videoUrl;
+          video.src = state.tryOnPreview.videoUrl;
+          video.pause();
+          // Seek to a stable early frame (0.75 s) once the video has enough metadata.
+          // The loadedmetadata event fires before any playback begins.
+          const seekOnce = () => {
+            video.currentTime = 0.75;
+            video.pause();
+            video.removeEventListener('loadedmetadata', seekOnce);
+          };
+          video.addEventListener('loadedmetadata', seekOnce);
+          video.load();
+        }
+      }
     } else if (state.tryOnPreview.imageUrl) {
       if (img)   { img.src = state.tryOnPreview.imageUrl; img.classList.remove('hidden'); }
-      if (video) video.classList.add('hidden');
+      if (video) { video.classList.add('hidden'); delete video.dataset.loadedSrc; }
+      if (videoNote) videoNote.classList.add('hidden');
       if (readyBdg) readyBdg.textContent = 'Preview Ready';
     }
   }
