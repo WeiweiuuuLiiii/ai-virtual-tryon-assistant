@@ -3312,3 +3312,26 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
   border: 1px solid rgba(183,119,13,.18);
   border-radius: var(--radius-sm);
 }
+.tryon-full-motion-row {
+  margin-top: 10px;
+  text-align: center;
+}
+.btn-full-motion {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: .75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn-full-motion:hover {
+  border-color: var(--accent);
+  color: var(--accent-dark);
+  background: var(--accent-bg);
+}

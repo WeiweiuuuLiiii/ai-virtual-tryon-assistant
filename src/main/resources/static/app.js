@@ -1015,23 +1015,26 @@ function renderTryOnPreview() {
   } else if (status === 'failed' && stateEl && state.tryOnPreview.message) {
     stateEl.innerHTML = `<p class="tryon-state-error">${state.tryOnPreview.message}</p>`;
   } else if (status === 'ready') {
-    const img      = document.getElementById('tryon-preview-img');
-    const video    = document.getElementById('tryon-preview-video');
-    const readyBdg = document.getElementById('tryon-preview-ready-badge');
-    const videoNote = document.getElementById('tryon-video-note');
+    const img           = document.getElementById('tryon-preview-img');
+    const video         = document.getElementById('tryon-preview-video');
+    const readyBdg      = document.getElementById('tryon-preview-ready-badge');
+    const videoNote     = document.getElementById('tryon-video-note');
+    const fullMotionRow = document.getElementById('tryon-full-motion-row');
     if (state.tryOnPreview.videoUrl) {
       if (img) img.classList.add('hidden');
-      if (videoNote) videoNote.classList.remove('hidden');
-      if (readyBdg) readyBdg.textContent = 'Stable Outfit Preview';
+      if (videoNote)     videoNote.classList.remove('hidden');
+      if (fullMotionRow) fullMotionRow.classList.remove('hidden');
+      if (readyBdg)      readyBdg.textContent = 'Stable Outfit Preview';
       if (video) {
+        // Strip controls so the paused frame looks like a still image, not a video player
+        video.removeAttribute('controls');
         video.classList.remove('hidden');
         // Only re-seek when the source actually changes to avoid resetting on re-render
         if (video.dataset.loadedSrc !== state.tryOnPreview.videoUrl) {
           video.dataset.loadedSrc = state.tryOnPreview.videoUrl;
           video.src = state.tryOnPreview.videoUrl;
           video.pause();
-          // Seek to a stable early frame (0.75 s) once the video has enough metadata.
-          // The loadedmetadata event fires before any playback begins.
+          // Seek to a stable early frame once metadata is available
           const seekOnce = () => {
             video.currentTime = 0.75;
             video.pause();
@@ -1043,9 +1046,14 @@ function renderTryOnPreview() {
       }
     } else if (state.tryOnPreview.imageUrl) {
       if (img)   { img.src = state.tryOnPreview.imageUrl; img.classList.remove('hidden'); }
-      if (video) { video.classList.add('hidden'); delete video.dataset.loadedSrc; }
-      if (videoNote) videoNote.classList.add('hidden');
-      if (readyBdg) readyBdg.textContent = 'Preview Ready';
+      if (video) {
+        video.removeAttribute('controls');
+        video.classList.add('hidden');
+        delete video.dataset.loadedSrc;
+      }
+      if (videoNote)     videoNote.classList.add('hidden');
+      if (fullMotionRow) fullMotionRow.classList.add('hidden');
+      if (readyBdg)      readyBdg.textContent = 'Preview Ready';
     }
   }
 }
@@ -1301,6 +1309,17 @@ function setupStudio() {
     document.querySelector('.studio-wardrobe-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
   document.getElementById('hero-model-btn')?.addEventListener('click', switchToModelTab);
+
+  // Full-motion preview button: reveals controls and plays the full video on demand
+  document.getElementById('tryon-full-motion-btn')?.addEventListener('click', () => {
+    const video = document.getElementById('tryon-preview-video');
+    const row   = document.getElementById('tryon-full-motion-row');
+    if (!video) return;
+    video.setAttribute('controls', '');
+    video.currentTime = 0;
+    video.play().catch(() => {});
+    if (row) row.classList.add('hidden');
+  });
 
   // Wire drag-and-drop on mannequin drop zones
   setupDragDrop();
