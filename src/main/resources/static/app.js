@@ -1836,6 +1836,7 @@ async function fetchCompleteTheLookSuggestions() {
     const result = await resp.json();
     const server  = result.suggestions || [];
     if (server.length > 0) {
+      state.completeLookSelected.clear(); // clear before replacement so stale selections don't survive
       state.completeLookSuggestions = server;
       state.completeLookError       = null;
       renderCompleteTheLook();
