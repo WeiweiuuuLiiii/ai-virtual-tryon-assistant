@@ -26,7 +26,7 @@ const state = {
   activeAddAbortController: null,   // AbortController for the current single or batch Add to Look fetch
   batchEditActive: false,           // true specifically during a batch edit (subset of addToLookInFlight)
   batchProgress: 0,                 // 0-100 for batch progress bar animation
-  completeLookSelected: new Set(),  // Set of selected suggestion indices for batch
+  completeLookSelected: new Set(),  // Set of `${slot}::${name}` keys for batch selection
   tryOnCache: new Map(),            // generation cache key → {status, mode, imageUrl, videoUrl}
   addToLookCache: new Map(),        // add-to-look cache key → result imageUrl (single + batch)
   // Studio — legacy (kept for API compatibility)
@@ -1485,10 +1485,13 @@ function cancelBatchAddToLook() {
 
 function toggleSuggestionSelection(idx) {
   if (state.addToLookInFlight) return; // no changes while edit in progress
-  if (state.completeLookSelected.has(idx)) {
-    state.completeLookSelected.delete(idx);
+  const s = state.completeLookSuggestions[idx];
+  if (!s) return;
+  const key = `${s.slot}::${s.name}`;
+  if (state.completeLookSelected.has(key)) {
+    state.completeLookSelected.delete(key);
   } else {
-    state.completeLookSelected.add(idx);
+    state.completeLookSelected.add(key);
   }
   renderCompleteTheLook();
 }
@@ -1735,22 +1738,26 @@ function renderCompleteTheLook() {
   // Batch progress bar — visible only during batch edit
   if (batchProgressEl) batchProgressEl.classList.toggle('hidden', !state.batchEditActive);
 
+  // Effective count = keys that still match a visible suggestion (guards against stale keys after replacement)
+  const effectiveSelCount = state.completeLookSuggestions.filter(s =>
+    state.completeLookSelected.has(`${s.slot}::${s.name}`)
+  ).length;
+
   // Refresh button — visible when there are cards, nothing is in-flight, and no selection active
   if (refreshBtn) {
     refreshBtn.classList.toggle('hidden',
       state.completeLookSuggestions.length === 0
       || state.addToLookInFlight
-      || state.completeLookSelected.size > 0);
+      || effectiveSelCount > 0);
   }
 
   // Batch action bar — visible when ≥1 card selected and no edit running
   if (batchActionBar) {
-    const selCount = state.completeLookSelected.size;
-    batchActionBar.classList.toggle('hidden', selCount === 0 || state.addToLookInFlight);
+    batchActionBar.classList.toggle('hidden', effectiveSelCount === 0 || state.addToLookInFlight);
     const countEl   = document.getElementById('batch-selected-count');
     const applyBtn  = document.getElementById('apply-selected-btn');
-    if (countEl)  countEl.textContent  = selCount === 1 ? '1 selected' : `${selCount} selected`;
-    if (applyBtn) applyBtn.disabled    = selCount === 0;
+    if (countEl)  countEl.textContent  = effectiveSelCount === 1 ? '1 selected' : `${effectiveSelCount} selected`;
+    if (applyBtn) applyBtn.disabled    = effectiveSelCount === 0;
   }
 
   if (state.completeLookLoading) {
@@ -1770,7 +1777,8 @@ function renderCompleteTheLook() {
   cardsEl.innerHTML = state.completeLookSuggestions.map((s, i) => {
     const thumb      = generateSuggestionThumbnail(s.slot, s.name);
     const slotLbl    = (s.slot || '').replace(/_/g, ' ');
-    const isSelected = state.completeLookSelected.has(i);
+    const selKey     = `${s.slot}::${s.name}`;
+    const isSelected = state.completeLookSelected.has(selKey);
     const isActive   = inFlight && state.addToLookActiveIdx === i;
     const isWaiting  = inFlight && !state.batchEditActive && state.addToLookActiveIdx !== i;
     const addTxt     = isActive ? 'Adding…' : (isWaiting ? 'Wait for current edit' : '+ Add to Look');
@@ -1925,8 +1933,9 @@ async function applySelectedToLook() {
   if (state.addToLookInFlight) return;
   if (state.completeLookSelected.size === 0 || !state.tryOnPreview.imageUrl) return;
 
-  const sortedIndices  = [...state.completeLookSelected].sort((a, b) => a - b);
-  const selectedItems  = sortedIndices.map(i => state.completeLookSuggestions[i]).filter(Boolean);
+  const selectedItems = state.completeLookSuggestions.filter(s =>
+    state.completeLookSelected.has(`${s.slot}::${s.name}`)
+  );
   if (selectedItems.length === 0) return;
 
   // Batch cache key — sorted by slot+name so order doesn't matter
