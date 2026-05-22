@@ -1399,7 +1399,12 @@ async function runTryOnGenerate() {
     state.tryOnPreview.status  = 'failed';
     state.tryOnPreview.message = err.message;
   } finally {
-    stopGenerationProgress(myId === state.generationRequestId && state.tryOnPreview.status === 'ready');
+    const succeeded = myId === state.generationRequestId && state.tryOnPreview.status === 'ready';
+    if (succeeded) {
+      await finishGenerationProgress(); // paint 100% before switching panel
+    } else {
+      stopGenerationProgress(false);
+    }
     if (myId === state.generationRequestId) {
       state.activeAbortController = null;
       renderTryOnPreview();
@@ -1470,6 +1475,12 @@ function stopGenerationProgress(success) {
     if (fill) { fill.style.transition = 'none'; fill.style.width = '0%'; }
     if (pct)  pct.textContent = '0%';
   }
+}
+
+async function finishGenerationProgress() {
+  stopGenerationProgress(true);
+  await new Promise(requestAnimationFrame);
+  await new Promise(resolve => setTimeout(resolve, 200));
 }
 
 function cancelGeneration() {
