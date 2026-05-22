@@ -3213,6 +3213,33 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
   height: 40px;
   border-width: 3px;
 }
+.gen-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.gen-progress-track {
+  flex: 1;
+  height: 5px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.gen-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width .6s ease-out;
+}
+.gen-progress-pct {
+  font-size: .68rem;
+  color: var(--text-faint);
+  white-space: nowrap;
+  min-width: 28px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
 .btn-cancel-generation {
   display: block;
   margin: 0 auto 20px;

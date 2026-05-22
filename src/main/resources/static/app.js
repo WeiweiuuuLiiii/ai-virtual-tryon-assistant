@@ -1158,21 +1158,6 @@ function renderTryOnPreview() {
     badge.className   = `tryon-status-badge ${info.cls}`;
   }
 
-  if (status === 'generating') {
-    const msgEl = document.getElementById('tryon-generating-msg');
-    const subEl = document.getElementById('tryon-generating-sub');
-    if (msgEl) {
-      const cap = getSelectedProviderCapability();
-      if (cap?.output_type === 'video') {
-        msgEl.textContent = 'Generating full outfit preview…';
-        if (subEl) subEl.textContent = 'This may take 1–5 minutes. AI-generated — may adjust pose or background. Please keep this page open.';
-      } else {
-        msgEl.textContent = 'Generating high-quality preview…';
-        if (subEl) subEl.textContent = 'This may take 1–3 minutes. Keep this page open.';
-      }
-    }
-  }
-
   if (status === 'provider_required' && stateEl) {
     stateEl.innerHTML = `
       <div class="tryon-provider-box">
@@ -1264,7 +1249,7 @@ function renderTryOnPreview() {
   }
 }
 
-let _generatingSlowTimer = null;
+let _generatingProgressTimer = null;
 
 async function runTryOnGenerate() {
   // Only send slots that are active in the current mode
@@ -1287,6 +1272,7 @@ async function runTryOnGenerate() {
   const maxGarments    = provCap?.max_garments    ?? 1;
   const unsupportedSls = provCap?.unsupported_slots ?? [];
   const isMultiGarment = maxGarments > 1;
+  const isVideo        = provCap?.output_type === 'video';
 
   // Unsupported slot check — generalized for all providers (Fix 4)
   const unsupportedFilled = filledSlots.filter(([s]) => unsupportedSls.includes(s));
@@ -1352,16 +1338,7 @@ async function runTryOnGenerate() {
   state.tryOnPreview.message  = null;
   renderTryOnPreview();
 
-  // Slow-generation escalation message after 90 s.
-  if (_generatingSlowTimer) clearTimeout(_generatingSlowTimer);
-  _generatingSlowTimer = setTimeout(() => {
-    if (state.tryOnPreview.status === 'generating' && myId === state.generationRequestId) {
-      const msgEl = document.getElementById('tryon-generating-msg');
-      const subEl = document.getElementById('tryon-generating-sub');
-      if (msgEl) msgEl.textContent = 'Still working on the high-quality preview…';
-      if (subEl) subEl.textContent = 'Large image edits can take a few minutes.';
-    }
-  }, 90000);
+  startGenerationProgress(myId, isVideo);
 
   const btn = document.getElementById('studio-generate-btn');
   if (btn) btn.disabled = true;
@@ -1422,12 +1399,76 @@ async function runTryOnGenerate() {
     state.tryOnPreview.status  = 'failed';
     state.tryOnPreview.message = err.message;
   } finally {
-    if (_generatingSlowTimer) { clearTimeout(_generatingSlowTimer); _generatingSlowTimer = null; }
+    stopGenerationProgress(myId === state.generationRequestId && state.tryOnPreview.status === 'ready');
     if (myId === state.generationRequestId) {
       state.activeAbortController = null;
       renderTryOnPreview();
       updateGenerateButton();
     }
+  }
+}
+
+function startGenerationProgress(myId, isVideo) {
+  const fill  = document.getElementById('gen-progress-fill');
+  const pct   = document.getElementById('gen-progress-pct');
+  const msgEl = document.getElementById('tryon-generating-msg');
+  const subEl = document.getElementById('tryon-generating-sub');
+
+  const stages = [
+    { at:  0, text: 'Preparing your model and outfit…' },
+    { at: 15, text: 'Sending outfit references…' },
+    { at: 35, text: isVideo ? 'Generating full outfit preview…' : 'Generating high-quality preview…' },
+    { at: 75, text: 'Preserving face, outfit, and styling details…' },
+    { at: 95, text: 'Finalizing preview…' },
+  ];
+  const initSub = isVideo
+    ? 'This may take 1–5 minutes. AI-generated — may adjust pose or background. Keep this page open.'
+    : 'This may take 1–3 minutes. Keep this page open.';
+
+  if (fill) { fill.style.transition = 'none'; fill.style.width = '0%'; }
+  if (pct)  pct.textContent = '0%';
+  if (msgEl) msgEl.textContent = stages[0].text;
+  if (subEl) subEl.textContent = initSub;
+
+  const startMs = Date.now();
+  let escalated = false;
+
+  if (_generatingProgressTimer) clearInterval(_generatingProgressTimer);
+  _generatingProgressTimer = setInterval(() => {
+    if (myId !== state.generationRequestId) {
+      clearInterval(_generatingProgressTimer);
+      _generatingProgressTimer = null;
+      return;
+    }
+    const elapsed = (Date.now() - startMs) / 1000;
+    const p = Math.min(95, Math.round(95 * (1 - Math.exp(-elapsed / 60))));
+    if (fill) { fill.style.transition = 'width .6s ease-out'; fill.style.width = p + '%'; }
+    if (pct)  pct.textContent = p + '%';
+
+    if (elapsed >= 120 && !escalated) {
+      escalated = true;
+      if (msgEl) msgEl.textContent = 'Still working on the high-quality preview…';
+      if (subEl) subEl.textContent = 'Large image edits can take a few minutes.';
+    } else if (!escalated) {
+      const stage = [...stages].reverse().find(s => p >= s.at);
+      if (stage && msgEl) msgEl.textContent = stage.text;
+    }
+  }, 800);
+}
+
+function stopGenerationProgress(success) {
+  if (_generatingProgressTimer) {
+    clearInterval(_generatingProgressTimer);
+    _generatingProgressTimer = null;
+  }
+  const fill = document.getElementById('gen-progress-fill');
+  const pct  = document.getElementById('gen-progress-pct');
+  if (success) {
+    if (fill) { fill.style.transition = 'width .3s ease-out'; fill.style.width = '100%'; }
+    if (pct)  pct.textContent = '100%';
+  } else {
+    if (fill) { fill.style.transition = 'none'; fill.style.width = '0%'; }
+    if (pct)  pct.textContent = '0%';
   }
 }
 
@@ -1440,7 +1481,7 @@ function cancelGeneration() {
     state.activeAddAbortController.abort();
     state.activeAddAbortController = null;
   }
-  if (_generatingSlowTimer) { clearTimeout(_generatingSlowTimer); _generatingSlowTimer = null; }
+  stopGenerationProgress(false);
   state.generationRequestId++;
   state.addToLookRequestId++;
   state.addToLookInFlight       = false;
