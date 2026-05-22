@@ -95,18 +95,29 @@ public class OpenAiImageService {
 
     /**
      * Edits an existing preview image to add a single described item (for Complete the Look).
+     * If referenceBytes is provided (SVG thumbnail rendered to PNG), it is sent as a second
+     * image so the model can see the item's colour and shape, not just a text description.
      */
     public Map<String, Object> addItemToPreview(
-            byte[] previewBytes, String previewType, String slot, String itemDescription) throws Exception {
+            byte[] previewBytes, String previewType,
+            byte[] referenceBytes, String referenceType,
+            String slot, String itemDescription) throws Exception {
 
         String boundary = "----OpenAiBoundary" + UUID.randomUUID().toString().replace("-", "");
         String slotLabel = slot != null ? slot.replace('_', ' ') : "accessory";
-        String prompt = "Add a " + itemDescription + " (" + slotLabel + ") to the person in this image. "
+        boolean hasRef = referenceBytes != null && referenceBytes.length > 0;
+
+        String prompt = (hasRef
+            ? "The first image is the current outfit preview. "
+              + "The second image shows the colour and shape of the " + slotLabel + " to add. "
+            : "The image is the current outfit preview. ")
+            + "Add a " + itemDescription + " (" + slotLabel + ") to the person. "
+            + "Match the colour and style of the item to the description: " + itemDescription + ". "
             + "Preserve the person's exact face, skin tone, body shape, pose, and all existing outfit items. "
             + "Preserve the background exactly. "
             + "Only add the requested " + slotLabel + " — do not change or remove anything else. "
-            + "Place accessories in the anatomically correct location (glasses on face, earrings on ears, "
-            + "bag held or worn, hair accessory on hair). "
+            + "Place accessories anatomically: glasses on face, earrings on ears, "
+            + "bag held or worn on shoulder/arm, hair accessory on hair. "
             + "Output must look like a real fashion photograph. No cartoon or artistic stylization.";
 
         ByteArrayOutputStream out  = new ByteArrayOutputStream();
@@ -118,10 +129,15 @@ public class OpenAiImageService {
         writeTextField(out, boundary, "quality", "high",      crlf);
         String ext = previewType != null && previewType.contains("png") ? "png" : "jpg";
         writeFileField(out, boundary, "image[]", "preview." + ext, previewBytes, previewType, crlf);
+        if (hasRef) {
+            String refExt = referenceType != null && referenceType.contains("png") ? "png" : "jpg";
+            writeFileField(out, boundary, "image[]", "reference." + refExt,
+                           referenceBytes, referenceType, crlf);
+        }
         out.write(("--" + boundary + "--" + crlf).getBytes(StandardCharsets.UTF_8));
         byte[] body = out.toByteArray();
 
-        log.info("GPT Image add-item request — slot={}", slot);
+        log.info("GPT Image add-item request — slot={}, hasReference={}", slot, hasRef);
         HttpRequest req = HttpRequest.newBuilder()
             .uri(URI.create(OPENAI_API + "/images/edits"))
             .header("Authorization", "Bearer " + apiKey)

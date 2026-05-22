@@ -1359,12 +1359,226 @@ function cancelGeneration() {
   updateGenerateButton();
 }
 
-/* ── Complete the Look (Issue #18) ─────────────────────────────── */
+/* ── Complete the Look (Issue #18) — SVG product thumbnails ─────── */
 
-const SLOT_EMOJI_MAP = {
-  top: '👕', bottom: '👖', dress: '👗', outerwear: '🧥',
-  shoes: '👟', bag: '👜', glasses: '👓', earrings: '✨', hair_accessory: '🎀',
-};
+// Detect primary colour from item name keywords
+function _ctl_color(name) {
+  const n = (name || '').toLowerCase();
+  const has = (...ws) => ws.some(w => n.includes(w));
+  if (has('black','ebony','onyx'))                    return {bg:'#e8e5e0',main:'#2c2c2c',light:'#484848',dark:'#1a1a1a'};
+  if (has('tan','camel','khaki','sand','nude'))        return {bg:'#f7f0e3',main:'#c8a97a',light:'#dfc09a',dark:'#a07848'};
+  if (has('cream','ivory','ecru'))                     return {bg:'#f8f5ec',main:'#ddd3b5',light:'#f0e8d0',dark:'#b8aa80'};
+  if (has('gold','golden'))                            return {bg:'#faf5e0',main:'#d4af37',light:'#e8c84a',dark:'#b8960c'};
+  if (has('silver','grey','gray','platinum'))          return {bg:'#f0f0f5',main:'#9a9aa8',light:'#b4b4c0',dark:'#6a6a78'};
+  if (has('brown','cognac','chocolate','chestnut'))    return {bg:'#f5ede4',main:'#8b5e3c',light:'#a87050',dark:'#6b4020'};
+  if (has('navy','cobalt','indigo','blue','denim'))    return {bg:'#e8edf5',main:'#1e3a5f',light:'#2d5a8f',dark:'#0d2040'};
+  if (has('burgundy','wine','maroon','red','cherry'))  return {bg:'#f5e8e8',main:'#8b1a2a',light:'#c03030',dark:'#5b0a12'};
+  if (has('blush','pink','rose','mauve'))              return {bg:'#fdf0f3',main:'#d4879a',light:'#e8a0b4',dark:'#a8607a'};
+  if (has('green','sage','olive','forest','emerald'))  return {bg:'#ecf2ec',main:'#4a7050',light:'#608060',dark:'#2a4830'};
+  if (has('white','snow'))                             return {bg:'#f8f8f8',main:'#e0ddd8',light:'#f0eee8',dark:'#b0aca4'};
+  if (has('pearl'))                                    return {bg:'#faf8f5',main:'#e8e0d8',light:'#f8f4f0',dark:'#c8bdb0'};
+  if (has('rust','terracotta','burnt','orange'))       return {bg:'#f8ede6',main:'#c0582a',light:'#d87040',dark:'#8b3810'};
+  return {bg:'#f5f0ec',main:'#8c7c6c',light:'#a89888',dark:'#6c5c4c'};
+}
+
+function _ctl_bg(c) {
+  return `<rect width="120" height="150" fill="${c.bg}" rx="6"/>`;
+}
+
+function _ctl_svgBag(c) {
+  return `${_ctl_bg(c)}
+    <path d="M36,52 C36,34 84,34 84,52" stroke="${c.dark}" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <rect x="18" y="52" width="84" height="74" rx="8" fill="${c.main}"/>
+    <rect x="18" y="52" width="84" height="22" rx="8" fill="${c.light}" opacity="0.4"/>
+    <rect x="44" y="86" width="32" height="10" rx="4" fill="${c.dark}" opacity="0.6"/>
+    <circle cx="60" cy="91" r="3" fill="${c.light}" opacity="0.7"/>`;
+}
+
+function _ctl_svgGlasses(c, name) {
+  const bg = _ctl_bg(c);
+  if (/round|circle|oval/i.test(name || '')) {
+    return `${bg}
+      <circle cx="34" cy="80" r="20" fill="${c.bg}" stroke="${c.main}" stroke-width="6"/>
+      <circle cx="86" cy="80" r="20" fill="${c.bg}" stroke="${c.main}" stroke-width="6"/>
+      <path d="M54,80 Q60,74 66,80" stroke="${c.main}" stroke-width="5" fill="none"/>
+      <line x1="14" y1="74" x2="4" y2="70" stroke="${c.main}" stroke-width="5" stroke-linecap="round"/>
+      <line x1="106" y1="74" x2="116" y2="70" stroke="${c.main}" stroke-width="5" stroke-linecap="round"/>`;
+  }
+  return `${bg}
+    <rect x="5" y="64" width="50" height="32" rx="7" fill="${c.bg}" stroke="${c.main}" stroke-width="6"/>
+    <rect x="65" y="64" width="50" height="32" rx="7" fill="${c.bg}" stroke="${c.main}" stroke-width="6"/>
+    <line x1="55" y1="80" x2="65" y2="80" stroke="${c.main}" stroke-width="5"/>
+    <line x1="5" y1="77" x2="0" y2="72" stroke="${c.main}" stroke-width="5" stroke-linecap="round"/>
+    <line x1="115" y1="77" x2="120" y2="72" stroke="${c.main}" stroke-width="5" stroke-linecap="round"/>`;
+}
+
+function _ctl_svgEarrings(c, name) {
+  const n = name || '';
+  const bg = _ctl_bg(c);
+  if (/hoop|ring/i.test(n)) {
+    return `${bg}
+      <circle cx="30" cy="90" r="25" fill="none" stroke="${c.main}" stroke-width="7"/>
+      <circle cx="90" cy="90" r="25" fill="none" stroke="${c.main}" stroke-width="7"/>
+      <circle cx="30" cy="58" r="5" fill="${c.main}"/>
+      <circle cx="90" cy="58" r="5" fill="${c.main}"/>`;
+  }
+  if (/pearl|stud|ball/i.test(n)) {
+    return `${bg}
+      <line x1="34" y1="44" x2="34" y2="62" stroke="${c.dark}" stroke-width="3"/>
+      <circle cx="34" cy="80" r="18" fill="${c.main}"/>
+      <circle cx="28" cy="74" r="5" fill="white" opacity="0.4"/>
+      <line x1="86" y1="44" x2="86" y2="62" stroke="${c.dark}" stroke-width="3"/>
+      <circle cx="86" cy="80" r="18" fill="${c.main}"/>
+      <circle cx="80" cy="74" r="5" fill="white" opacity="0.4"/>`;
+  }
+  return `${bg}
+    <line x1="34" y1="38" x2="34" y2="58" stroke="${c.main}" stroke-width="3"/>
+    <ellipse cx="34" cy="86" rx="12" ry="20" fill="${c.main}"/>
+    <ellipse cx="28" cy="78" rx="4" ry="6" fill="white" opacity="0.3"/>
+    <line x1="86" y1="38" x2="86" y2="58" stroke="${c.main}" stroke-width="3"/>
+    <ellipse cx="86" cy="86" rx="12" ry="20" fill="${c.main}"/>
+    <ellipse cx="80" cy="78" rx="4" ry="6" fill="white" opacity="0.3"/>`;
+}
+
+function _ctl_svgHairAccessory(c, name) {
+  const n = name || '';
+  const bg = _ctl_bg(c);
+  if (/bow|ribbon|scrunchie/i.test(n)) {
+    return `${bg}
+      <path d="M60,78 L18,50 L32,78 L18,106 Z" fill="${c.main}"/>
+      <path d="M60,78 L102,50 L88,78 L102,106 Z" fill="${c.main}"/>
+      <path d="M60,78 L25,56 L36,78 L25,100 Z" fill="${c.light}" opacity="0.4"/>
+      <path d="M60,78 L95,56 L84,78 L95,100 Z" fill="${c.light}" opacity="0.4"/>
+      <ellipse cx="60" cy="78" rx="11" ry="15" fill="${c.dark}"/>
+      <ellipse cx="57" cy="73" rx="4" ry="5" fill="${c.light}" opacity="0.4"/>`;
+  }
+  if (/headband|band/i.test(n)) {
+    return `${bg}
+      <path d="M12,118 Q60,22 108,118" stroke="${c.main}" stroke-width="14" fill="none" stroke-linecap="round"/>
+      <path d="M18,112 Q60,30 102,112" stroke="${c.light}" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.5"/>`;
+  }
+  if (/hat|cap|beanie|beret/i.test(n)) {
+    return `${bg}
+      <ellipse cx="60" cy="70" rx="46" ry="34" fill="${c.main}"/>
+      <ellipse cx="60" cy="96" rx="52" ry="9" fill="${c.dark}" opacity="0.7"/>
+      <ellipse cx="48" cy="58" rx="16" ry="10" fill="${c.light}" opacity="0.35"/>`;
+  }
+  return `${bg}
+    <rect x="28" y="50" width="64" height="46" rx="14" fill="${c.main}"/>
+    <path d="M36,50 L40,28 M50,50 L54,26 M64,50 L68,26 M78,50 L82,28 M88,50 L92,30" stroke="${c.dark}" stroke-width="5" stroke-linecap="round" fill="none"/>
+    <path d="M36,96 L40,118 M50,96 L54,120 M64,96 L68,120 M78,96 L82,118 M88,96 L92,116" stroke="${c.dark}" stroke-width="5" stroke-linecap="round" fill="none"/>
+    <line x1="28" y1="73" x2="92" y2="73" stroke="${c.light}" stroke-width="3" opacity="0.5"/>`;
+}
+
+function _ctl_svgShoes(c, name) {
+  const n = name || '';
+  const bg = _ctl_bg(c);
+  if (/heel|pump|stiletto|wedge/i.test(n)) {
+    return `${bg}
+      <path d="M10,98 Q14,68 38,58 Q72,50 100,60 Q110,67 108,82 L102,98 Z" fill="${c.main}"/>
+      <path d="M10,98 Q13,76 32,66" stroke="${c.light}" stroke-width="3" fill="none" opacity="0.6"/>
+      <path d="M98,98 L98,112 L110,112 L110,80 Z" fill="${c.dark}"/>
+      <ellipse cx="54" cy="100" rx="46" ry="5" fill="${c.dark}" opacity="0.7"/>`;
+  }
+  if (/sneaker|trainer|runner|sport/i.test(n)) {
+    return `${bg}
+      <path d="M8,96 Q12,66 32,56 Q68,46 96,56 Q114,64 112,82 L106,96 Z" fill="${c.main}"/>
+      <path d="M36,56 Q44,48 52,56" fill="${c.light}" stroke="${c.dark}" stroke-width="1.5"/>
+      <line x1="38" y1="62" x2="78" y2="62" stroke="white" stroke-width="2" opacity="0.6"/>
+      <line x1="38" y1="70" x2="78" y2="70" stroke="white" stroke-width="2" opacity="0.6"/>
+      <path d="M18,82 Q50,66 82,74" stroke="${c.light}" stroke-width="5" fill="none" opacity="0.4"/>
+      <rect x="6" y="94" width="108" height="10" rx="4" fill="${c.dark}" opacity="0.75"/>`;
+  }
+  return `${bg}
+    <path d="M10,92 Q14,64 36,54 Q70,46 96,58 Q110,66 108,82 L102,92 Z" fill="${c.main}"/>
+    <path d="M30,56 Q26,64 24,76" stroke="${c.dark}" stroke-width="3" fill="none" opacity="0.6"/>
+    <path d="M52,60 Q60,52 68,60" stroke="${c.dark}" stroke-width="4" fill="none"/>
+    <ellipse cx="56" cy="94" rx="48" ry="5" fill="${c.dark}" opacity="0.7"/>`;
+}
+
+function _ctl_svgOuterwear(c, name) {
+  const bg = _ctl_bg(c);
+  if (/blazer|jacket|suit/i.test(name || '')) {
+    return `${bg}
+      <path d="M22,28 L18,130 L56,130 L60,80 L64,130 L102,130 L98,28 L80,14 L60,32 L40,14 Z" fill="${c.main}"/>
+      <path d="M60,32 L40,14 L22,28 L26,72 Z" fill="${c.dark}" opacity="0.4"/>
+      <path d="M60,32 L80,14 L98,28 L94,72 Z" fill="${c.dark}" opacity="0.4"/>
+      <circle cx="60" cy="95" r="5" fill="${c.light}" opacity="0.8"/>
+      <circle cx="60" cy="112" r="5" fill="${c.light}" opacity="0.8"/>`;
+  }
+  return `${bg}
+    <path d="M22,26 L16,130 L54,130 L60,80 L66,130 L104,130 L98,26 L78,12 L60,30 L42,12 Z" fill="${c.main}"/>
+    <path d="M60,30 L42,12 L22,26 L26,72 Z" fill="${c.dark}" opacity="0.35"/>
+    <path d="M60,30 L78,12 L98,26 L94,72 Z" fill="${c.dark}" opacity="0.35"/>
+    <rect x="18" y="82" width="84" height="7" rx="3" fill="${c.dark}" opacity="0.5"/>
+    <rect x="50" y="80" width="20" height="11" rx="3" fill="${c.light}" opacity="0.7"/>`;
+}
+
+function _ctl_svgTop(c) {
+  return `${_ctl_bg(c)}
+    <path d="M32,30 L16,48 L28,60 L38,50 L38,128 L82,128 L82,50 L92,60 L104,48 L88,30 L72,22 L60,30 L48,22 Z" fill="${c.main}"/>
+    <path d="M48,30 L60,46 L72,30" stroke="${c.dark}" stroke-width="2.5" fill="none"/>
+    <path d="M42,50 L42,128 L46,128 L46,50 Z" fill="${c.light}" opacity="0.3"/>`;
+}
+
+function _ctl_svgBottom(c, name) {
+  const bg = _ctl_bg(c);
+  if (/skirt|midi|maxi/i.test(name || '')) {
+    return `${bg}
+      <path d="M36,32 L22,130 L98,130 L84,32 Z" fill="${c.main}"/>
+      <rect x="33" y="28" width="54" height="10" rx="4" fill="${c.dark}" opacity="0.7"/>
+      <path d="M50,42 L42,130" stroke="${c.light}" stroke-width="2" opacity="0.4"/>`;
+  }
+  return `${bg}
+    <path d="M24,30 L18,130 L52,130 L60,90 L68,130 L102,130 L96,30 Z" fill="${c.main}"/>
+    <rect x="21" y="26" width="78" height="10" rx="4" fill="${c.dark}" opacity="0.7"/>
+    <line x1="42" y1="42" x2="36" y2="130" stroke="${c.light}" stroke-width="1.5" opacity="0.4"/>
+    <line x1="78" y1="42" x2="84" y2="130" stroke="${c.light}" stroke-width="1.5" opacity="0.4"/>`;
+}
+
+function _ctl_svgDress(c) {
+  return `${_ctl_bg(c)}
+    <path d="M40,18 L36,68 L16,130 L104,130 L84,68 L80,18 Z" fill="${c.main}"/>
+    <path d="M40,20 Q60,36 80,20" stroke="${c.dark}" stroke-width="2.5" fill="none"/>
+    <line x1="36" y1="68" x2="84" y2="68" stroke="${c.dark}" stroke-width="1.5" opacity="0.5"/>
+    <path d="M48,22 L44,68 L32,130 L36,130 L48,68 L52,22 Z" fill="${c.light}" opacity="0.3"/>`;
+}
+
+// Returns an SVG data URI thumbnail for a suggestion card
+function generateSuggestionThumbnail(slot, name) {
+  const c = _ctl_color(name);
+  let inner = '';
+  switch (slot) {
+    case 'bag':            inner = _ctl_svgBag(c);              break;
+    case 'glasses':        inner = _ctl_svgGlasses(c, name);    break;
+    case 'earrings':       inner = _ctl_svgEarrings(c, name);   break;
+    case 'hair_accessory': inner = _ctl_svgHairAccessory(c, name); break;
+    case 'shoes':          inner = _ctl_svgShoes(c, name);      break;
+    case 'outerwear':      inner = _ctl_svgOuterwear(c, name);  break;
+    case 'top':            inner = _ctl_svgTop(c);              break;
+    case 'bottom':         inner = _ctl_svgBottom(c, name);     break;
+    case 'dress':          inner = _ctl_svgDress(c);            break;
+    default:
+      inner = `${_ctl_bg(c)}<path d="M60,20 L96,60 L60,130 L24,60 Z" fill="${c.main}"/>`;
+  }
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 150">${inner}</svg>`);
+}
+
+// Render SVG data URI to a PNG Blob (for wardrobe asset and reference image upload)
+function svgDataUriToBlob(svgDataUri, w, h) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width  = w || 240;
+      canvas.height = h || 300;
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(blob => resolve(blob), 'image/png');
+    };
+    img.src = svgDataUri;
+  });
+}
 
 function renderCompleteTheLook() {
   const section = document.getElementById('complete-the-look');
@@ -1387,11 +1601,13 @@ function renderCompleteTheLook() {
   }
 
   cardsEl.innerHTML = state.completeLookSuggestions.map((s, i) => {
-    const emoji    = SLOT_EMOJI_MAP[s.slot] || '✦';
-    const slotLbl  = (s.slot || '').replace(/_/g, ' ');
+    const thumb   = generateSuggestionThumbnail(s.slot, s.name);
+    const slotLbl = (s.slot || '').replace(/_/g, ' ');
     return `
       <div class="complete-look-card">
-        <div class="complete-look-card-thumb" aria-label="${slotLbl}">${emoji}</div>
+        <div class="complete-look-card-thumb">
+          <img src="${thumb}" alt="${slotLbl}" draggable="false" />
+        </div>
         <div class="complete-look-card-info">
           <span class="complete-look-card-slot">${slotLbl}</span>
           <span class="complete-look-card-name">${s.name || ''}</span>
@@ -1446,9 +1662,13 @@ async function addSuggestionToLook(idx, btn) {
   btn.textContent = 'Adding…';
 
   try {
-    const previewBlob = await dataUrlToBlob(state.tryOnPreview.imageUrl);
+    const previewBlob   = await dataUrlToBlob(state.tryOnPreview.imageUrl);
+    const thumbUri      = generateSuggestionThumbnail(suggestion.slot, suggestion.name);
+    const referenceBlob = await svgDataUriToBlob(thumbUri, 240, 300);
+
     const form = new FormData();
-    form.append('preview_image',    previewBlob, 'preview.png');
+    form.append('preview_image',    previewBlob,   'preview.png');
+    form.append('reference_image',  referenceBlob, 'reference.png');
     form.append('slot',             suggestion.slot);
     form.append('item_description', suggestion.name);
 
@@ -1471,7 +1691,7 @@ async function addSuggestionToLook(idx, btn) {
   }
 }
 
-function addSuggestionToWardrobe(idx, btn) {
+async function addSuggestionToWardrobe(idx, btn) {
   const suggestion = state.completeLookSuggestions[idx];
   if (!suggestion) return;
 
@@ -1479,54 +1699,40 @@ function addSuggestionToWardrobe(idx, btn) {
   btn.disabled    = true;
   btn.textContent = '✓ Added';
 
-  const canvas = document.createElement('canvas');
-  canvas.width  = 240;
-  canvas.height = 300;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#f0eff4';
-  ctx.fillRect(0, 0, 240, 300);
-  ctx.font          = '90px serif';
-  ctx.textAlign     = 'center';
-  ctx.textBaseline  = 'middle';
-  ctx.fillText(SLOT_EMOJI_MAP[suggestion.slot] || '✦', 120, 130);
-  ctx.fillStyle = '#555';
-  ctx.font      = '14px sans-serif';
-  const nameLine = (suggestion.name || '').substring(0, 30);
-  ctx.fillText(nameLine, 120, 255);
+  const thumbUri = generateSuggestionThumbnail(suggestion.slot, suggestion.name);
+  const blob     = await svgDataUriToBlob(thumbUri, 240, 300);
+  const fileName = (suggestion.slot || 'item') + '-suggestion.png';
+  const file     = new File([blob], fileName, { type: 'image/png' });
+  const id       = `asset_${++_assetIdCounter}`;
 
-  canvas.toBlob(blob => {
-    const fileName = (suggestion.slot || 'item') + '-suggestion.png';
-    const file     = new File([blob], fileName, { type: 'image/png' });
-    const id       = `asset_${++_assetIdCounter}`;
-    state.clothingAssets.push({
-      id,
-      file,
-      rawImageUrl:        URL.createObjectURL(file),
-      cleanAssetUrl:      null,
-      extractionStatus:   'mock',
-      detectedType:       suggestion.slot,
-      itemName:           suggestion.name || '',
-      garmentDescription: suggestion.reason || '',
-      garmentLayerReady:  false,
-      containsModel:      false,
-      cleanupNeeded:      false,
-      userTypeOverride:   true,
-      ambiguous:          false,
-      possibleTypes:      [suggestion.slot],
-      confidence:         1.0,
-      type:               suggestion.slot,
-    });
-    renderAssetLibrary();
-    updateDropZones();
-    updateStudioExtras();
-    updateStudioPieceCount();
-    updateGenerateButton();
+  state.clothingAssets.push({
+    id,
+    file,
+    rawImageUrl:        URL.createObjectURL(file),
+    cleanAssetUrl:      null,
+    extractionStatus:   'mock',
+    detectedType:       suggestion.slot,
+    itemName:           suggestion.name || '',
+    garmentDescription: suggestion.reason || '',
+    garmentLayerReady:  false,
+    containsModel:      false,
+    cleanupNeeded:      false,
+    userTypeOverride:   true,
+    ambiguous:          false,
+    possibleTypes:      [suggestion.slot],
+    confidence:         1.0,
+    type:               suggestion.slot,
+  });
+  renderAssetLibrary();
+  updateDropZones();
+  updateStudioExtras();
+  updateStudioPieceCount();
+  updateGenerateButton();
 
-    setTimeout(() => {
-      btn.disabled    = false;
-      btn.textContent = originalText;
-    }, 2000);
-  }, 'image/png');
+  setTimeout(() => {
+    btn.disabled    = false;
+    btn.textContent = originalText;
+  }, 2000);
 }
 
 function dataUrlToBlob(dataUrl) {

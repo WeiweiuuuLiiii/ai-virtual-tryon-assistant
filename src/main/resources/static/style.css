@@ -3719,11 +3719,19 @@ body.lightbox-open { overflow: hidden; }
   padding: 8px 10px;
 }
 .complete-look-card-thumb {
-  font-size: 1.6rem;
-  line-height: 1;
-  width: 36px;
-  text-align: center;
+  width: 46px;
+  height: 58px;
+  border-radius: 5px;
+  overflow: hidden;
   flex-shrink: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+}
+.complete-look-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 .complete-look-card-info {
   display: flex;

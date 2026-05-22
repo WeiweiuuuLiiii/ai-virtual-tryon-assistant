@@ -436,10 +436,12 @@ public class ApiController {
 
     @PostMapping("/try-on/add-item")
     public ResponseEntity<?> addItemToLook(
-            @RequestParam("preview_image")    MultipartFile previewImage,
-            @RequestParam("slot")             String slot,
-            @RequestParam("item_description") String itemDescription) throws Exception {
-        log.info("POST /api/try-on/add-item — slot={}", slot);
+            @RequestParam("preview_image")                                   MultipartFile previewImage,
+            @RequestParam("slot")                                            String slot,
+            @RequestParam("item_description")                                String itemDescription,
+            @RequestParam(value = "reference_image", required = false)       MultipartFile referenceImage)
+            throws Exception {
+        log.info("POST /api/try-on/add-item — slot={}, hasReference={}", slot, referenceImage != null);
 
         if (previewImage == null || previewImage.isEmpty()) {
             return ResponseEntity.badRequest().body(errorBody("No preview image provided."));
@@ -457,8 +459,19 @@ public class ApiController {
 
         String previewType = previewImage.getContentType() != null
             ? previewImage.getContentType().toLowerCase() : "image/png";
+
+        byte[] referenceBytes = null;
+        String referenceType  = null;
+        if (referenceImage != null && !referenceImage.isEmpty()) {
+            referenceBytes = referenceImage.getBytes();
+            referenceType  = referenceImage.getContentType() != null
+                ? referenceImage.getContentType().toLowerCase() : "image/png";
+        }
+
         Map<String, Object> result = openAi.addItemToPreview(
-            previewImage.getBytes(), previewType, slot, itemDescription);
+            previewImage.getBytes(), previewType,
+            referenceBytes, referenceType,
+            slot, itemDescription);
         return ResponseEntity.ok(result);
     }
 
