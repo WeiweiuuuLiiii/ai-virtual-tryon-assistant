@@ -3890,3 +3890,140 @@ body.lightbox-open { overflow: hidden; }
   border-color: var(--danger, #c0392b);
   color: var(--danger, #c0392b);
 }
+
+/* ── Batch Add to Look — Issue #20 ───────────────────────────── */
+
+/* Per-card checkbox area */
+.ctl-card-check {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-strong);
+  background: var(--bg-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all .15s;
+  font-size: .72rem;
+  color: #fff;
+  font-weight: 700;
+  line-height: 1;
+}
+.ctl-card-check:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-light, #e8f0fe);
+  color: var(--accent);
+}
+.ctl-card-check.ctl-checked {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+.ctl-card-check:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+/* Selected card highlight */
+.complete-look-card.ctl-selected {
+  border-color: var(--accent);
+  background: var(--accent-light, rgba(66,133,244,.07));
+}
+
+/* Batch progress bar */
+.ctl-progress-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--bg-hover, rgba(0,0,0,.03));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 10px 8px;
+  margin-bottom: 8px;
+}
+.ctl-progress-msgs {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+#batch-progress-msg {
+  font-size: .72rem;
+  font-weight: 600;
+  color: var(--text);
+}
+#batch-progress-sub {
+  font-size: .66rem;
+  color: var(--text-faint);
+}
+.ctl-progress-track {
+  height: 5px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.ctl-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width .6s ease-out;
+}
+.ctl-progress-wrap .btn-cancel-edit {
+  align-self: flex-end;
+  margin-top: 2px;
+}
+
+/* Batch action bar */
+.batch-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.batch-selected-count {
+  font-size: .68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.batch-action-btns {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.btn-apply-selected {
+  font-size: .65rem;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn-apply-selected:hover:not(:disabled) {
+  background: var(--accent-dark, #1a73e8);
+}
+.btn-apply-selected:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+.btn-clear-selection {
+  font-size: .63rem;
+  font-weight: 500;
+  padding: 4px 9px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn-clear-selection:hover {
+  border-color: var(--text-muted);
+  color: var(--text);
+}

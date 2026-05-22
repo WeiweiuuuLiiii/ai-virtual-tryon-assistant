@@ -9,6 +9,7 @@ import com.stylesignal.service.ClaudeService;
 import com.stylesignal.service.OpenAiImageService;
 import com.stylesignal.service.StorageService;
 import com.stylesignal.service.WeatherService;
+import com.stylesignal.tryon.BatchItem;
 import com.stylesignal.tryon.GarmentItem;
 import com.stylesignal.tryon.TryOnProvider;
 import com.stylesignal.tryon.TryOnProviderRegistry;
@@ -515,6 +516,50 @@ public class ApiController {
             previewImage.getBytes(), previewType,
             referenceBytes, referenceType,
             slot, itemDescription);
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/try-on/add-items")
+    public ResponseEntity<?> addItemsBatchToLook(
+            @RequestParam("preview_image")                                       MultipartFile previewImage,
+            @RequestParam("slots")                                               List<String> slots,
+            @RequestParam("item_descriptions")                                   List<String> itemDescriptions,
+            @RequestParam(value = "reference_images", required = false)          List<MultipartFile> referenceImages)
+            throws Exception {
+        log.info("POST /api/try-on/add-items — count={}", slots != null ? slots.size() : 0);
+
+        if (previewImage == null || previewImage.isEmpty()) {
+            return ResponseEntity.badRequest().body(errorBody("No preview image provided."));
+        }
+        if (slots == null || slots.isEmpty()) {
+            return ResponseEntity.badRequest().body(errorBody("slots is required."));
+        }
+        if (itemDescriptions == null || itemDescriptions.size() != slots.size()) {
+            return ResponseEntity.badRequest().body(errorBody("item_descriptions count must match slots count."));
+        }
+        if (!openAi.isConfigured()) {
+            return ResponseEntity.badRequest().body(errorBody(
+                "OpenAI API key not configured. Add OPENAI_API_KEY to your .env and restart."));
+        }
+
+        String previewType = previewImage.getContentType() != null
+            ? previewImage.getContentType().toLowerCase() : "image/png";
+
+        List<BatchItem> items = new ArrayList<>();
+        for (int i = 0; i < slots.size(); i++) {
+            byte[] refBytes = null;
+            String refType  = null;
+            if (referenceImages != null && i < referenceImages.size()
+                    && referenceImages.get(i) != null && !referenceImages.get(i).isEmpty()) {
+                refBytes = referenceImages.get(i).getBytes();
+                refType  = referenceImages.get(i).getContentType() != null
+                    ? referenceImages.get(i).getContentType().toLowerCase() : "image/png";
+            }
+            items.add(new BatchItem(slots.get(i), itemDescriptions.get(i), refBytes, refType));
+        }
+
+        Map<String, Object> result = openAi.addItemsBatchToPreview(
+            previewImage.getBytes(), previewType, items);
         return ResponseEntity.ok(result);
     }
 

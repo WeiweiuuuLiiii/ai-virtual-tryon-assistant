@@ -2,6 +2,7 @@ package com.stylesignal.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.stylesignal.tryon.BatchItem;
 import com.stylesignal.tryon.GarmentItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -196,6 +197,130 @@ public class OpenAiImageService {
         out2.put("status",            "ready");
         out2.put("preview_image_url", dataUrl);
         return out2;
+    }
+
+    /**
+     * Applies multiple styling suggestions to a preview image in a single GPT Image edit.
+     * The preview is the first image[]; each item's reference PNG follows in slot order.
+     * Strong guardrails preserve the person, existing outfit, pose, and background.
+     */
+    public Map<String, Object> addItemsBatchToPreview(
+            byte[] previewBytes, String previewType,
+            List<BatchItem> items) throws Exception {
+
+        String boundary = "----OpenAiBoundary" + UUID.randomUUID().toString().replace("-", "");
+        String prompt   = buildBatchAddPrompt(items);
+        byte[] body     = buildBatchAddItemBody(boundary, prompt, previewBytes, previewType, items, true);
+
+        log.info("GPT Image batch add-items request — items={}", items.size());
+
+        HttpRequest req = HttpRequest.newBuilder()
+            .uri(URI.create(OPENAI_API + "/images/edits"))
+            .header("Authorization", "Bearer " + apiKey)
+            .header("Content-Type",  "multipart/form-data; boundary=" + boundary)
+            .POST(HttpRequest.BodyPublishers.ofByteArray(body))
+            .build();
+
+        HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+        boolean usedOptFormat = isUsingOptimizedFormat();
+
+        if (resp.statusCode() != 200 && usedOptFormat) {
+            log.warn("Optimized format rejected (HTTP {}); retrying batch add-items without output_format/output_compression", resp.statusCode());
+            String boundary2 = "----OpenAiBoundary" + UUID.randomUUID().toString().replace("-", "");
+            byte[] body2     = buildBatchAddItemBody(boundary2, prompt, previewBytes, previewType, items, false);
+            HttpRequest req2 = HttpRequest.newBuilder()
+                .uri(URI.create(OPENAI_API + "/images/edits"))
+                .header("Authorization", "Bearer " + apiKey)
+                .header("Content-Type",  "multipart/form-data; boundary=" + boundary2)
+                .POST(HttpRequest.BodyPublishers.ofByteArray(body2))
+                .build();
+            resp = http.send(req2, HttpResponse.BodyHandlers.ofString());
+            usedOptFormat = false;
+            if (resp.statusCode() != 200) {
+                log.warn("OpenAI batch add-items fallback also failed — HTTP {}", resp.statusCode());
+                throw new RuntimeException("OpenAI Images API request failed (HTTP " + resp.statusCode() + ").");
+            }
+            log.info("GPT Image batch add-items succeeded via fallback (no output_format/output_compression)");
+        } else if (resp.statusCode() != 200) {
+            log.warn("OpenAI batch add-items failed — HTTP {}", resp.statusCode());
+            throw new RuntimeException("OpenAI Images API request failed (HTTP " + resp.statusCode() + ").");
+        }
+
+        Map<String, Object> result = mapper.readValue(resp.body(), new TypeReference<>() {});
+        String dataUrl = extractImageDataUrl(result, usedOptFormat);
+        log.info("GPT Image batch add-items complete — {} items", items.size());
+
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("status",            "ready");
+        out.put("preview_image_url", dataUrl);
+        return out;
+    }
+
+    private String buildBatchAddPrompt(List<BatchItem> items) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("The first image is the current outfit preview. ");
+
+        int refIdx = 2;
+        for (BatchItem item : items) {
+            if (item.bytes() != null && item.bytes().length > 0) {
+                sb.append("Reference image ").append(refIdx++).append(" shows the ")
+                  .append(item.slot().replace('_', ' ')).append(" to add. ");
+            }
+        }
+
+        sb.append("Add ALL of the following items to the person: ");
+        for (int i = 0; i < items.size(); i++) {
+            if (i > 0) sb.append("; ");
+            sb.append(items.get(i).description())
+              .append(" (").append(items.get(i).slot().replace('_', ' ')).append(")");
+        }
+        sb.append(". ");
+
+        sb.append("STRICT GUARDRAILS — keep the same person, face, body shape, skin tone, pose, ");
+        sb.append("existing outfit items, lighting, and background exactly as in the first image. ");
+        sb.append("Do not redesign, remove, or alter any existing clothing or background. ");
+        sb.append("Only add the items listed above — nothing else. ");
+        sb.append("Place each item anatomically: glasses on face at the eyes, earrings on earlobes, ");
+        sb.append("bag held or worn on shoulder/arm, hair accessory on hair. ");
+        sb.append("Match each item's colour and style to its description and reference image exactly. ");
+        sb.append("Do not confuse accessory types — do not turn earrings into glasses or vice versa. ");
+        sb.append("Do not invent extra items not listed. ");
+        sb.append("Output must look like a real fashion photograph. ");
+        sb.append("No cartoon, illustration, painting, rendering, or artistic stylization.");
+        return sb.toString();
+    }
+
+    private byte[] buildBatchAddItemBody(
+            String boundary, String prompt,
+            byte[] previewBytes, String previewType,
+            List<BatchItem> items,
+            boolean includeOptFormat) throws IOException {
+
+        ByteArrayOutputStream out  = new ByteArrayOutputStream();
+        String                crlf = "\r\n";
+        writeTextField(out, boundary, "model",   model,   crlf);
+        writeTextField(out, boundary, "prompt",  prompt,  crlf);
+        writeTextField(out, boundary, "n",       "1",     crlf);
+        writeTextField(out, boundary, "size",    size,    crlf);
+        writeTextField(out, boundary, "quality", quality, crlf);
+        if (includeOptFormat) writeOutputFormatFields(out, boundary, crlf);
+
+        // First: the current preview
+        String previewExt = previewType != null && previewType.contains("png") ? "png" : "jpg";
+        writeFileField(out, boundary, "image[]", "preview." + previewExt, previewBytes, previewType, crlf);
+
+        // Then: reference images for each item (skipped when bytes are absent)
+        for (BatchItem item : items) {
+            if (item.bytes() != null && item.bytes().length > 0) {
+                String refExt = item.type() != null && item.type().contains("png") ? "png" : "jpg";
+                writeFileField(out, boundary, "image[]",
+                               item.slot() + "_ref." + refExt,
+                               item.bytes(), item.type(), crlf);
+            }
+        }
+
+        out.write(("--" + boundary + "--" + crlf).getBytes(StandardCharsets.UTF_8));
+        return out.toByteArray();
     }
 
     // ---------------------------------------------------------------------------

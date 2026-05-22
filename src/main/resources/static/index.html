@@ -217,6 +217,7 @@
                 </div>
                 <button id="refresh-suggestions-btn" class="btn-refresh-suggestions hidden">&#8635; Refresh</button>
               </div>
+              <!-- Single-item edit status bar -->
               <div id="add-to-look-status" class="add-to-look-status hidden">
                 <div class="add-to-look-status-msgs">
                   <span id="add-to-look-msg">Adding this item to your look…</span>
@@ -224,8 +225,27 @@
                 </div>
                 <button id="cancel-edit-btn" class="btn-cancel-edit">Cancel Edit</button>
               </div>
+              <!-- Batch edit progress bar -->
+              <div id="batch-progress-bar" class="ctl-progress-wrap hidden">
+                <div class="ctl-progress-msgs">
+                  <span id="batch-progress-msg">Preparing batch edit…</span>
+                  <span id="batch-progress-sub">High-quality edits may take 1–3 minutes. Keep this page open.</span>
+                </div>
+                <div class="ctl-progress-track">
+                  <div id="batch-progress-fill" class="ctl-progress-fill" style="width:0%"></div>
+                </div>
+                <button id="cancel-batch-btn" class="btn-cancel-edit">Cancel Batch Edit</button>
+              </div>
               <div id="complete-look-cards" class="complete-look-cards">
                 <!-- Rendered by renderCompleteTheLook() -->
+              </div>
+              <!-- Batch action bar — visible when ≥1 card is selected -->
+              <div id="batch-action-bar" class="batch-action-bar hidden">
+                <span id="batch-selected-count" class="batch-selected-count">0 selected</span>
+                <div class="batch-action-btns">
+                  <button id="apply-selected-btn" class="btn-apply-selected" disabled>Apply Selected to Look</button>
+                  <button id="clear-selection-btn" class="btn-clear-selection">Clear</button>
+                </div>
               </div>
             </div>
           </div>

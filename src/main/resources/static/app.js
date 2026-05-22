@@ -20,12 +20,15 @@ const state = {
   completeLookLoading: false,
   completeLookError: null,          // non-null when suggestion fetch failed
   completeLookImageUrl: null,       // imageUrl that triggered the current suggestions (avoids refetch)
-  addToLookInFlight: false,         // true while any Add to Look request is running
-  addToLookRequestId: 0,            // incremented per Add to Look; stale-result guard
-  addToLookActiveIdx: null,         // index of suggestion currently being added
-  activeAddAbortController: null,   // AbortController for the current Add to Look fetch
+  addToLookInFlight: false,         // true while any single OR batch Add to Look request is running
+  addToLookRequestId: 0,            // incremented per edit; stale-result guard (single + batch share this)
+  addToLookActiveIdx: null,         // index of suggestion currently being added (null during batch)
+  activeAddAbortController: null,   // AbortController for the current single or batch Add to Look fetch
+  batchEditActive: false,           // true specifically during a batch edit (subset of addToLookInFlight)
+  batchProgress: 0,                 // 0-100 for batch progress bar animation
+  completeLookSelected: new Set(),  // Set of selected suggestion indices for batch
   tryOnCache: new Map(),            // generation cache key → {status, mode, imageUrl, videoUrl}
-  addToLookCache: new Map(),        // add-to-look cache key → result imageUrl
+  addToLookCache: new Map(),        // add-to-look cache key → result imageUrl (single + batch)
   // Studio — legacy (kept for API compatibility)
   studioItems: { top: null, bottom: null, dress: null, outerwear: null, shoes: null, bag: null, glasses: null, earrings: null, hair_accessory: null },
   studioScene:  null,
@@ -1440,8 +1443,11 @@ function cancelGeneration() {
   if (_generatingSlowTimer) { clearTimeout(_generatingSlowTimer); _generatingSlowTimer = null; }
   state.generationRequestId++;
   state.addToLookRequestId++;
-  state.addToLookInFlight  = false;
-  state.addToLookActiveIdx = null;
+  state.addToLookInFlight       = false;
+  state.addToLookActiveIdx      = null;
+  state.batchEditActive         = false;
+  state.batchProgress           = 0;
+  state.completeLookSelected    = new Set();
   state.tryOnPreview.status     = 'idle';
   state.tryOnPreview.imageUrl   = null;
   state.tryOnPreview.videoUrl   = null;
@@ -1462,6 +1468,28 @@ function cancelAddToLook() {
   state.addToLookRequestId++;
   state.addToLookInFlight  = false;
   state.addToLookActiveIdx = null;
+  renderCompleteTheLook();
+}
+
+function cancelBatchAddToLook() {
+  if (state.activeAddAbortController) {
+    state.activeAddAbortController.abort();
+    state.activeAddAbortController = null;
+  }
+  state.addToLookRequestId++;
+  state.addToLookInFlight = false;
+  state.batchEditActive   = false;
+  state.batchProgress     = 0;
+  renderCompleteTheLook();
+}
+
+function toggleSuggestionSelection(idx) {
+  if (state.addToLookInFlight) return; // no changes while edit in progress
+  if (state.completeLookSelected.has(idx)) {
+    state.completeLookSelected.delete(idx);
+  } else {
+    state.completeLookSelected.add(idx);
+  }
   renderCompleteTheLook();
 }
 
@@ -1687,10 +1715,12 @@ function svgDataUriToBlob(svgDataUri, w, h) {
 }
 
 function renderCompleteTheLook() {
-  const section    = document.getElementById('complete-the-look');
-  const cardsEl    = document.getElementById('complete-look-cards');
-  const refreshBtn = document.getElementById('refresh-suggestions-btn');
-  const statusBar  = document.getElementById('add-to-look-status');
+  const section        = document.getElementById('complete-the-look');
+  const cardsEl        = document.getElementById('complete-look-cards');
+  const refreshBtn     = document.getElementById('refresh-suggestions-btn');
+  const statusBar      = document.getElementById('add-to-look-status');
+  const batchProgressEl = document.getElementById('batch-progress-bar');
+  const batchActionBar = document.getElementById('batch-action-bar');
   if (!section || !cardsEl) return;
 
   if (state.tryOnPreview.status !== 'ready' || !state.tryOnPreview.imageUrl) {
@@ -1699,13 +1729,28 @@ function renderCompleteTheLook() {
   }
   section.classList.remove('hidden');
 
-  // Add-to-Look status bar (shown while in-flight)
-  if (statusBar) statusBar.classList.toggle('hidden', !state.addToLookInFlight);
+  // Single-item status bar — visible only during single edit (not batch)
+  if (statusBar) statusBar.classList.toggle('hidden', !state.addToLookInFlight || state.batchEditActive);
 
-  // Refresh button — visible when there are cards and no edit is running
+  // Batch progress bar — visible only during batch edit
+  if (batchProgressEl) batchProgressEl.classList.toggle('hidden', !state.batchEditActive);
+
+  // Refresh button — visible when there are cards, nothing is in-flight, and no selection active
   if (refreshBtn) {
     refreshBtn.classList.toggle('hidden',
-      state.completeLookSuggestions.length === 0 || state.addToLookInFlight);
+      state.completeLookSuggestions.length === 0
+      || state.addToLookInFlight
+      || state.completeLookSelected.size > 0);
+  }
+
+  // Batch action bar — visible when ≥1 card selected and no edit running
+  if (batchActionBar) {
+    const selCount = state.completeLookSelected.size;
+    batchActionBar.classList.toggle('hidden', selCount === 0 || state.addToLookInFlight);
+    const countEl   = document.getElementById('batch-selected-count');
+    const applyBtn  = document.getElementById('apply-selected-btn');
+    if (countEl)  countEl.textContent  = selCount === 1 ? '1 selected' : `${selCount} selected`;
+    if (applyBtn) applyBtn.disabled    = selCount === 0;
   }
 
   if (state.completeLookLoading) {
@@ -1721,14 +1766,19 @@ function renderCompleteTheLook() {
     return;
   }
 
+  const inFlight = state.addToLookInFlight;
   cardsEl.innerHTML = state.completeLookSuggestions.map((s, i) => {
-    const thumb    = generateSuggestionThumbnail(s.slot, s.name);
-    const slotLbl  = (s.slot || '').replace(/_/g, ' ');
-    const isActive  = state.addToLookInFlight && state.addToLookActiveIdx === i;
-    const isWaiting = state.addToLookInFlight && state.addToLookActiveIdx !== i;
-    const addTxt    = isActive ? 'Adding…' : (isWaiting ? 'Wait for current edit' : '+ Add to Look');
+    const thumb      = generateSuggestionThumbnail(s.slot, s.name);
+    const slotLbl    = (s.slot || '').replace(/_/g, ' ');
+    const isSelected = state.completeLookSelected.has(i);
+    const isActive   = inFlight && state.addToLookActiveIdx === i;
+    const isWaiting  = inFlight && !state.batchEditActive && state.addToLookActiveIdx !== i;
+    const addTxt     = isActive ? 'Adding…' : (isWaiting ? 'Wait for current edit' : '+ Add to Look');
     return `
-      <div class="complete-look-card">
+      <div class="complete-look-card${isSelected ? ' ctl-selected' : ''}">
+        <button class="ctl-card-check${isSelected ? ' ctl-checked' : ''}"
+                data-index="${i}" ${inFlight ? 'disabled' : ''}
+                title="${isSelected ? 'Deselect' : 'Select for batch add'}">&#10003;</button>
         <div class="complete-look-card-thumb">
           <img src="${thumb}" alt="${slotLbl}" draggable="false" />
         </div>
@@ -1738,12 +1788,15 @@ function renderCompleteTheLook() {
           <span class="complete-look-card-reason">${s.reason || ''}</span>
         </div>
         <div class="complete-look-card-actions">
-          <button class="btn-add-to-look" data-index="${i}" ${state.addToLookInFlight ? 'disabled' : ''}>${addTxt}</button>
-          <button class="btn-add-to-wardrobe" data-index="${i}" ${state.addToLookInFlight ? 'disabled' : ''}>+ Wardrobe</button>
+          <button class="btn-add-to-look" data-index="${i}" ${inFlight ? 'disabled' : ''}>${addTxt}</button>
+          <button class="btn-add-to-wardrobe" data-index="${i}" ${inFlight ? 'disabled' : ''}>+ Wardrobe</button>
         </div>
       </div>`;
   }).join('');
 
+  cardsEl.querySelectorAll('.ctl-card-check').forEach(btn => {
+    btn.addEventListener('click', () => toggleSuggestionSelection(parseInt(btn.dataset.index, 10)));
+  });
   cardsEl.querySelectorAll('.btn-add-to-look').forEach(btn => {
     btn.addEventListener('click', () => addSuggestionToLook(parseInt(btn.dataset.index, 10)));
   });
@@ -1763,6 +1816,7 @@ async function fetchCompleteTheLookSuggestions() {
   state.completeLookSuggestions = buildClientFallbackSuggestions();
   state.completeLookLoading     = false;
   state.completeLookError       = null;
+  state.completeLookSelected    = new Set(); // clear stale selections when suggestions change
   renderCompleteTheLook();
 
   // Fetch Claude-personalized suggestions in the background.
@@ -1862,6 +1916,116 @@ async function addSuggestionToLook(idx) {
       state.addToLookInFlight        = false;
       state.addToLookActiveIdx       = null;
       state.activeAddAbortController = null;
+      renderCompleteTheLook();
+    }
+  }
+}
+
+async function applySelectedToLook() {
+  if (state.addToLookInFlight) return;
+  if (state.completeLookSelected.size === 0 || !state.tryOnPreview.imageUrl) return;
+
+  const sortedIndices  = [...state.completeLookSelected].sort((a, b) => a - b);
+  const selectedItems  = sortedIndices.map(i => state.completeLookSuggestions[i]).filter(Boolean);
+  if (selectedItems.length === 0) return;
+
+  // Batch cache key — sorted by slot+name so order doesn't matter
+  const cacheKey = state.tryOnPreview.imageUrl + '||batch||'
+    + selectedItems.map(s => `${s.slot}:${s.name}`).join(',');
+  if (state.addToLookCache.has(cacheKey)) {
+    const cachedUrl = state.addToLookCache.get(cacheKey);
+    state.tryOnPreview.imageUrl    = cachedUrl;
+    state.completeLookImageUrl     = cachedUrl;
+    state.completeLookSelected     = new Set();
+    renderTryOnPreview();
+    return;
+  }
+
+  // Mark in-flight (shared gate with single-item add)
+  state.addToLookInFlight        = true;
+  state.addToLookRequestId++;
+  state.addToLookActiveIdx       = null; // batch mode
+  state.batchEditActive          = true;
+  state.batchProgress            = 0;
+  const myAddId                  = state.addToLookRequestId;
+  const controller               = new AbortController();
+  state.activeAddAbortController = controller;
+  renderCompleteTheLook();
+
+  const msgEl  = document.getElementById('batch-progress-msg');
+  const subEl  = document.getElementById('batch-progress-sub');
+  const fillEl = document.getElementById('batch-progress-fill');
+  if (msgEl)  msgEl.textContent  = 'Preparing batch edit…';
+  if (subEl)  subEl.textContent  = 'High-quality edits may take 1–3 minutes. Keep this page open.';
+  if (fillEl) fillEl.style.width = '0%';
+
+  // Decelerating fake-progress animation
+  const startTime = Date.now();
+  let pct = 0;
+  let progressInterval = null;
+  progressInterval = setInterval(() => {
+    if (!state.batchEditActive || myAddId !== state.addToLookRequestId) {
+      clearInterval(progressInterval);
+      return;
+    }
+    pct = Math.min(90, pct + Math.max(0.15, (90 - pct) * 0.018));
+    state.batchProgress = pct;
+    if (fillEl) fillEl.style.width = pct + '%';
+    const elapsed = (Date.now() - startTime) / 1000;
+    if (elapsed > 90) {
+      if (msgEl) msgEl.textContent = 'Still applying…';
+      if (subEl) subEl.textContent = 'Large batch edits can take extra time. Please keep this page open.';
+    } else if (elapsed > 20) {
+      if (msgEl) msgEl.textContent = 'Finalizing the result…';
+    } else if (elapsed > 5) {
+      if (msgEl) msgEl.textContent = 'Applying selected items…';
+    }
+  }, 1000);
+
+  try {
+    const previewBlob = await previewImageToBlob(state.tryOnPreview.imageUrl);
+    const form = new FormData();
+    form.append('preview_image', previewBlob, 'preview.png');
+    for (const item of selectedItems) {
+      form.append('slots',             item.slot);
+      form.append('item_descriptions', item.name);
+      const thumbUri = generateSuggestionThumbnail(item.slot, item.name);
+      const refBlob  = await svgDataUriToBlob(thumbUri, 240, 300);
+      form.append('reference_images',  refBlob, item.slot + '-ref.png');
+    }
+
+    const resp = await fetch(`${API}/api/try-on/add-items`,
+      { method: 'POST', body: form, signal: controller.signal });
+    if (myAddId !== state.addToLookRequestId) return; // stale
+
+    const result = await resp.json();
+    if (myAddId !== state.addToLookRequestId) return; // stale
+
+    if (resp.ok && result.preview_image_url) {
+      state.addToLookCache.set(cacheKey, result.preview_image_url);
+      state.tryOnPreview.imageUrl = result.preview_image_url;
+      state.completeLookImageUrl  = result.preview_image_url;
+      state.completeLookSelected  = new Set(); // clear selection after success
+      if (fillEl) fillEl.style.width = '100%';
+      renderTryOnPreview();
+      // No auto-refresh of suggestions (Issue 19 Req 6)
+    } else {
+      showToast('Could not apply batch edit. Please try again.', true);
+    }
+  } catch (err) {
+    if (err.name === 'AbortError' || myAddId !== state.addToLookRequestId) return; // silent cancel/stale
+    const msg = (err.message || '').includes('GPT Image Static Try-On')
+      ? err.message
+      : 'Could not apply batch edit. Please try again.';
+    showToast(msg, true);
+  } finally {
+    clearInterval(progressInterval);
+    if (myAddId === state.addToLookRequestId) {
+      state.addToLookInFlight        = false;
+      state.addToLookActiveIdx       = null;
+      state.activeAddAbortController = null;
+      state.batchEditActive          = false;
+      state.batchProgress            = 0;
       renderCompleteTheLook();
     }
   }
@@ -2139,6 +2303,12 @@ function setupStudio() {
   document.getElementById('studio-generate-btn')?.addEventListener('click', runTryOnGenerate);
   document.getElementById('cancel-generation-btn')?.addEventListener('click', cancelGeneration);
   document.getElementById('cancel-edit-btn')?.addEventListener('click', cancelAddToLook);
+  document.getElementById('cancel-batch-btn')?.addEventListener('click', cancelBatchAddToLook);
+  document.getElementById('apply-selected-btn')?.addEventListener('click', applySelectedToLook);
+  document.getElementById('clear-selection-btn')?.addEventListener('click', () => {
+    state.completeLookSelected = new Set();
+    renderCompleteTheLook();
+  });
   document.getElementById('refresh-suggestions-btn')?.addEventListener('click', () => {
     state.completeLookSuggestions = [];
     state.completeLookLoading     = false;
