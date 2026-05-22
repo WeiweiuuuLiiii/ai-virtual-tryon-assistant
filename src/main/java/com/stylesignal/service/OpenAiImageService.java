@@ -93,6 +93,58 @@ public class OpenAiImageService {
         return out;
     }
 
+    /**
+     * Edits an existing preview image to add a single described item (for Complete the Look).
+     */
+    public Map<String, Object> addItemToPreview(
+            byte[] previewBytes, String previewType, String slot, String itemDescription) throws Exception {
+
+        String boundary = "----OpenAiBoundary" + UUID.randomUUID().toString().replace("-", "");
+        String slotLabel = slot != null ? slot.replace('_', ' ') : "accessory";
+        String prompt = "Add a " + itemDescription + " (" + slotLabel + ") to the person in this image. "
+            + "Preserve the person's exact face, skin tone, body shape, pose, and all existing outfit items. "
+            + "Preserve the background exactly. "
+            + "Only add the requested " + slotLabel + " — do not change or remove anything else. "
+            + "Place accessories in the anatomically correct location (glasses on face, earrings on ears, "
+            + "bag held or worn, hair accessory on hair). "
+            + "Output must look like a real fashion photograph. No cartoon or artistic stylization.";
+
+        ByteArrayOutputStream out  = new ByteArrayOutputStream();
+        String                crlf = "\r\n";
+        writeTextField(out, boundary, "model",   model,       crlf);
+        writeTextField(out, boundary, "prompt",  prompt,      crlf);
+        writeTextField(out, boundary, "n",       "1",         crlf);
+        writeTextField(out, boundary, "size",    "1024x1024", crlf);
+        writeTextField(out, boundary, "quality", "high",      crlf);
+        String ext = previewType != null && previewType.contains("png") ? "png" : "jpg";
+        writeFileField(out, boundary, "image[]", "preview." + ext, previewBytes, previewType, crlf);
+        out.write(("--" + boundary + "--" + crlf).getBytes(StandardCharsets.UTF_8));
+        byte[] body = out.toByteArray();
+
+        log.info("GPT Image add-item request — slot={}", slot);
+        HttpRequest req = HttpRequest.newBuilder()
+            .uri(URI.create(OPENAI_API + "/images/edits"))
+            .header("Authorization", "Bearer " + apiKey)
+            .header("Content-Type",  "multipart/form-data; boundary=" + boundary)
+            .POST(HttpRequest.BodyPublishers.ofByteArray(body))
+            .build();
+
+        HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+        if (resp.statusCode() != 200) {
+            log.warn("OpenAI add-item failed — HTTP {}", resp.statusCode());
+            throw new RuntimeException("OpenAI Images API request failed (HTTP " + resp.statusCode() + ").");
+        }
+
+        Map<String, Object> result  = mapper.readValue(resp.body(), new TypeReference<>() {});
+        String              dataUrl = extractImageDataUrl(result);
+        log.info("GPT Image add-item complete");
+
+        Map<String, Object> out2 = new LinkedHashMap<>();
+        out2.put("status",            "ready");
+        out2.put("preview_image_url", dataUrl);
+        return out2;
+    }
+
     // ---------------------------------------------------------------------------
     // Prompt
     // ---------------------------------------------------------------------------

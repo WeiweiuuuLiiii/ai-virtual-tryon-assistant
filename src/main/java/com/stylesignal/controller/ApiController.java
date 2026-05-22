@@ -6,6 +6,7 @@ import com.stylesignal.model.FeedbackRequest;
 import com.stylesignal.model.RecommendRequest;
 import com.stylesignal.model.SceneCheckRequest;
 import com.stylesignal.service.ClaudeService;
+import com.stylesignal.service.OpenAiImageService;
 import com.stylesignal.service.StorageService;
 import com.stylesignal.service.WeatherService;
 import com.stylesignal.tryon.GarmentItem;
@@ -36,14 +37,17 @@ public class ApiController {
     private final WeatherService         weather;
     private final StorageService         storage;
     private final TryOnProviderRegistry  providerRegistry;
+    private final OpenAiImageService     openAi;
     private final ObjectMapper           mapper = new ObjectMapper();
 
     public ApiController(ClaudeService claude, WeatherService weather,
-                         StorageService storage, TryOnProviderRegistry providerRegistry) {
+                         StorageService storage, TryOnProviderRegistry providerRegistry,
+                         OpenAiImageService openAi) {
         this.claude           = claude;
         this.weather          = weather;
         this.storage          = storage;
         this.providerRegistry = providerRegistry;
+        this.openAi           = openAi;
     }
 
     // ── Global error handler ──────────────────────────────────────────────────
@@ -413,6 +417,49 @@ public class ApiController {
         profile.ifPresent(p -> context.put("style_profile", p));
 
         return ResponseEntity.ok(claude.checkPurchase(photo, context));
+    }
+
+    // ── Complete the Look ─────────────────────────────────────────────────────
+
+    @PostMapping("/try-on/suggest-items")
+    public ResponseEntity<?> suggestItems(
+            @RequestParam("assigned_slots") String assignedSlots) throws Exception {
+        log.info("POST /api/try-on/suggest-items — assigned_slots={}", assignedSlots);
+        if (assignedSlots == null || assignedSlots.isBlank()) {
+            return ResponseEntity.badRequest().body(errorBody("assigned_slots is required."));
+        }
+        List<Map<String, Object>> suggestions = claude.suggestCompleteTheLook(assignedSlots);
+        Map<String, Object> resp = new LinkedHashMap<>();
+        resp.put("suggestions", suggestions);
+        return ResponseEntity.ok(resp);
+    }
+
+    @PostMapping("/try-on/add-item")
+    public ResponseEntity<?> addItemToLook(
+            @RequestParam("preview_image")    MultipartFile previewImage,
+            @RequestParam("slot")             String slot,
+            @RequestParam("item_description") String itemDescription) throws Exception {
+        log.info("POST /api/try-on/add-item — slot={}", slot);
+
+        if (previewImage == null || previewImage.isEmpty()) {
+            return ResponseEntity.badRequest().body(errorBody("No preview image provided."));
+        }
+        if (slot == null || slot.isBlank()) {
+            return ResponseEntity.badRequest().body(errorBody("slot is required."));
+        }
+        if (itemDescription == null || itemDescription.isBlank()) {
+            return ResponseEntity.badRequest().body(errorBody("item_description is required."));
+        }
+        if (!openAi.isConfigured()) {
+            return ResponseEntity.badRequest().body(errorBody(
+                "OpenAI API key not configured. Add OPENAI_API_KEY to your .env and restart."));
+        }
+
+        String previewType = previewImage.getContentType() != null
+            ? previewImage.getContentType().toLowerCase() : "image/png";
+        Map<String, Object> result = openAi.addItemToPreview(
+            previewImage.getBytes(), previewType, slot, itemDescription);
+        return ResponseEntity.ok(result);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

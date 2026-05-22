@@ -412,6 +412,32 @@ public class ClaudeService {
         return callClaude(content, 400);
     }
 
+    // ── Complete the Look Suggestions ────────────────────────────────────────
+
+    public List<Map<String, Object>> suggestCompleteTheLook(String assignedSlots) throws Exception {
+        validateApiKey();
+
+        String prompt = """
+            You are a fashion stylist AI. The user's outfit currently includes these slots: %s.
+            Suggest exactly 3 complementary items from the remaining unassigned slots to complete the look.
+            Available slots: top, outerwear, bottom, dress, shoes, bag, glasses, earrings, hair_accessory.
+            Only suggest slots NOT already assigned.
+
+            For each suggestion:
+            - slot: exact slot key (e.g. "bag")
+            - name: specific item with color and style (e.g. "Tan Leather Tote Bag")
+            - reason: ≤10 words explaining why it completes the look
+
+            Return ONLY valid JSON: {"suggestions":[{"slot":"bag","name":"Tan Leather Tote Bag","reason":"Earthy neutral grounds the look"},...]}}
+            """.formatted(assignedSlots);
+
+        Map<String, Object> result = callClaude(List.of(Map.of("type", "text", "text", prompt)), 600);
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> suggestions = (List<Map<String, Object>>) result.get("suggestions");
+        return suggestions != null ? suggestions : List.of();
+    }
+
     // ── Buy Check ─────────────────────────────────────────────────────────────
 
     public Map<String, Object> checkPurchase(MultipartFile photo, Map<String, Object> profile) throws Exception {

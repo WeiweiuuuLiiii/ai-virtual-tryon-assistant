@@ -15,6 +15,9 @@ const state = {
   hairAccessoryPlacement: 'auto',   // 'auto' | 'top_of_head' | 'left_side' | 'right_side' | 'back_bun' | 'forehead_headband'
   generationRequestId: 0,           // incremented each time generation starts; used for stale result protection
   activeAbortController: null,      // AbortController for the current in-flight generation fetch
+  completeLookSuggestions: [],      // [{slot, name, reason}] returned by suggest-items
+  completeLookLoading: false,
+  completeLookImageUrl: null,       // imageUrl that triggered the current suggestions (avoids refetch)
   // Studio — legacy (kept for API compatibility)
   studioItems: { top: null, bottom: null, dress: null, outerwear: null, shoes: null, bag: null, glasses: null, earrings: null, hair_accessory: null },
   studioScene:  null,
@@ -1144,6 +1147,7 @@ function renderTryOnPreview() {
     const imageActions  = document.getElementById('tryon-image-actions');
     if (state.tryOnPreview.videoUrl) {
       // WaveSpeed video path: show canvas still-frame, keep video fully hidden.
+      document.getElementById('complete-the-look')?.classList.add('hidden');
       if (img)         img.classList.add('hidden');
       if (video)       { video.removeAttribute('controls'); video.classList.add('hidden'); }
       if (imageActions) imageActions.classList.add('hidden');
@@ -1195,6 +1199,16 @@ function renderTryOnPreview() {
       if (videoNote)     videoNote.classList.add('hidden');
       if (fullMotionRow) fullMotionRow.classList.add('hidden');
       if (readyBdg)      readyBdg.textContent = 'Preview Ready';
+
+      // Complete the Look — fetch suggestions once per unique preview image.
+      if (state.tryOnPreview.imageUrl !== state.completeLookImageUrl) {
+        state.completeLookSuggestions = [];
+        state.completeLookImageUrl    = state.tryOnPreview.imageUrl;
+        renderCompleteTheLook();
+        fetchCompleteTheLookSuggestions();
+      } else {
+        renderCompleteTheLook();
+      }
     }
   }
 }
@@ -1334,12 +1348,196 @@ function cancelGeneration() {
     state.activeAbortController = null;
   }
   state.generationRequestId++;
-  state.tryOnPreview.status   = 'idle';
-  state.tryOnPreview.imageUrl = null;
-  state.tryOnPreview.videoUrl = null;
-  state.tryOnPreview.message  = null;
+  state.tryOnPreview.status     = 'idle';
+  state.tryOnPreview.imageUrl   = null;
+  state.tryOnPreview.videoUrl   = null;
+  state.tryOnPreview.message    = null;
+  state.completeLookSuggestions = [];
+  state.completeLookLoading     = false;
+  state.completeLookImageUrl    = null;
   renderTryOnPreview();
   updateGenerateButton();
+}
+
+/* ── Complete the Look (Issue #18) ─────────────────────────────── */
+
+const SLOT_EMOJI_MAP = {
+  top: '👕', bottom: '👖', dress: '👗', outerwear: '🧥',
+  shoes: '👟', bag: '👜', glasses: '👓', earrings: '✨', hair_accessory: '🎀',
+};
+
+function renderCompleteTheLook() {
+  const section = document.getElementById('complete-the-look');
+  const cardsEl = document.getElementById('complete-look-cards');
+  if (!section || !cardsEl) return;
+
+  if (state.tryOnPreview.status !== 'ready' || !state.tryOnPreview.imageUrl) {
+    section.classList.add('hidden');
+    return;
+  }
+  section.classList.remove('hidden');
+
+  if (state.completeLookLoading) {
+    cardsEl.innerHTML = '<p class="complete-look-loading">Finding complementary items…</p>';
+    return;
+  }
+  if (state.completeLookSuggestions.length === 0) {
+    cardsEl.innerHTML = '';
+    return;
+  }
+
+  cardsEl.innerHTML = state.completeLookSuggestions.map((s, i) => {
+    const emoji    = SLOT_EMOJI_MAP[s.slot] || '✦';
+    const slotLbl  = (s.slot || '').replace(/_/g, ' ');
+    return `
+      <div class="complete-look-card">
+        <div class="complete-look-card-thumb" aria-label="${slotLbl}">${emoji}</div>
+        <div class="complete-look-card-info">
+          <span class="complete-look-card-slot">${slotLbl}</span>
+          <span class="complete-look-card-name">${s.name || ''}</span>
+          <span class="complete-look-card-reason">${s.reason || ''}</span>
+        </div>
+        <div class="complete-look-card-actions">
+          <button class="btn-add-to-look" data-index="${i}">+ Add to Look</button>
+          <button class="btn-add-to-wardrobe" data-index="${i}">+ Wardrobe</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  cardsEl.querySelectorAll('.btn-add-to-look').forEach(btn => {
+    btn.addEventListener('click', () => addSuggestionToLook(parseInt(btn.dataset.index, 10), btn));
+  });
+  cardsEl.querySelectorAll('.btn-add-to-wardrobe').forEach(btn => {
+    btn.addEventListener('click', () => addSuggestionToWardrobe(parseInt(btn.dataset.index, 10), btn));
+  });
+}
+
+async function fetchCompleteTheLookSuggestions() {
+  const assignedSlots = Object.entries(state.slotAssignments)
+    .filter(([, id]) => !!id)
+    .map(([slot]) => slot)
+    .join(',');
+  if (!assignedSlots) return;
+
+  state.completeLookLoading = true;
+  renderCompleteTheLook();
+
+  try {
+    const form = new FormData();
+    form.append('assigned_slots', assignedSlots);
+    const resp = await fetch(`${API}/api/try-on/suggest-items`, { method: 'POST', body: form });
+    if (!resp.ok) return;
+    const result = await resp.json();
+    state.completeLookSuggestions = result.suggestions || [];
+  } catch (_) {
+    state.completeLookSuggestions = [];
+  } finally {
+    state.completeLookLoading = false;
+    renderCompleteTheLook();
+  }
+}
+
+async function addSuggestionToLook(idx, btn) {
+  const suggestion = state.completeLookSuggestions[idx];
+  if (!suggestion || !state.tryOnPreview.imageUrl) return;
+
+  const originalText = btn.textContent;
+  btn.disabled    = true;
+  btn.textContent = 'Adding…';
+
+  try {
+    const previewBlob = await dataUrlToBlob(state.tryOnPreview.imageUrl);
+    const form = new FormData();
+    form.append('preview_image',    previewBlob, 'preview.png');
+    form.append('slot',             suggestion.slot);
+    form.append('item_description', suggestion.name);
+
+    const resp   = await fetch(`${API}/api/try-on/add-item`, { method: 'POST', body: form });
+    const result = await resp.json();
+
+    if (resp.ok && result.preview_image_url) {
+      state.tryOnPreview.imageUrl   = result.preview_image_url;
+      state.completeLookSuggestions = [];
+      state.completeLookImageUrl    = result.preview_image_url;
+      renderTryOnPreview();
+      fetchCompleteTheLookSuggestions();
+    } else {
+      btn.disabled    = false;
+      btn.textContent = originalText;
+    }
+  } catch (_) {
+    btn.disabled    = false;
+    btn.textContent = originalText;
+  }
+}
+
+function addSuggestionToWardrobe(idx, btn) {
+  const suggestion = state.completeLookSuggestions[idx];
+  if (!suggestion) return;
+
+  const originalText = btn.textContent;
+  btn.disabled    = true;
+  btn.textContent = '✓ Added';
+
+  const canvas = document.createElement('canvas');
+  canvas.width  = 240;
+  canvas.height = 300;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#f0eff4';
+  ctx.fillRect(0, 0, 240, 300);
+  ctx.font          = '90px serif';
+  ctx.textAlign     = 'center';
+  ctx.textBaseline  = 'middle';
+  ctx.fillText(SLOT_EMOJI_MAP[suggestion.slot] || '✦', 120, 130);
+  ctx.fillStyle = '#555';
+  ctx.font      = '14px sans-serif';
+  const nameLine = (suggestion.name || '').substring(0, 30);
+  ctx.fillText(nameLine, 120, 255);
+
+  canvas.toBlob(blob => {
+    const fileName = (suggestion.slot || 'item') + '-suggestion.png';
+    const file     = new File([blob], fileName, { type: 'image/png' });
+    const id       = `asset_${++_assetIdCounter}`;
+    state.clothingAssets.push({
+      id,
+      file,
+      rawImageUrl:        URL.createObjectURL(file),
+      cleanAssetUrl:      null,
+      extractionStatus:   'mock',
+      detectedType:       suggestion.slot,
+      itemName:           suggestion.name || '',
+      garmentDescription: suggestion.reason || '',
+      garmentLayerReady:  false,
+      containsModel:      false,
+      cleanupNeeded:      false,
+      userTypeOverride:   true,
+      ambiguous:          false,
+      possibleTypes:      [suggestion.slot],
+      confidence:         1.0,
+      type:               suggestion.slot,
+    });
+    renderAssetLibrary();
+    updateDropZones();
+    updateStudioExtras();
+    updateStudioPieceCount();
+    updateGenerateButton();
+
+    setTimeout(() => {
+      btn.disabled    = false;
+      btn.textContent = originalText;
+    }, 2000);
+  }, 'image/png');
+}
+
+function dataUrlToBlob(dataUrl) {
+  return new Promise(resolve => {
+    const [header, b64] = dataUrl.split(',');
+    const mime = header.match(/:(.*?);/)[1];
+    const bytes = atob(b64);
+    const arr   = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+    resolve(new Blob([arr], { type: mime }));
+  });
 }
 
 /* ── Garment Clean Asset Pipeline (Issue #4) ─────────────────── */

@@ -3676,3 +3676,122 @@ body.lightbox-open { overflow: hidden; }
   color: var(--accent-dark);
   background: var(--accent-bg);
 }
+
+/* ── Complete the Look (Issue #18) ──────────────────────────── */
+.complete-look-section {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.complete-look-hdr {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.complete-look-title {
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.complete-look-subtitle {
+  font-size: .68rem;
+  color: var(--text-faint);
+}
+.complete-look-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.complete-look-loading {
+  font-size: .72rem;
+  color: var(--text-faint);
+  text-align: center;
+  padding: 10px 0;
+}
+.complete-look-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+}
+.complete-look-card-thumb {
+  font-size: 1.6rem;
+  line-height: 1;
+  width: 36px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.complete-look-card-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: 1px;
+}
+.complete-look-card-slot {
+  font-size: .62rem;
+  font-weight: 600;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.complete-look-card-name {
+  font-size: .72rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.complete-look-card-reason {
+  font-size: .68rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.complete-look-card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.btn-add-to-look,
+.btn-add-to-wardrobe {
+  font-size: .64rem;
+  font-weight: 500;
+  padding: 4px 9px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.btn-add-to-look {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+}
+.btn-add-to-look:hover:not(:disabled) {
+  background: var(--accent-dark);
+}
+.btn-add-to-look:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+.btn-add-to-wardrobe {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border-strong);
+}
+.btn-add-to-wardrobe:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent-dark);
+}
+.btn-add-to-wardrobe:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
