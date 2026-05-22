@@ -40,6 +40,18 @@ public class OpenAiImageService {
     @Value("${openai.image.model:gpt-image-2}")
     private String model;
 
+    @Value("${openai.image.quality:high}")
+    private String quality;
+
+    @Value("${openai.image.size:1024x1024}")
+    private String size;
+
+    @Value("${openai.image.output.format:jpeg}")
+    private String outputFormat;
+
+    @Value("${openai.image.output.compression:92}")
+    private String outputCompression;
+
     private final HttpClient   http   = HttpClient.newHttpClient();
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -122,11 +134,12 @@ public class OpenAiImageService {
 
         ByteArrayOutputStream out  = new ByteArrayOutputStream();
         String                crlf = "\r\n";
-        writeTextField(out, boundary, "model",   model,       crlf);
-        writeTextField(out, boundary, "prompt",  prompt,      crlf);
-        writeTextField(out, boundary, "n",       "1",         crlf);
-        writeTextField(out, boundary, "size",    "1024x1024", crlf);
-        writeTextField(out, boundary, "quality", "high",      crlf);
+        writeTextField(out, boundary, "model",   model,   crlf);
+        writeTextField(out, boundary, "prompt",  prompt,  crlf);
+        writeTextField(out, boundary, "n",       "1",     crlf);
+        writeTextField(out, boundary, "size",    size,    crlf);
+        writeTextField(out, boundary, "quality", quality, crlf);
+        writeOutputFormatFields(out, boundary, crlf);
         String ext = previewType != null && previewType.contains("png") ? "png" : "jpg";
         writeFileField(out, boundary, "image[]", "preview." + ext, previewBytes, previewType, crlf);
         if (hasRef) {
@@ -221,11 +234,12 @@ public class OpenAiImageService {
         ByteArrayOutputStream out  = new ByteArrayOutputStream();
         String                crlf = "\r\n";
 
-        writeTextField(out, boundary, "model",   model,  crlf);
-        writeTextField(out, boundary, "prompt",  prompt, crlf);
-        writeTextField(out, boundary, "n",       "1",    crlf);
-        writeTextField(out, boundary, "size",    "1024x1024", crlf);
-        writeTextField(out, boundary, "quality", "high", crlf);
+        writeTextField(out, boundary, "model",   model,   crlf);
+        writeTextField(out, boundary, "prompt",  prompt,  crlf);
+        writeTextField(out, boundary, "n",       "1",     crlf);
+        writeTextField(out, boundary, "size",    size,    crlf);
+        writeTextField(out, boundary, "quality", quality, crlf);
+        writeOutputFormatFields(out, boundary, crlf);
 
         // Model photo — sent as first image so the prompt can reference "the first image"
         String humanExt = humanType != null && humanType.contains("png") ? "png" : "jpg";
@@ -247,6 +261,25 @@ public class OpenAiImageService {
         out.write(("Content-Disposition: form-data; name=\"" + name + "\"" + crlf + crlf)
             .getBytes(StandardCharsets.UTF_8));
         out.write((value + crlf).getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * Appends output_format and output_compression fields when the configured format
+     * is not the API default (png). Safe to omit for png — the API default is already png.
+     * If the API rejects these fields for an unsupported model, the existing HTTP error
+     * handling in the callers will surface the failure cleanly.
+     */
+    private void writeOutputFormatFields(ByteArrayOutputStream out, String boundary,
+                                         String crlf) throws IOException {
+        String fmt = (outputFormat != null && !outputFormat.isBlank()) ? outputFormat.toLowerCase() : "png";
+        if (!"png".equals(fmt)) {
+            writeTextField(out, boundary, "output_format", fmt, crlf);
+            // output_compression only applies to jpeg and webp
+            if (("jpeg".equals(fmt) || "webp".equals(fmt))
+                    && outputCompression != null && !outputCompression.isBlank()) {
+                writeTextField(out, boundary, "output_compression", outputCompression, crlf);
+            }
+        }
     }
 
     private void writeFileField(ByteArrayOutputStream out, String boundary,
@@ -273,7 +306,9 @@ public class OpenAiImageService {
             if (first instanceof Map<?, ?> map) {
                 String b64 = (String) ((Map<String, Object>) map).get("b64_json");
                 if (b64 != null && !b64.isBlank()) {
-                    return "data:image/png;base64," + b64;
+                    String fmt  = (outputFormat != null && !outputFormat.isBlank()) ? outputFormat.toLowerCase() : "png";
+                    String mime = "jpeg".equals(fmt) ? "image/jpeg" : "webp".equals(fmt) ? "image/webp" : "image/png";
+                    return "data:" + mime + ";base64," + b64;
                 }
                 // URL fallback (response_format=url path, if ever used)
                 String url = (String) ((Map<String, Object>) map).get("url");

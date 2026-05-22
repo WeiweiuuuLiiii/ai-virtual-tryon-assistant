@@ -3685,7 +3685,8 @@ body.lightbox-open { overflow: hidden; }
 }
 .complete-look-hdr {
   display: flex;
-  align-items: baseline;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
   margin-bottom: 10px;
 }
@@ -3808,4 +3809,84 @@ body.lightbox-open { overflow: hidden; }
 .btn-add-to-wardrobe:disabled {
   opacity: .55;
   cursor: not-allowed;
+}
+
+/* ── Generating sub-message (Issue #19) ──────────────────────── */
+.tryon-generating-msgs {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.tryon-generating-sub {
+  font-size: .68rem;
+  color: var(--text-faint);
+  line-height: 1.4;
+}
+
+/* ── Complete the Look — Issue #19 additions ─────────────────── */
+.complete-look-hdr-left {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.btn-refresh-suggestions {
+  font-size: .63rem;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all .15s;
+  flex-shrink: 0;
+}
+.btn-refresh-suggestions:hover {
+  border-color: var(--accent);
+  color: var(--accent-dark);
+}
+.add-to-look-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--bg-hover, rgba(0,0,0,.03));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+.add-to-look-status-msgs {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+#add-to-look-msg {
+  font-size: .72rem;
+  font-weight: 600;
+  color: var(--text);
+}
+#add-to-look-sub {
+  font-size: .66rem;
+  color: var(--text-faint);
+}
+.btn-cancel-edit {
+  font-size: .64rem;
+  font-weight: 500;
+  padding: 4px 9px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all .15s;
+  flex-shrink: 0;
+}
+.btn-cancel-edit:hover {
+  border-color: var(--danger, #c0392b);
+  color: var(--danger, #c0392b);
 }

@@ -172,7 +172,10 @@
           <div id="tryon-state-generating" class="tryon-state hidden">
             <div class="tryon-generating-inner">
               <div class="spinner"></div>
-              <span id="tryon-generating-msg">Requesting try-on generation…</span>
+              <div class="tryon-generating-msgs">
+                <span id="tryon-generating-msg">Requesting try-on generation…</span>
+                <span id="tryon-generating-sub" class="tryon-generating-sub"></span>
+              </div>
             </div>
             <button class="btn btn-cancel-generation" id="cancel-generation-btn">Cancel Generation</button>
           </div>
@@ -208,8 +211,18 @@
             <!-- Complete the Look — shown after static image results only -->
             <div id="complete-the-look" class="complete-look-section hidden">
               <div class="complete-look-hdr">
-                <span class="complete-look-title">Complete the Look</span>
-                <span class="complete-look-subtitle">AI-suggested items to add</span>
+                <div class="complete-look-hdr-left">
+                  <span class="complete-look-title">Complete the Look</span>
+                  <span class="complete-look-subtitle">AI-suggested items to add</span>
+                </div>
+                <button id="refresh-suggestions-btn" class="btn-refresh-suggestions hidden">&#8635; Refresh</button>
+              </div>
+              <div id="add-to-look-status" class="add-to-look-status hidden">
+                <div class="add-to-look-status-msgs">
+                  <span id="add-to-look-msg">Adding this item to your look…</span>
+                  <span id="add-to-look-sub">High-quality edits may take 1–3 minutes. Keep this page open.</span>
+                </div>
+                <button id="cancel-edit-btn" class="btn-cancel-edit">Cancel Edit</button>
               </div>
               <div id="complete-look-cards" class="complete-look-cards">
                 <!-- Rendered by renderCompleteTheLook() -->

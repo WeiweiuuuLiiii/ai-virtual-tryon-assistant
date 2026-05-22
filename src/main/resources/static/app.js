@@ -19,6 +19,12 @@ const state = {
   completeLookLoading: false,
   completeLookError: null,          // non-null when suggestion fetch failed
   completeLookImageUrl: null,       // imageUrl that triggered the current suggestions (avoids refetch)
+  addToLookInFlight: false,         // true while any Add to Look request is running
+  addToLookRequestId: 0,            // incremented per Add to Look; stale-result guard
+  addToLookActiveIdx: null,         // index of suggestion currently being added
+  activeAddAbortController: null,   // AbortController for the current Add to Look fetch
+  tryOnCache: new Map(),            // generation cache key → {status, mode, imageUrl, videoUrl}
+  addToLookCache: new Map(),        // add-to-look cache key → result imageUrl
   // Studio — legacy (kept for API compatibility)
   studioItems: { top: null, bottom: null, dress: null, outerwear: null, shoes: null, bag: null, glasses: null, earrings: null, hair_accessory: null },
   studioScene:  null,
@@ -1087,6 +1093,31 @@ function updateGenerateButton() {
   btn.disabled = !hasItems;
 }
 
+function buildGenerationCacheKey() {
+  const activeSendSlots = getActiveSendSlots();
+  const slotParts = Object.entries(state.slotAssignments)
+    .filter(([slot, id]) => !!id && activeSendSlots.includes(slot))
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([slot, id]) => `${slot}:${id}`)
+    .join('|');
+  return [state.selectedProviderId || '', state.outfitMode, slotParts,
+          state.hairAccessoryPlacement || 'auto'].join('\x00');
+}
+
+function buildClientFallbackSuggestions() {
+  const assigned = new Set(
+    Object.entries(state.slotAssignments).filter(([, id]) => !!id).map(([slot]) => slot)
+  );
+  return [
+    { slot: 'bag',            name: 'Small Black Shoulder Bag', reason: 'Versatile everyday essential' },
+    { slot: 'earrings',       name: 'Gold Hoop Earrings',       reason: 'Adds warmth and polish' },
+    { slot: 'glasses',        name: 'Thin Black Glasses',       reason: 'Defines the face effortlessly' },
+    { slot: 'hair_accessory', name: 'Silk Bow Hair Clip',       reason: 'Elevates any hairstyle' },
+    { slot: 'outerwear',      name: 'Light Trench Coat',        reason: 'Classic layering piece' },
+    { slot: 'shoes',          name: 'Black Loafers',            reason: 'Grounded and versatile' },
+  ].filter(c => !assigned.has(c.slot)).slice(0, 3);
+}
+
 function renderTryOnPreview() {
   const ALL = ['idle', 'generating', 'provider-required', 'ready', 'failed'];
   ALL.forEach(s => document.getElementById(`tryon-state-${s}`)?.classList.add('hidden'));
@@ -1115,11 +1146,16 @@ function renderTryOnPreview() {
 
   if (status === 'generating') {
     const msgEl = document.getElementById('tryon-generating-msg');
+    const subEl = document.getElementById('tryon-generating-sub');
     if (msgEl) {
       const cap = getSelectedProviderCapability();
-      msgEl.textContent = cap?.output_type === 'video'
-        ? 'Generating full outfit preview... This may take 1–5 minutes. AI-generated — may adjust pose or background. Please keep this page open.'
-        : 'Requesting try-on generation…';
+      if (cap?.output_type === 'video') {
+        msgEl.textContent = 'Generating full outfit preview…';
+        if (subEl) subEl.textContent = 'This may take 1–5 minutes. AI-generated — may adjust pose or background. Please keep this page open.';
+      } else {
+        msgEl.textContent = 'Generating high-quality preview…';
+        if (subEl) subEl.textContent = 'This may take 1–3 minutes. Keep this page open.';
+      }
     }
   }
 
@@ -1214,6 +1250,8 @@ function renderTryOnPreview() {
   }
 }
 
+let _generatingSlowTimer = null;
+
 async function runTryOnGenerate() {
   // Only send slots that are active in the current mode
   const activeSendSlots = getActiveSendSlots();
@@ -1273,6 +1311,20 @@ async function runTryOnGenerate() {
     return;
   }
 
+  // Req 8: serve from in-memory cache on exact repeated setups.
+  const genCacheKey = buildGenerationCacheKey();
+  if (state.tryOnCache.has(genCacheKey)) {
+    const cached = state.tryOnCache.get(genCacheKey);
+    state.tryOnPreview.status   = cached.status;
+    state.tryOnPreview.mode     = cached.mode;
+    state.tryOnPreview.imageUrl = cached.imageUrl;
+    state.tryOnPreview.videoUrl = cached.videoUrl;
+    state.tryOnPreview.message  = null;
+    renderTryOnPreview();
+    updateGenerateButton();
+    return;
+  }
+
   // Abort any previous in-flight generation and stamp this one with a unique id.
   if (state.activeAbortController) state.activeAbortController.abort();
   state.generationRequestId++;
@@ -1285,6 +1337,17 @@ async function runTryOnGenerate() {
   state.tryOnPreview.videoUrl = null;
   state.tryOnPreview.message  = null;
   renderTryOnPreview();
+
+  // Slow-generation escalation message after 90 s.
+  if (_generatingSlowTimer) clearTimeout(_generatingSlowTimer);
+  _generatingSlowTimer = setTimeout(() => {
+    if (state.tryOnPreview.status === 'generating' && myId === state.generationRequestId) {
+      const msgEl = document.getElementById('tryon-generating-msg');
+      const subEl = document.getElementById('tryon-generating-sub');
+      if (msgEl) msgEl.textContent = 'Still working on the high-quality preview…';
+      if (subEl) subEl.textContent = 'Large image edits can take a few minutes.';
+    }
+  }, 90000);
 
   const btn = document.getElementById('studio-generate-btn');
   if (btn) btn.disabled = true;
@@ -1328,6 +1391,16 @@ async function runTryOnGenerate() {
       state.tryOnPreview.imageUrl = result.preview_image_url || null;
       state.tryOnPreview.videoUrl = result.preview_video_url || null;
       state.tryOnPreview.message  = result.message           || null;
+      // Req 8: cache successful results to avoid repeat API calls.
+      if (state.tryOnPreview.status === 'ready'
+          && (state.tryOnPreview.imageUrl || state.tryOnPreview.videoUrl)) {
+        state.tryOnCache.set(genCacheKey, {
+          status:   state.tryOnPreview.status,
+          mode:     state.tryOnPreview.mode,
+          imageUrl: state.tryOnPreview.imageUrl,
+          videoUrl: state.tryOnPreview.videoUrl,
+        });
+      }
     }
   } catch (err) {
     // AbortError = user cancelled; stale id = superseded by a newer generation — both are silent.
@@ -1335,6 +1408,7 @@ async function runTryOnGenerate() {
     state.tryOnPreview.status  = 'failed';
     state.tryOnPreview.message = err.message;
   } finally {
+    if (_generatingSlowTimer) { clearTimeout(_generatingSlowTimer); _generatingSlowTimer = null; }
     if (myId === state.generationRequestId) {
       state.activeAbortController = null;
       renderTryOnPreview();
@@ -1348,7 +1422,15 @@ function cancelGeneration() {
     state.activeAbortController.abort();
     state.activeAbortController = null;
   }
+  if (state.activeAddAbortController) {
+    state.activeAddAbortController.abort();
+    state.activeAddAbortController = null;
+  }
+  if (_generatingSlowTimer) { clearTimeout(_generatingSlowTimer); _generatingSlowTimer = null; }
   state.generationRequestId++;
+  state.addToLookRequestId++;
+  state.addToLookInFlight  = false;
+  state.addToLookActiveIdx = null;
   state.tryOnPreview.status     = 'idle';
   state.tryOnPreview.imageUrl   = null;
   state.tryOnPreview.videoUrl   = null;
@@ -1359,6 +1441,17 @@ function cancelGeneration() {
   state.completeLookImageUrl    = null;
   renderTryOnPreview();
   updateGenerateButton();
+}
+
+function cancelAddToLook() {
+  if (state.activeAddAbortController) {
+    state.activeAddAbortController.abort();
+    state.activeAddAbortController = null;
+  }
+  state.addToLookRequestId++;
+  state.addToLookInFlight  = false;
+  state.addToLookActiveIdx = null;
+  renderCompleteTheLook();
 }
 
 /* ── Complete the Look (Issue #18) — SVG product thumbnails ─────── */
@@ -1583,8 +1676,10 @@ function svgDataUriToBlob(svgDataUri, w, h) {
 }
 
 function renderCompleteTheLook() {
-  const section = document.getElementById('complete-the-look');
-  const cardsEl = document.getElementById('complete-look-cards');
+  const section    = document.getElementById('complete-the-look');
+  const cardsEl    = document.getElementById('complete-look-cards');
+  const refreshBtn = document.getElementById('refresh-suggestions-btn');
+  const statusBar  = document.getElementById('add-to-look-status');
   if (!section || !cardsEl) return;
 
   if (state.tryOnPreview.status !== 'ready' || !state.tryOnPreview.imageUrl) {
@@ -1592,6 +1687,15 @@ function renderCompleteTheLook() {
     return;
   }
   section.classList.remove('hidden');
+
+  // Add-to-Look status bar (shown while in-flight)
+  if (statusBar) statusBar.classList.toggle('hidden', !state.addToLookInFlight);
+
+  // Refresh button — visible when there are cards and no edit is running
+  if (refreshBtn) {
+    refreshBtn.classList.toggle('hidden',
+      state.completeLookSuggestions.length === 0 || state.addToLookInFlight);
+  }
 
   if (state.completeLookLoading) {
     cardsEl.innerHTML = '<p class="complete-look-loading">Finding complementary items…</p>';
@@ -1607,8 +1711,11 @@ function renderCompleteTheLook() {
   }
 
   cardsEl.innerHTML = state.completeLookSuggestions.map((s, i) => {
-    const thumb   = generateSuggestionThumbnail(s.slot, s.name);
-    const slotLbl = (s.slot || '').replace(/_/g, ' ');
+    const thumb    = generateSuggestionThumbnail(s.slot, s.name);
+    const slotLbl  = (s.slot || '').replace(/_/g, ' ');
+    const isActive  = state.addToLookInFlight && state.addToLookActiveIdx === i;
+    const isWaiting = state.addToLookInFlight && state.addToLookActiveIdx !== i;
+    const addTxt    = isActive ? 'Adding…' : (isWaiting ? 'Wait for current edit' : '+ Add to Look');
     return `
       <div class="complete-look-card">
         <div class="complete-look-card-thumb">
@@ -1620,14 +1727,14 @@ function renderCompleteTheLook() {
           <span class="complete-look-card-reason">${s.reason || ''}</span>
         </div>
         <div class="complete-look-card-actions">
-          <button class="btn-add-to-look" data-index="${i}">+ Add to Look</button>
-          <button class="btn-add-to-wardrobe" data-index="${i}">+ Wardrobe</button>
+          <button class="btn-add-to-look" data-index="${i}" ${state.addToLookInFlight ? 'disabled' : ''}>${addTxt}</button>
+          <button class="btn-add-to-wardrobe" data-index="${i}" ${state.addToLookInFlight ? 'disabled' : ''}>+ Wardrobe</button>
         </div>
       </div>`;
   }).join('');
 
   cardsEl.querySelectorAll('.btn-add-to-look').forEach(btn => {
-    btn.addEventListener('click', () => addSuggestionToLook(parseInt(btn.dataset.index, 10), btn));
+    btn.addEventListener('click', () => addSuggestionToLook(parseInt(btn.dataset.index, 10)));
   });
   cardsEl.querySelectorAll('.btn-add-to-wardrobe').forEach(btn => {
     btn.addEventListener('click', () => addSuggestionToWardrobe(parseInt(btn.dataset.index, 10), btn));
@@ -1641,35 +1748,68 @@ async function fetchCompleteTheLookSuggestions() {
     .join(',');
   if (!assignedSlots) return;
 
-  state.completeLookLoading = true;
-  state.completeLookError   = null;
+  // Req 7: show curated fallbacks immediately — no loading spinner.
+  state.completeLookSuggestions = buildClientFallbackSuggestions();
+  state.completeLookLoading     = false;
+  state.completeLookError       = null;
   renderCompleteTheLook();
 
+  // Fetch Claude-personalized suggestions in the background.
   try {
     const form = new FormData();
     form.append('assigned_slots', assignedSlots);
-    const resp = await fetch(`${API}/api/try-on/suggest-items`, { method: 'POST', body: form });
-    if (!resp.ok) throw new Error('server error');
+    const resp   = await fetch(`${API}/api/try-on/suggest-items`, { method: 'POST', body: form });
+    if (!resp.ok) return; // keep fallback silently
     const result = await resp.json();
-    state.completeLookSuggestions = result.suggestions || [];
-    state.completeLookError       = null;
+    const server  = result.suggestions || [];
+    if (server.length > 0) {
+      state.completeLookSuggestions = server;
+      state.completeLookError       = null;
+      renderCompleteTheLook();
+    }
+    // If empty, keep the local fallback — no error shown.
   } catch (_) {
-    state.completeLookSuggestions = [];
-    state.completeLookError       = 'Could not load styling suggestions. Please try again.';
-    showToast('Could not load styling suggestions. Please try again.', true);
-  } finally {
-    state.completeLookLoading = false;
-    renderCompleteTheLook();
+    // Network or parse error — keep fallback silently, no toast.
   }
 }
 
-async function addSuggestionToLook(idx, btn) {
+async function addSuggestionToLook(idx) {
+  if (state.addToLookInFlight) return; // Req 3: prevent concurrent edits
   const suggestion = state.completeLookSuggestions[idx];
   if (!suggestion || !state.tryOnPreview.imageUrl) return;
 
-  const originalText = btn.textContent;
-  btn.disabled    = true;
-  btn.textContent = 'Adding…';
+  // Req 9: serve from cache if this exact edit was already done on this preview.
+  const cacheKey = `${state.tryOnPreview.imageUrl}||${suggestion.slot}||${suggestion.name}`;
+  if (state.addToLookCache.has(cacheKey)) {
+    const cachedUrl = state.addToLookCache.get(cacheKey);
+    state.tryOnPreview.imageUrl = cachedUrl;
+    state.completeLookImageUrl  = cachedUrl;
+    renderTryOnPreview();
+    return;
+  }
+
+  // Req 3/4/5: mark in-flight, stamp request id, create abort controller.
+  state.addToLookInFlight        = true;
+  state.addToLookRequestId++;
+  state.addToLookActiveIdx       = idx;
+  const myAddId                  = state.addToLookRequestId;
+  const controller               = new AbortController();
+  state.activeAddAbortController = controller;
+  renderCompleteTheLook();
+
+  // Req 10: status bar copy
+  const msgEl = document.getElementById('add-to-look-msg');
+  const subEl = document.getElementById('add-to-look-sub');
+  if (msgEl) msgEl.textContent = 'Adding this item to your look…';
+  if (subEl) subEl.textContent = 'High-quality edits may take 1–3 minutes. Keep this page open.';
+
+  // Escalate message after 90 s.
+  const slowTimer = setTimeout(() => {
+    if (state.addToLookInFlight && myAddId === state.addToLookRequestId) {
+      if (msgEl) msgEl.textContent = 'Still adding the item…';
+      if (subEl) subEl.textContent = 'Keeping your existing look stable can take extra time.';
+    }
+  }, 90000);
 
   try {
     const previewBlob   = await previewImageToBlob(state.tryOnPreview.imageUrl);
@@ -1682,27 +1822,37 @@ async function addSuggestionToLook(idx, btn) {
     form.append('slot',             suggestion.slot);
     form.append('item_description', suggestion.name);
 
-    const resp   = await fetch(`${API}/api/try-on/add-item`, { method: 'POST', body: form });
+    const resp = await fetch(`${API}/api/try-on/add-item`,
+      { method: 'POST', body: form, signal: controller.signal });
+    if (myAddId !== state.addToLookRequestId) return; // Req 4: stale result guard
+
     const result = await resp.json();
+    if (myAddId !== state.addToLookRequestId) return; // Req 4: stale result guard
 
     if (resp.ok && result.preview_image_url) {
-      state.tryOnPreview.imageUrl   = result.preview_image_url;
-      state.completeLookSuggestions = [];
-      state.completeLookImageUrl    = result.preview_image_url;
+      state.addToLookCache.set(cacheKey, result.preview_image_url); // Req 9: store
+      state.tryOnPreview.imageUrl = result.preview_image_url;
+      state.completeLookImageUrl  = result.preview_image_url;
       renderTryOnPreview();
-      fetchCompleteTheLookSuggestions();
+      // Req 6: do NOT auto-refresh suggestions — keep existing cards.
     } else {
-      btn.disabled    = false;
-      btn.textContent = originalText;
       showToast('Could not add this item to the look. Please try again.', true);
     }
   } catch (err) {
-    btn.disabled    = false;
-    btn.textContent = originalText;
+    // Req 5: AbortError = user cancelled; stale = superseded — both silent.
+    if (err.name === 'AbortError' || myAddId !== state.addToLookRequestId) return;
     const msg = (err.message || '').includes('GPT Image Static Try-On')
       ? err.message
       : 'Could not add this item to the look. Please try again.';
     showToast(msg, true);
+  } finally {
+    clearTimeout(slowTimer);
+    if (myAddId === state.addToLookRequestId) {
+      state.addToLookInFlight        = false;
+      state.addToLookActiveIdx       = null;
+      state.activeAddAbortController = null;
+      renderCompleteTheLook();
+    }
   }
 }
 
@@ -1977,6 +2127,13 @@ function setupStudio() {
   // Wire generate try-on button and cancel button
   document.getElementById('studio-generate-btn')?.addEventListener('click', runTryOnGenerate);
   document.getElementById('cancel-generation-btn')?.addEventListener('click', cancelGeneration);
+  document.getElementById('cancel-edit-btn')?.addEventListener('click', cancelAddToLook);
+  document.getElementById('refresh-suggestions-btn')?.addEventListener('click', () => {
+    state.completeLookSuggestions = [];
+    state.completeLookLoading     = false;
+    state.completeLookError       = null;
+    fetchCompleteTheLookSuggestions();
+  });
 
   // Hero CTA buttons
   document.getElementById('hero-build-btn')?.addEventListener('click', () => {
