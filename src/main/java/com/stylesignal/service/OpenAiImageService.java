@@ -73,7 +73,7 @@ public class OpenAiImageService {
 
         String boundary = "----OpenAiBoundary" + UUID.randomUUID().toString().replace("-", "");
         String prompt   = buildPrompt(garments, outfitMode, hairAccessoryPlacement);
-        byte[] body     = buildMultipartBody(boundary, prompt, humanBytes, humanType, garments);
+        byte[] body     = buildMultipartBody(boundary, prompt, humanBytes, humanType, garments, true);
 
         log.info("Sending GPT Image try-on request — model={}, garments={}", model, garments.size());
 
@@ -85,15 +85,33 @@ public class OpenAiImageService {
             .build();
 
         HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
-        if (resp.statusCode() != 200) {
-            // Log only the status code — never include response body (may contain error details).
+        boolean usedOptFormat = isUsingOptimizedFormat();
+
+        if (resp.statusCode() != 200 && usedOptFormat) {
+            // Retry once without output_format/output_compression — preserve all other params.
+            log.warn("Optimized output format rejected (HTTP {}); retrying try-on without output_format/output_compression", resp.statusCode());
+            String boundary2 = "----OpenAiBoundary" + UUID.randomUUID().toString().replace("-", "");
+            byte[] body2     = buildMultipartBody(boundary2, prompt, humanBytes, humanType, garments, false);
+            HttpRequest req2 = HttpRequest.newBuilder()
+                .uri(URI.create(OPENAI_API + "/images/edits"))
+                .header("Authorization", "Bearer " + apiKey)
+                .header("Content-Type",  "multipart/form-data; boundary=" + boundary2)
+                .POST(HttpRequest.BodyPublishers.ofByteArray(body2))
+                .build();
+            resp = http.send(req2, HttpResponse.BodyHandlers.ofString());
+            usedOptFormat = false; // fallback path — OpenAI will return default PNG
+            if (resp.statusCode() != 200) {
+                log.warn("OpenAI Images API fallback try-on also failed — HTTP {}", resp.statusCode());
+                throw new RuntimeException("OpenAI Images API request failed (HTTP " + resp.statusCode() + ").");
+            }
+            log.info("GPT Image try-on succeeded via fallback (no output_format/output_compression)");
+        } else if (resp.statusCode() != 200) {
             log.warn("OpenAI Images API request failed — HTTP {}, model={}", resp.statusCode(), model);
-            throw new RuntimeException(
-                "OpenAI Images API request failed (HTTP " + resp.statusCode() + ").");
+            throw new RuntimeException("OpenAI Images API request failed (HTTP " + resp.statusCode() + ").");
         }
 
         Map<String, Object> result = mapper.readValue(resp.body(), new TypeReference<>() {});
-        String dataUrl = extractImageDataUrl(result);
+        String dataUrl = extractImageDataUrl(result, usedOptFormat);
         log.info("GPT Image try-on complete — returning data URL ({} chars)", dataUrl.length());
 
         Map<String, Object> out = new LinkedHashMap<>();
@@ -132,23 +150,8 @@ public class OpenAiImageService {
             + "bag held or worn on shoulder/arm, hair accessory on hair. "
             + "Output must look like a real fashion photograph. No cartoon or artistic stylization.";
 
-        ByteArrayOutputStream out  = new ByteArrayOutputStream();
-        String                crlf = "\r\n";
-        writeTextField(out, boundary, "model",   model,   crlf);
-        writeTextField(out, boundary, "prompt",  prompt,  crlf);
-        writeTextField(out, boundary, "n",       "1",     crlf);
-        writeTextField(out, boundary, "size",    size,    crlf);
-        writeTextField(out, boundary, "quality", quality, crlf);
-        writeOutputFormatFields(out, boundary, crlf);
-        String ext = previewType != null && previewType.contains("png") ? "png" : "jpg";
-        writeFileField(out, boundary, "image[]", "preview." + ext, previewBytes, previewType, crlf);
-        if (hasRef) {
-            String refExt = referenceType != null && referenceType.contains("png") ? "png" : "jpg";
-            writeFileField(out, boundary, "image[]", "reference." + refExt,
-                           referenceBytes, referenceType, crlf);
-        }
-        out.write(("--" + boundary + "--" + crlf).getBytes(StandardCharsets.UTF_8));
-        byte[] body = out.toByteArray();
+        byte[] body = buildAddItemBody(boundary, prompt, previewBytes, previewType,
+                                       referenceBytes, referenceType, true);
 
         log.info("GPT Image add-item request — slot={}, hasReference={}", slot, hasRef);
         HttpRequest req = HttpRequest.newBuilder()
@@ -159,13 +162,34 @@ public class OpenAiImageService {
             .build();
 
         HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
-        if (resp.statusCode() != 200) {
+        boolean usedOptFormat = isUsingOptimizedFormat();
+
+        if (resp.statusCode() != 200 && usedOptFormat) {
+            // Retry once without output_format/output_compression — preserve all other params.
+            log.warn("Optimized output format rejected (HTTP {}); retrying add-item without output_format/output_compression", resp.statusCode());
+            String boundary2 = "----OpenAiBoundary" + UUID.randomUUID().toString().replace("-", "");
+            byte[] body2     = buildAddItemBody(boundary2, prompt, previewBytes, previewType,
+                                               referenceBytes, referenceType, false);
+            HttpRequest req2 = HttpRequest.newBuilder()
+                .uri(URI.create(OPENAI_API + "/images/edits"))
+                .header("Authorization", "Bearer " + apiKey)
+                .header("Content-Type",  "multipart/form-data; boundary=" + boundary2)
+                .POST(HttpRequest.BodyPublishers.ofByteArray(body2))
+                .build();
+            resp = http.send(req2, HttpResponse.BodyHandlers.ofString());
+            usedOptFormat = false; // fallback path — OpenAI will return default PNG
+            if (resp.statusCode() != 200) {
+                log.warn("OpenAI add-item fallback also failed — HTTP {}", resp.statusCode());
+                throw new RuntimeException("OpenAI Images API request failed (HTTP " + resp.statusCode() + ").");
+            }
+            log.info("GPT Image add-item succeeded via fallback (no output_format/output_compression)");
+        } else if (resp.statusCode() != 200) {
             log.warn("OpenAI add-item failed — HTTP {}", resp.statusCode());
             throw new RuntimeException("OpenAI Images API request failed (HTTP " + resp.statusCode() + ").");
         }
 
         Map<String, Object> result  = mapper.readValue(resp.body(), new TypeReference<>() {});
-        String              dataUrl = extractImageDataUrl(result);
+        String              dataUrl = extractImageDataUrl(result, usedOptFormat);
         log.info("GPT Image add-item complete");
 
         Map<String, Object> out2 = new LinkedHashMap<>();
@@ -226,10 +250,41 @@ public class OpenAiImageService {
     // Multipart body construction
     // ---------------------------------------------------------------------------
 
+    private boolean isUsingOptimizedFormat() {
+        return outputFormat != null && !outputFormat.isBlank()
+            && !"png".equalsIgnoreCase(outputFormat.trim());
+    }
+
+    private byte[] buildAddItemBody(
+            String boundary, String prompt,
+            byte[] previewBytes, String previewType,
+            byte[] referenceBytes, String referenceType,
+            boolean includeOptFormat) throws IOException {
+
+        ByteArrayOutputStream out  = new ByteArrayOutputStream();
+        String                crlf = "\r\n";
+        writeTextField(out, boundary, "model",   model,   crlf);
+        writeTextField(out, boundary, "prompt",  prompt,  crlf);
+        writeTextField(out, boundary, "n",       "1",     crlf);
+        writeTextField(out, boundary, "size",    size,    crlf);
+        writeTextField(out, boundary, "quality", quality, crlf);
+        if (includeOptFormat) writeOutputFormatFields(out, boundary, crlf);
+        String ext = previewType != null && previewType.contains("png") ? "png" : "jpg";
+        writeFileField(out, boundary, "image[]", "preview." + ext, previewBytes, previewType, crlf);
+        if (referenceBytes != null && referenceBytes.length > 0) {
+            String refExt = referenceType != null && referenceType.contains("png") ? "png" : "jpg";
+            writeFileField(out, boundary, "image[]", "reference." + refExt,
+                           referenceBytes, referenceType, crlf);
+        }
+        out.write(("--" + boundary + "--" + crlf).getBytes(StandardCharsets.UTF_8));
+        return out.toByteArray();
+    }
+
     private byte[] buildMultipartBody(
             String boundary, String prompt,
             byte[] humanBytes, String humanType,
-            List<GarmentItem> garments) throws IOException {
+            List<GarmentItem> garments,
+            boolean includeOptFormat) throws IOException {
 
         ByteArrayOutputStream out  = new ByteArrayOutputStream();
         String                crlf = "\r\n";
@@ -239,7 +294,7 @@ public class OpenAiImageService {
         writeTextField(out, boundary, "n",       "1",     crlf);
         writeTextField(out, boundary, "size",    size,    crlf);
         writeTextField(out, boundary, "quality", quality, crlf);
-        writeOutputFormatFields(out, boundary, crlf);
+        if (includeOptFormat) writeOutputFormatFields(out, boundary, crlf);
 
         // Model photo — sent as first image so the prompt can reference "the first image"
         String humanExt = humanType != null && humanType.contains("png") ? "png" : "jpg";
@@ -298,16 +353,29 @@ public class OpenAiImageService {
     // Response parsing
     // ---------------------------------------------------------------------------
 
+    /**
+     * Extracts the base64 image from the API response and returns a data URI.
+     * useConfiguredFormat=true  → optimized request succeeded; use the configured output format MIME.
+     * useConfiguredFormat=false → fallback request (no format fields); OpenAI returns PNG by default.
+     */
     @SuppressWarnings("unchecked")
-    private String extractImageDataUrl(Map<String, Object> response) {
+    private String extractImageDataUrl(Map<String, Object> response, boolean useConfiguredFormat) {
         Object data = response.get("data");
         if (data instanceof List<?> list && !list.isEmpty()) {
             Object first = list.get(0);
             if (first instanceof Map<?, ?> map) {
                 String b64 = (String) ((Map<String, Object>) map).get("b64_json");
                 if (b64 != null && !b64.isBlank()) {
-                    String fmt  = (outputFormat != null && !outputFormat.isBlank()) ? outputFormat.toLowerCase() : "png";
-                    String mime = "jpeg".equals(fmt) ? "image/jpeg" : "webp".equals(fmt) ? "image/webp" : "image/png";
+                    String mime;
+                    if (useConfiguredFormat) {
+                        String fmt = (outputFormat != null && !outputFormat.isBlank())
+                            ? outputFormat.toLowerCase() : "png";
+                        mime = "jpeg".equals(fmt) ? "image/jpeg"
+                             : "webp".equals(fmt) ? "image/webp"
+                             : "image/png";
+                    } else {
+                        mime = "image/png"; // fallback path — no format fields → OpenAI default is PNG
+                    }
                     return "data:" + mime + ";base64," + b64;
                 }
                 // URL fallback (response_format=url path, if ever used)

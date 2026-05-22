@@ -13,6 +13,7 @@ const state = {
   draggedAssetId: null,
   outfitMode: 'top_bottom',         // 'top_bottom' | 'dress'
   hairAccessoryPlacement: 'auto',   // 'auto' | 'top_of_head' | 'left_side' | 'right_side' | 'back_bun' | 'forehead_headband'
+  modelRevision: 0,                 // incremented whenever My Model photo or body_shape changes; included in tryOnCache key
   generationRequestId: 0,           // incremented each time generation starts; used for stale result protection
   activeAbortController: null,      // AbortController for the current in-flight generation fetch
   completeLookSuggestions: [],      // [{slot, name, reason}] returned by suggest-items
@@ -242,6 +243,8 @@ function setModelPhoto(file) {
   if (state.modelPhotoUrl) URL.revokeObjectURL(state.modelPhotoUrl);
   state.modelPhotoFile = file;
   state.modelPhotoUrl = URL.createObjectURL(file);
+  state.modelRevision++;     // new photo → cache keys change
+  state.tryOnCache = new Map();
 
   document.getElementById('model-preview-img').src = state.modelPhotoUrl;
   document.getElementById('model-preview-wrap').classList.remove('hidden');
@@ -273,6 +276,8 @@ async function runModelAnalysis() {
 
     const modelData = await resp.json();
     state.model = modelData;
+    state.modelRevision++;     // body_shape / model data updated → invalidate generation cache
+    state.tryOnCache = new Map();
     renderModelCard(modelData, true);
     showToast('Model built — every outfit check is now calibrated to your frame.');
   } catch (err) {
@@ -1100,8 +1105,14 @@ function buildGenerationCacheKey() {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([slot, id]) => `${slot}:${id}`)
     .join('|');
-  return [state.selectedProviderId || '', state.outfitMode, slotParts,
-          state.hairAccessoryPlacement || 'auto'].join('\x00');
+  return [
+    state.selectedProviderId || '',
+    state.outfitMode,
+    slotParts,
+    state.hairAccessoryPlacement || 'auto',
+    state.modelRevision,                          // My Model photo identity
+    state.model?.body_shape || '',                // body_shape sent to backend
+  ].join('\x00');
 }
 
 function buildClientFallbackSuggestions() {
