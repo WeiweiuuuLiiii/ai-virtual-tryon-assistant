@@ -21,10 +21,14 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api")
@@ -423,15 +427,54 @@ public class ApiController {
 
     @PostMapping("/try-on/suggest-items")
     public ResponseEntity<?> suggestItems(
-            @RequestParam("assigned_slots") String assignedSlots) throws Exception {
+            @RequestParam("assigned_slots") String assignedSlots) {
         log.info("POST /api/try-on/suggest-items — assigned_slots={}", assignedSlots);
         if (assignedSlots == null || assignedSlots.isBlank()) {
             return ResponseEntity.badRequest().body(errorBody("assigned_slots is required."));
         }
-        List<Map<String, Object>> suggestions = claude.suggestCompleteTheLook(assignedSlots);
+
+        List<Map<String, Object>> suggestions;
+        try {
+            suggestions = claude.suggestCompleteTheLook(assignedSlots);
+            if (suggestions == null || suggestions.isEmpty()) {
+                log.warn("Complete-the-look suggestions fell back to curated defaults.");
+                suggestions = buildFallbackSuggestions(assignedSlots);
+            }
+        } catch (Exception e) {
+            log.warn("Complete-the-look suggestions fell back to curated defaults.");
+            suggestions = buildFallbackSuggestions(assignedSlots);
+        }
+
         Map<String, Object> resp = new LinkedHashMap<>();
         resp.put("suggestions", suggestions);
         return ResponseEntity.ok(resp);
+    }
+
+    private List<Map<String, Object>> buildFallbackSuggestions(String assignedSlots) {
+        Set<String> assigned = assignedSlots == null || assignedSlots.isBlank()
+            ? new HashSet<>()
+            : new HashSet<>(Arrays.asList(assignedSlots.split(",")));
+
+        // Curated items in priority order; slots already in the outfit are skipped.
+        List<Map<String, Object>> candidates = List.of(
+            Map.of("slot", "bag",            "name", "Small Black Shoulder Bag",
+                   "reason", "Versatile everyday essential"),
+            Map.of("slot", "earrings",       "name", "Gold Hoop Earrings",
+                   "reason", "Adds warmth and polish"),
+            Map.of("slot", "glasses",        "name", "Thin Black Glasses",
+                   "reason", "Defines the face effortlessly"),
+            Map.of("slot", "hair_accessory", "name", "Silk Bow Hair Clip",
+                   "reason", "Elevates any hairstyle"),
+            Map.of("slot", "outerwear",      "name", "Light Trench Coat",
+                   "reason", "Classic layering piece"),
+            Map.of("slot", "shoes",          "name", "Black Loafers",
+                   "reason", "Grounded and versatile")
+        );
+
+        return candidates.stream()
+            .filter(s -> !assigned.contains(s.get("slot")))
+            .limit(3)
+            .collect(Collectors.toList());
     }
 
     @PostMapping("/try-on/add-item")
