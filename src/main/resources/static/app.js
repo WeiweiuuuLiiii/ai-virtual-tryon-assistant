@@ -17,6 +17,7 @@ const state = {
   activeAbortController: null,      // AbortController for the current in-flight generation fetch
   completeLookSuggestions: [],      // [{slot, name, reason}] returned by suggest-items
   completeLookLoading: false,
+  completeLookError: null,          // non-null when suggestion fetch failed
   completeLookImageUrl: null,       // imageUrl that triggered the current suggestions (avoids refetch)
   // Studio — legacy (kept for API compatibility)
   studioItems: { top: null, bottom: null, dress: null, outerwear: null, shoes: null, bag: null, glasses: null, earrings: null, hair_accessory: null },
@@ -1354,6 +1355,7 @@ function cancelGeneration() {
   state.tryOnPreview.message    = null;
   state.completeLookSuggestions = [];
   state.completeLookLoading     = false;
+  state.completeLookError       = null;
   state.completeLookImageUrl    = null;
   renderTryOnPreview();
   updateGenerateButton();
@@ -1595,6 +1597,10 @@ function renderCompleteTheLook() {
     cardsEl.innerHTML = '<p class="complete-look-loading">Finding complementary items…</p>';
     return;
   }
+  if (state.completeLookError) {
+    cardsEl.innerHTML = `<p class="complete-look-error">${state.completeLookError}</p>`;
+    return;
+  }
   if (state.completeLookSuggestions.length === 0) {
     cardsEl.innerHTML = '';
     return;
@@ -1636,17 +1642,21 @@ async function fetchCompleteTheLookSuggestions() {
   if (!assignedSlots) return;
 
   state.completeLookLoading = true;
+  state.completeLookError   = null;
   renderCompleteTheLook();
 
   try {
     const form = new FormData();
     form.append('assigned_slots', assignedSlots);
     const resp = await fetch(`${API}/api/try-on/suggest-items`, { method: 'POST', body: form });
-    if (!resp.ok) return;
+    if (!resp.ok) throw new Error('server error');
     const result = await resp.json();
     state.completeLookSuggestions = result.suggestions || [];
+    state.completeLookError       = null;
   } catch (_) {
     state.completeLookSuggestions = [];
+    state.completeLookError       = 'Could not load styling suggestions. Please try again.';
+    showToast('Could not load styling suggestions. Please try again.', true);
   } finally {
     state.completeLookLoading = false;
     renderCompleteTheLook();
@@ -1662,7 +1672,7 @@ async function addSuggestionToLook(idx, btn) {
   btn.textContent = 'Adding…';
 
   try {
-    const previewBlob   = await dataUrlToBlob(state.tryOnPreview.imageUrl);
+    const previewBlob   = await previewImageToBlob(state.tryOnPreview.imageUrl);
     const thumbUri      = generateSuggestionThumbnail(suggestion.slot, suggestion.name);
     const referenceBlob = await svgDataUriToBlob(thumbUri, 240, 300);
 
@@ -1684,10 +1694,15 @@ async function addSuggestionToLook(idx, btn) {
     } else {
       btn.disabled    = false;
       btn.textContent = originalText;
+      showToast('Could not add this item to the look. Please try again.', true);
     }
-  } catch (_) {
+  } catch (err) {
     btn.disabled    = false;
     btn.textContent = originalText;
+    const msg = (err.message || '').includes('GPT Image Static Try-On')
+      ? err.message
+      : 'Could not add this item to the look. Please try again.';
+    showToast(msg, true);
   }
 }
 
@@ -1744,6 +1759,26 @@ function dataUrlToBlob(dataUrl) {
     for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
     resolve(new Blob([arr], { type: mime }));
   });
+}
+
+// Converts any preview imageUrl to a Blob — handles both data: URIs and hosted http/https URLs.
+async function previewImageToBlob(imageUrl) {
+  if (!imageUrl) throw new Error('No preview image available.');
+  if (imageUrl.startsWith('data:')) {
+    return dataUrlToBlob(imageUrl);
+  }
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    try {
+      const resp = await fetch(imageUrl, { mode: 'cors' });
+      if (!resp.ok) throw new Error('fetch failed');
+      return resp.blob();
+    } catch (_) {
+      throw new Error(
+        'Could not use this preview for editing. Try generating with GPT Image Static Try-On.');
+    }
+  }
+  throw new Error(
+    'Could not use this preview for editing. Try generating with GPT Image Static Try-On.');
 }
 
 /* ── Garment Clean Asset Pipeline (Issue #4) ─────────────────── */

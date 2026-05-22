@@ -3709,6 +3709,12 @@ body.lightbox-open { overflow: hidden; }
   text-align: center;
   padding: 10px 0;
 }
+.complete-look-error {
+  font-size: .70rem;
+  color: var(--danger, #c0392b);
+  text-align: center;
+  padding: 8px 0;
+}
 .complete-look-card {
   display: flex;
   align-items: center;
