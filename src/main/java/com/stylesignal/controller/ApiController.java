@@ -245,7 +245,7 @@ public class ApiController {
             @RequestParam(value = "body_shape",        required = false)              String bodyShape,
             @RequestParam(value = "contains_model",    required = false,
                           defaultValue = "false")                                     boolean containsModel,
-            // Per-slot garment images for multi-garment providers (stable order: top, outerwear, bottom, dress, shoes, bag, glasses, earrings, hair_accessory)
+            // Per-slot garment images for multi-garment providers (stable order: top, outerwear, bottom, dress, shoes, bag, glasses, earrings, hair_accessory, scarf, necklace, bracelet, belt, hat, watch, tights, socks)
             @RequestParam(value = "garm_img_top",            required = false) MultipartFile garmImgTop,
             @RequestParam(value = "garm_img_outerwear",      required = false) MultipartFile garmImgOuterwear,
             @RequestParam(value = "garm_img_bottom",         required = false) MultipartFile garmImgBottom,
@@ -255,6 +255,14 @@ public class ApiController {
             @RequestParam(value = "garm_img_glasses",        required = false) MultipartFile garmImgGlasses,
             @RequestParam(value = "garm_img_earrings",       required = false) MultipartFile garmImgEarrings,
             @RequestParam(value = "garm_img_hair_accessory", required = false) MultipartFile garmImgHairAccessory,
+            @RequestParam(value = "garm_img_scarf",          required = false) MultipartFile garmImgScarf,
+            @RequestParam(value = "garm_img_necklace",       required = false) MultipartFile garmImgNecklace,
+            @RequestParam(value = "garm_img_bracelet",       required = false) MultipartFile garmImgBracelet,
+            @RequestParam(value = "garm_img_belt",           required = false) MultipartFile garmImgBelt,
+            @RequestParam(value = "garm_img_hat",            required = false) MultipartFile garmImgHat,
+            @RequestParam(value = "garm_img_watch",          required = false) MultipartFile garmImgWatch,
+            @RequestParam(value = "garm_img_tights",         required = false) MultipartFile garmImgTights,
+            @RequestParam(value = "garm_img_socks",          required = false) MultipartFile garmImgSocks,
             @RequestParam(value = "outfit_mode",             required = false) String outfitMode,
             @RequestParam(value = "hair_accessory_placement",required = false) String hairAccessoryPlacement)
             throws Exception {
@@ -302,7 +310,7 @@ public class ApiController {
         byte[] humanBytes = storage.loadModelPhotoBytes();
         String humanType  = "image/jpeg"; // model photos are stored as JPEG
 
-        // ── Build garments list from per-slot params (stable order: top, outerwear, bottom, dress, shoes, bag, glasses, earrings, hair_accessory) ──
+        // ── Build garments list from per-slot params (stable order: top, outerwear, bottom, dress, shoes, bag, glasses, earrings, hair_accessory, scarf, necklace, bracelet, belt, hat, watch, tights, socks) ──
         // Use a mutable map so null values (absent slots) do not throw NPE — Map.entry() disallows null.
         Map<String, MultipartFile> slotFiles = new LinkedHashMap<>();
         slotFiles.put("top",            garmImgTop);
@@ -314,6 +322,14 @@ public class ApiController {
         slotFiles.put("glasses",        garmImgGlasses);
         slotFiles.put("earrings",       garmImgEarrings);
         slotFiles.put("hair_accessory", garmImgHairAccessory);
+        slotFiles.put("scarf",          garmImgScarf);
+        slotFiles.put("necklace",       garmImgNecklace);
+        slotFiles.put("bracelet",       garmImgBracelet);
+        slotFiles.put("belt",           garmImgBelt);
+        slotFiles.put("hat",            garmImgHat);
+        slotFiles.put("watch",          garmImgWatch);
+        slotFiles.put("tights",         garmImgTights);
+        slotFiles.put("socks",          garmImgSocks);
 
         List<GarmentItem> garments = new ArrayList<>();
         for (Map.Entry<String, MultipartFile> entry : slotFiles.entrySet()) {

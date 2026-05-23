@@ -45,7 +45,8 @@ public class WaveSpeedProvider implements TryOnProvider {
             wavespeed.isConfigured() ? "active" : "not_configured",
             8,
             List.of("top", "outerwear", "bottom", "dress", "shoes"),
-            List.of("bag", "glasses", "earrings", "hair_accessory"),
+            List.of("bag", "glasses", "earrings", "hair_accessory",
+                    "scarf", "necklace", "bracelet", "belt", "hat", "watch", "tights", "socks"),
             "WaveSpeed AI multi-garment full-outfit try-on. Recommended for full clothing generation. "
                 + "AI-generated preview — may adjust pose or background. Generation takes 1–5 minutes. "
                 + "Not reliable for small accessories — use GPT Image for bags, glasses, earrings, and hair accessories.",

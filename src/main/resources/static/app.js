@@ -9,7 +9,7 @@ const state = {
   uploadedStylePhotos: [],
   // Studio — clothing asset library
   clothingAssets: [],       // [{ id, file, rawImageUrl, cleanAssetUrl, extractionStatus, detectedType, itemName, garmentDescription, garmentLayerReady, containsModel, cleanupNeeded, userTypeOverride, type }]
-  slotAssignments: { top: null, bottom: null, dress: null, outerwear: null, shoes: null, bag: null, glasses: null, earrings: null, hair_accessory: null },
+  slotAssignments: { top: null, bottom: null, dress: null, outerwear: null, shoes: null, bag: null, glasses: null, earrings: null, hair_accessory: null, scarf: null, necklace: null, bracelet: null, belt: null, hat: null, watch: null, tights: null, socks: null },
   draggedAssetId: null,
   outfitMode: 'top_bottom',         // 'top_bottom' | 'dress'
   hairAccessoryPlacement: 'auto',   // 'auto' | 'top_of_head' | 'left_side' | 'right_side' | 'back_bun' | 'forehead_headband'
@@ -615,11 +615,19 @@ const ASSET_TYPES = [
   { key: 'glasses',        label: 'Glasses',   emoji: '👓' },
   { key: 'earrings',       label: 'Earrings',  emoji: '✨' },
   { key: 'hair_accessory', label: 'Hair Acc.', emoji: '🎀' },
+  { key: 'scarf',          label: 'Scarf',     emoji: '🧣' },
+  { key: 'necklace',       label: 'Necklace',  emoji: '📿' },
+  { key: 'bracelet',       label: 'Bracelet',  emoji: '💍' },
+  { key: 'belt',           label: 'Belt',      emoji: '👔' },
+  { key: 'hat',            label: 'Hat',       emoji: '🎩' },
+  { key: 'watch',          label: 'Watch',     emoji: '⌚' },
+  { key: 'tights',         label: 'Tights',    emoji: '🦵' },
+  { key: 'socks',          label: 'Socks',     emoji: '🧦' },
 ];
 // Slots wired to the mannequin stage drop zones (all always in DOM):
 const ALL_STAGE_SLOTS   = ['top', 'bottom', 'dress', 'shoes'];
 // Accessory slots rendered in the compact row below the stage:
-const ACCESSORY_SLOTS   = ['bag', 'glasses', 'earrings', 'hair_accessory'];
+const ACCESSORY_SLOTS   = ['bag', 'glasses', 'earrings', 'hair_accessory', 'scarf', 'necklace', 'bracelet', 'belt', 'hat', 'watch', 'tights', 'socks'];
 // Legacy alias kept for callers that still reference it:
 const EXTRA_DZ_SLOTS    = ACCESSORY_SLOTS;
 
@@ -642,6 +650,14 @@ function _guessType(file) {
   if (/glass|sunglass|spectacle|eyewear/.test(n))       return 'glasses';
   if (/earring|stud|hoop|dangle/.test(n))               return 'earrings';
   if (/hair|headband|clip|barrette|scrunchie|bow/.test(n)) return 'hair_accessory';
+  if (/scarf|wrap|shawl/.test(n))                       return 'scarf';
+  if (/necklace|pendant|choker/.test(n))                return 'necklace';
+  if (/bracelet|bangle|cuff/.test(n))                   return 'bracelet';
+  if (/belt|waistband/.test(n))                         return 'belt';
+  if (/hat|cap|beanie|fedora|beret/.test(n))            return 'hat';
+  if (/watch|timepiece/.test(n))                        return 'watch';
+  if (/tight|stocking|pantyhose|legging/.test(n))       return 'tights';
+  if (/sock|ankle/.test(n))                             return 'socks';
   return 'top';
 }
 

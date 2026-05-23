@@ -29,7 +29,8 @@ public class FashnV16Provider implements TryOnProvider {
             fashn.isConfigured() ? "active" : "not_configured",
             1,
             List.of("top", "outerwear", "bottom", "dress"),
-            List.of("shoes", "bag", "glasses", "earrings", "hair_accessory"),
+            List.of("shoes", "bag", "glasses", "earrings", "hair_accessory",
+                    "scarf", "necklace", "bracelet", "belt", "hat", "watch", "tights", "socks"),
             "FASHN's production virtual try-on model. Handles on-model and flat-lay garment images via segmentation_free mode.",
             List.of(
                 "Supports one garment at a time",

@@ -29,7 +29,8 @@ public class ReplicateIdmVtonProvider implements TryOnProvider {
             replicate.isConfigured() ? "active" : "not_configured",
             1,
             List.of("top", "dress", "outerwear", "bottom", "shoes"),
-            List.of("bag", "glasses", "earrings", "hair_accessory"),
+            List.of("bag", "glasses", "earrings", "hair_accessory",
+                    "scarf", "necklace", "bracelet", "belt", "hat", "watch", "tights", "socks"),
             "Open-source diffusion-based virtual try-on. Runs cuuupid/idm-vton on Replicate.",
             List.of(
                 "Supports one garment at a time",

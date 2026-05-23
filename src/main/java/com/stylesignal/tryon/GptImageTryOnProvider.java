@@ -17,9 +17,10 @@ public class GptImageTryOnProvider implements TryOnProvider {
     // All styling slots — clothing + full accessories
     static final List<String> SUPPORTED_SLOTS   = List.of(
         "top", "outerwear", "bottom", "dress", "shoes",
-        "bag", "glasses", "earrings", "hair_accessory");
+        "bag", "glasses", "earrings", "hair_accessory",
+        "scarf", "necklace", "bracelet", "belt", "hat", "watch", "tights", "socks");
     static final List<String> UNSUPPORTED_SLOTS = List.of();
-    private static final int MAX_ITEMS = 8;
+    private static final int MAX_ITEMS = 16;
 
     private final OpenAiImageService openAi;
 

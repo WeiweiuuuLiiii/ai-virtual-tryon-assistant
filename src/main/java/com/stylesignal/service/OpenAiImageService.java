@@ -376,6 +376,14 @@ public class OpenAiImageService {
         sb.append("For glasses: place them on the person's face at the eyes. ");
         sb.append("For earrings: place them on the earlobes. ");
         sb.append("For bag: show the person holding or wearing it as intended. ");
+        sb.append("For scarf: drape it around the neck or shoulders as shown in the reference. ");
+        sb.append("For necklace: place it around the neck, visible on the chest. ");
+        sb.append("For bracelet: place it on the wrist of one hand. ");
+        sb.append("For belt: place it around the waist, over the clothing as shown. ");
+        sb.append("For hat: place it on top of the head as shown in the reference. ");
+        sb.append("For watch: place it on the wrist, visible below the sleeve. ");
+        sb.append("For tights: show them on the legs, under any skirt or dress. ");
+        sb.append("For socks: show them on the feet/ankles, above the shoes. ");
 
         // Hair accessory placement
         if (hairAccessoryPlacement != null && !hairAccessoryPlacement.isBlank()

@@ -1935,7 +1935,18 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
 .studio-extra-row {
   display: flex;
   gap: 6px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.studio-extra-row::-webkit-scrollbar {
+  height: 4px;
+}
+.studio-extra-row::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
 }
 .studio-extra-slot {
   position: relative;
