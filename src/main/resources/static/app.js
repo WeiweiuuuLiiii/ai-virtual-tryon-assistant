@@ -4114,11 +4114,18 @@ function loadSavedLooks() {
 function persistLooks() {
   try {
     localStorage.setItem(LOOKS_KEY, JSON.stringify(state.savedLooks));
-  } catch (_) {}
+    return true;
+  } catch (_) {
+    return false;
+  }
 }
 
 function saveLook(imageUrl, source, label, fitAdjustment) {
   if (!imageUrl) return;
+  if (state.savedLooks.length >= LOOKS_MAX) {
+    showToast('You can save up to 20 looks in this version. Delete one to save a new look.', true);
+    return;
+  }
   const now = new Date();
   const look = {
     id: `look-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -4131,19 +4138,42 @@ function saveLook(imageUrl, source, label, fitAdjustment) {
     fitAdjustment: fitAdjustment || null,
   };
   state.savedLooks.unshift(look);
-  if (state.savedLooks.length > LOOKS_MAX) state.savedLooks = state.savedLooks.slice(0, LOOKS_MAX);
-  persistLooks();
+  if (!persistLooks()) {
+    state.savedLooks.shift();
+    renderSavedLooks();
+    showToast('Could not save this look locally. Please delete older looks or download the image.', true);
+    return;
+  }
   showToast('Look saved! Open "My Looks" to view and compare.');
   renderSavedLooks();
 }
 
 function formatLookLabel(source, fitAdjustment) {
-  if (source === 'fit-preview') {
+  if (source === 'fit-preview' || source === 'fit_preview') {
     const adj = fitAdjustment === 'size_up' ? 'Size Up'
               : fitAdjustment === 'size_down' ? 'Size Down' : '';
     return adj ? `Fit Preview — ${adj}` : 'Fit Preview';
   }
   return 'Try-On Look';
+}
+
+function sourceBadgeLabel(source) {
+  const map = {
+    'try-on':       'Try-On',
+    'try_on':       'Try-On',
+    'whole_outfit': 'Whole Outfit',
+    'add_to_look':  'Add to Look',
+    'batch_add':    'Batch Add',
+    'fit-preview':  'Fit Preview',
+    'fit_preview':  'Fit Preview',
+  };
+  return map[source] || (source ? source.replace(/[_-]/g, ' ') : 'Try-On');
+}
+
+function sourceBadgeCls(source) {
+  return (source === 'fit-preview' || source === 'fit_preview')
+    ? 'look-badge-fitpreview'
+    : 'look-badge-source';
 }
 
 function deleteLook(id) {
@@ -4200,12 +4230,10 @@ function renderSavedLooks() {
   emptyState?.classList.add('hidden');
 
   grid.innerHTML = state.savedLooks.map(look => {
-    const isSelected   = state.looksCompareSelected.has(look.id);
-    const isFitPreview = look.source === 'fit-preview';
-    const adj          = look.fitAdjustment;
+    const isSelected = state.looksCompareSelected.has(look.id);
+    const adj        = look.fitAdjustment;
 
-    let badges = '';
-    if (isFitPreview) badges += `<span class="look-badge look-badge-fitpreview">Fit Preview</span>`;
+    let badges = `<span class="look-badge ${sourceBadgeCls(look.source)}">${escHtml(sourceBadgeLabel(look.source))}</span>`;
     if (adj === 'size_up')   badges += `<span class="look-badge look-badge-sizeup">Size Up</span>`;
     if (adj === 'size_down') badges += `<span class="look-badge look-badge-sizedown">Size Down</span>`;
 
@@ -4282,12 +4310,36 @@ function renderCompareBoard() {
   board.classList.remove('hidden');
   if (countEl) countEl.textContent = selected.length;
 
-  grid.innerHTML = selected.map(look => `
-    <div class="looks-compare-item">
-      <img class="looks-compare-img" src="${escHtml(look.imageUrl)}" alt="${escHtml(look.label)}" />
-      <div class="looks-compare-label">${escHtml(look.label)}</div>
-      ${look.notes ? `<div class="looks-compare-notes">${escHtml(look.notes)}</div>` : ''}
-    </div>`).join('');
+  grid.innerHTML = selected.map(look => {
+    const adj     = look.fitAdjustment;
+    const favIcon = look.favorite ? '&#9829;' : '&#9825;';
+    const favCls  = look.favorite ? ' look-card-fav-active' : '';
+
+    let badges = `<span class="look-badge ${sourceBadgeCls(look.source)}">${escHtml(sourceBadgeLabel(look.source))}</span>`;
+    if (adj === 'size_up')   badges += `<span class="look-badge look-badge-sizeup">Size Up</span>`;
+    if (adj === 'size_down') badges += `<span class="look-badge look-badge-sizedown">Size Down</span>`;
+
+    return `
+      <div class="looks-compare-item">
+        <img class="looks-compare-img" src="${escHtml(look.imageUrl)}" alt="${escHtml(look.label)}" />
+        <div class="looks-compare-meta">
+          <div class="looks-compare-badges">${badges}</div>
+          <div class="looks-compare-label-row">
+            <span class="looks-compare-label">${escHtml(look.label)}</span>
+            <span class="looks-compare-fav${favCls}" aria-hidden="true">${favIcon}</span>
+          </div>
+          <span class="looks-compare-date">${escHtml(look.date)}</span>
+          ${look.notes ? `<div class="looks-compare-notes">${escHtml(look.notes)}</div>` : ''}
+          <button class="btn-look-view looks-compare-view-btn"
+                  data-url="${escHtml(look.imageUrl)}"
+                  data-label="${escHtml(look.label)}">&#8689; View Larger</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  grid.querySelectorAll('.looks-compare-view-btn').forEach(btn => {
+    btn.addEventListener('click', () => openLooksLightbox(btn.dataset.url, btn.dataset.label));
+  });
 }
 
 function openLooksLightbox(imageUrl, caption) {
