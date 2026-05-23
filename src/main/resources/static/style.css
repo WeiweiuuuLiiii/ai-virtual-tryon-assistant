@@ -4374,3 +4374,149 @@ body.lightbox-open { overflow: hidden; }
   color: var(--text-faint);
   margin: 0;
 }
+
+/* ── Size Fit Preview (Issue 24) ──────────────────────────────────────────── */
+.fit-preview-section {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: var(--surface);
+}
+.fit-preview-hdr {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.fit-preview-hdr-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.fit-preview-title {
+  font-size: .88rem;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: .01em;
+}
+.fit-preview-subtitle {
+  font-size: .72rem;
+  color: var(--text-muted);
+}
+.fit-preview-inputs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.fit-preview-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 90px;
+}
+.fit-preview-label {
+  font-size: .72rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.fit-preview-input,
+.fit-preview-select {
+  font-size: .78rem;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  width: 100%;
+  box-sizing: border-box;
+}
+.fit-preview-btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.btn-fit-preview {
+  flex: 1;
+  font-size: .78rem;
+  padding: 7px 10px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: background .15s;
+  min-width: 130px;
+}
+.btn-fit-preview:hover:not(:disabled) {
+  background: rgba(88,98,209,.08);
+}
+.btn-fit-preview:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+.fit-preview-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.fit-preview-progress-msgs {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.fit-preview-progress-msgs span:first-child {
+  font-size: .8rem;
+  color: var(--text);
+}
+.fit-preview-progress-sub {
+  font-size: .72rem;
+  color: var(--text-muted);
+}
+.fit-preview-progress-track {
+  height: 5px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.fit-preview-progress-fill {
+  height: 100%;
+  background: var(--primary, #5862d1);
+  border-radius: 3px;
+  transition: width .4s ease;
+}
+.fit-preview-disclaimer {
+  font-size: .70rem;
+  color: var(--text-faint);
+  font-style: italic;
+  margin: 0 0 8px;
+  line-height: 1.4;
+}
+.fit-preview-comparison {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 8px;
+}
+.fit-preview-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+.fit-preview-col-label {
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+}
+.fit-preview-img {
+  width: 100%;
+  border-radius: 8px;
+  display: block;
+  object-fit: cover;
+}

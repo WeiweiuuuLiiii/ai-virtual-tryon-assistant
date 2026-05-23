@@ -53,6 +53,15 @@ const state = {
   colorFitAnalysis: null,
   colorFitLoading: false,
   colorFitImageUrl: null,
+  // Fit Preview (Issue 24)
+  fitPreview: {
+    up:   { imageUrl: null, loading: false, requestId: 0 },
+    down: { imageUrl: null, loading: false, requestId: 0 },
+  },
+  fitPreviewBaseImageUrl: null,
+  fitPreviewLastDirection: null,
+  fitPreviewController: { up: null, down: null },
+  fitPreviewCache: new Map(),
   // Full Outfit Reference (Issue 22)
   outfitRefFile: null,
   outfitRefUrl:  null,
@@ -67,6 +76,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupTabs();
   setupModelTab();
   setupSkinTonePicker();
+  setupFitPreview();
   setupStudio();
   setupOutfitRef();
   setupSceneCheck();
@@ -1274,6 +1284,7 @@ function renderTryOnPreview() {
       // WaveSpeed video path: show canvas still-frame, keep video fully hidden.
       document.getElementById('complete-the-look')?.classList.add('hidden');
       document.getElementById('color-fit-section')?.classList.add('hidden');
+      document.getElementById('fit-preview-section')?.classList.add('hidden');
       if (img)         img.classList.add('hidden');
       if (video)       { video.removeAttribute('controls'); video.classList.add('hidden'); }
       if (imageActions) imageActions.classList.add('hidden');
@@ -1338,6 +1349,16 @@ function renderTryOnPreview() {
 
       // Color Fit — fetch analysis once per unique preview image.
       fetchColorFitIfNeeded(state.tryOnPreview.imageUrl);
+
+      // Fit Preview — clear stale results when base image changes.
+      if (state.tryOnPreview.imageUrl !== state.fitPreviewBaseImageUrl) {
+        state.fitPreviewBaseImageUrl     = state.tryOnPreview.imageUrl;
+        state.fitPreview.up.imageUrl     = null;
+        state.fitPreview.down.imageUrl   = null;
+        state.fitPreviewLastDirection    = null;
+        state.fitPreviewCache.clear();
+      }
+      renderFitPreviewSection();
     }
   }
 }
@@ -1917,6 +1938,172 @@ function renderColorFitCard() {
     note.className = 'color-fit-lighting-note';
     note.textContent = d.lightingNote;
     contentEl.appendChild(note);
+  }
+}
+
+/* ── Size Fit Preview (Issue 24) ─────────────────────────────────────────── */
+
+function setupFitPreview() {
+  document.getElementById('fit-size-up-btn')?.addEventListener('click',   () => triggerFitPreview('up'));
+  document.getElementById('fit-size-down-btn')?.addEventListener('click', () => triggerFitPreview('down'));
+  document.getElementById('fit-preview-cancel-btn')?.addEventListener('click', cancelFitPreview);
+}
+
+async function triggerFitPreview(direction) {
+  const baseUrl = state.tryOnPreview.imageUrl;
+  if (!baseUrl || state.tryOnPreview.videoUrl) return;
+
+  const height = (document.getElementById('fit-height-input')?.value  || '').trim();
+  const size   = (document.getElementById('fit-size-input')?.value    || '').trim();
+  const pref   =  document.getElementById('fit-pref-select')?.value   || 'not_sure';
+
+  // Cache hit: same base image + same inputs already generated for this direction.
+  const cacheKey = `${direction}::${height}::${size}::${pref}`;
+  if (state.fitPreviewCache.has(cacheKey)) {
+    state.fitPreview[direction].imageUrl = state.fitPreviewCache.get(cacheKey);
+    state.fitPreviewLastDirection = direction;
+    renderFitPreviewSection();
+    return;
+  }
+
+  // Cancel any in-flight request for this direction.
+  state.fitPreviewController[direction]?.abort();
+  const controller = new AbortController();
+  state.fitPreviewController[direction] = controller;
+
+  state.fitPreview[direction].loading    = true;
+  state.fitPreview[direction].requestId += 1;
+  const myId = state.fitPreview[direction].requestId;
+
+  startFitPreviewProgress(direction);
+
+  let previewBlob;
+  try {
+    previewBlob = await previewImageToBlob(baseUrl);
+  } catch {
+    state.fitPreview[direction].loading = false;
+    finishFitPreviewProgress();
+    renderFitPreviewSection();
+    showToast('Could not prepare preview image. Try again.', true);
+    return;
+  }
+
+  const form = new FormData();
+  form.append('preview_image', previewBlob, 'preview.jpg');
+  form.append('direction', direction);
+  if (height) form.append('height', height);
+  if (size)   form.append('size',   size);
+  if (pref)   form.append('fit_preference', pref);
+
+  try {
+    const resp = await fetch(`${API}/api/try-on/fit-preview`,
+      { method: 'POST', body: form, signal: controller.signal });
+    if (!resp.ok) await apiError(resp);
+    const data = await resp.json();
+
+    if (state.fitPreview[direction].requestId !== myId) return; // stale
+
+    if (data.preview_image_url) {
+      state.fitPreview[direction].imageUrl = data.preview_image_url;
+      state.fitPreviewLastDirection = direction;
+      state.fitPreviewCache.set(cacheKey, data.preview_image_url);
+    } else {
+      showToast(data.message || 'Fit preview could not be generated.', true);
+    }
+  } catch (err) {
+    if (err.name === 'AbortError') return;
+    if (state.fitPreview[direction].requestId !== myId) return;
+    showToast('Fit preview failed. Please try again.', true);
+  } finally {
+    if (state.fitPreview[direction].requestId === myId) {
+      state.fitPreview[direction].loading = false;
+      finishFitPreviewProgress();
+      renderFitPreviewSection();
+    }
+  }
+}
+
+function cancelFitPreview() {
+  state.fitPreviewController.up?.abort();
+  state.fitPreviewController.down?.abort();
+  state.fitPreviewController.up   = null;
+  state.fitPreviewController.down = null;
+  state.fitPreview.up.loading     = false;
+  state.fitPreview.down.loading   = false;
+  finishFitPreviewProgress();
+  renderFitPreviewSection();
+}
+
+let _fitPreviewProgressTimer = null;
+
+function startFitPreviewProgress(direction) {
+  const fill  = document.getElementById('fit-preview-progress-fill');
+  const msg   = document.getElementById('fit-preview-progress-msg');
+  const prog  = document.getElementById('fit-preview-progress');
+  const upBtn = document.getElementById('fit-size-up-btn');
+  const dnBtn = document.getElementById('fit-size-down-btn');
+
+  if (prog)  prog.classList.remove('hidden');
+  if (upBtn) upBtn.disabled = true;
+  if (dnBtn) dnBtn.disabled = true;
+  if (msg)   msg.textContent = direction === 'up'
+    ? 'Generating size up preview…'
+    : 'Generating size down preview…';
+
+  let pct = 0;
+  if (fill) fill.style.width = '0%';
+  clearInterval(_fitPreviewProgressTimer);
+  _fitPreviewProgressTimer = setInterval(() => {
+    pct = Math.min(pct + (pct < 30 ? 4 : pct < 70 ? 2 : 0.5), 92);
+    if (fill) fill.style.width = pct + '%';
+  }, 2000);
+}
+
+function finishFitPreviewProgress() {
+  clearInterval(_fitPreviewProgressTimer);
+  const fill  = document.getElementById('fit-preview-progress-fill');
+  const prog  = document.getElementById('fit-preview-progress');
+  const upBtn = document.getElementById('fit-size-up-btn');
+  const dnBtn = document.getElementById('fit-size-down-btn');
+  if (fill) fill.style.width = '100%';
+  setTimeout(() => {
+    if (prog)  prog.classList.add('hidden');
+    if (fill)  fill.style.width = '0%';
+    if (upBtn) upBtn.disabled = false;
+    if (dnBtn) dnBtn.disabled = false;
+  }, 400);
+}
+
+function renderFitPreviewSection() {
+  const section     = document.getElementById('fit-preview-section');
+  const comparison  = document.getElementById('fit-preview-comparison');
+  const origImg     = document.getElementById('fit-preview-original-img');
+  const resultImg   = document.getElementById('fit-preview-result-img');
+  const resultLabel = document.getElementById('fit-preview-result-label');
+
+  if (!section) return;
+
+  const hasStaticImage = !!state.tryOnPreview.imageUrl && !state.tryOnPreview.videoUrl;
+  if (!hasStaticImage) {
+    section.classList.add('hidden');
+    return;
+  }
+  section.classList.remove('hidden');
+
+  // Show side-by-side comparison if a result exists.
+  const dir       = state.fitPreviewLastDirection;
+  const resultUrl = dir ? state.fitPreview[dir].imageUrl : null;
+  if (resultUrl && origImg && resultImg && comparison) {
+    comparison.classList.remove('hidden');
+    origImg.src   = state.tryOnPreview.imageUrl;
+    resultImg.src = resultUrl;
+    if (resultLabel) {
+      resultLabel.textContent = dir === 'up'
+        ? 'One Size Up (Looser)'
+        : 'One Size Down (More Fitted)';
+    }
+  } else if (comparison) {
+    comparison.classList.add('hidden');
   }
 }
 

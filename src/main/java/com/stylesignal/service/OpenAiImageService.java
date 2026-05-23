@@ -192,6 +192,96 @@ public class OpenAiImageService {
         return out;
     }
 
+    /**
+     * Edits the current preview image to simulate one size larger (direction="up")
+     * or one size smaller (direction="down"). Identity, pose, outfit colors/patterns,
+     * and background are preserved; only the visual clothing fit is adjusted.
+     */
+    public Map<String, Object> fitPreview(
+            byte[] previewBytes, String previewType,
+            String direction, String height, String size, String fitPreference) throws Exception {
+
+        String boundary = "----OpenAiBoundary" + UUID.randomUUID().toString().replace("-", "");
+        String prompt   = buildFitPreviewPrompt(direction, height, size, fitPreference);
+        byte[] body     = buildAddItemBody(boundary, prompt, previewBytes, previewType, null, null, true);
+
+        log.info("GPT Image fit-preview request — direction={}", direction);
+
+        HttpRequest req = HttpRequest.newBuilder()
+            .uri(URI.create(OPENAI_API + "/images/edits"))
+            .header("Authorization", "Bearer " + apiKey)
+            .header("Content-Type",  "multipart/form-data; boundary=" + boundary)
+            .POST(HttpRequest.BodyPublishers.ofByteArray(body))
+            .build();
+
+        HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+        boolean usedOptFormat = isUsingOptimizedFormat();
+
+        if (resp.statusCode() != 200 && usedOptFormat) {
+            log.warn("Optimized format rejected for fit-preview (HTTP {}); retrying without output_format", resp.statusCode());
+            String boundary2 = "----OpenAiBoundary" + UUID.randomUUID().toString().replace("-", "");
+            byte[] body2     = buildAddItemBody(boundary2, prompt, previewBytes, previewType, null, null, false);
+            HttpRequest req2 = HttpRequest.newBuilder()
+                .uri(URI.create(OPENAI_API + "/images/edits"))
+                .header("Authorization", "Bearer " + apiKey)
+                .header("Content-Type",  "multipart/form-data; boundary=" + boundary2)
+                .POST(HttpRequest.BodyPublishers.ofByteArray(body2))
+                .build();
+            resp = http.send(req2, HttpResponse.BodyHandlers.ofString());
+            usedOptFormat = false;
+            if (resp.statusCode() != 200) {
+                log.warn("GPT Image fit-preview fallback also failed — HTTP {}", resp.statusCode());
+                throw new RuntimeException("OpenAI Images API request failed (HTTP " + resp.statusCode() + ").");
+            }
+            log.info("GPT Image fit-preview succeeded via fallback");
+        } else if (resp.statusCode() != 200) {
+            log.warn("GPT Image fit-preview failed — HTTP {}", resp.statusCode());
+            throw new RuntimeException("OpenAI Images API request failed (HTTP " + resp.statusCode() + ").");
+        }
+
+        Map<String, Object> result = mapper.readValue(resp.body(), new TypeReference<>() {});
+        String dataUrl = extractImageDataUrl(result, usedOptFormat);
+        log.info("GPT Image fit-preview complete — direction={}", direction);
+
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("status",            "ready");
+        out.put("preview_image_url", dataUrl);
+        return out;
+    }
+
+    private String buildFitPreviewPrompt(String direction, String height, String size, String fitPreference) {
+        boolean sizeUp = "up".equalsIgnoreCase(direction);
+        StringBuilder sb = new StringBuilder();
+        sb.append("Photorealistic virtual fit simulation: ");
+        sb.append("Keep the same person, face, skin tone, hair, body shape, pose, and identity exactly. ");
+        sb.append("Keep the same outfit items, colours, patterns, textures, and background exactly. ");
+        if (sizeUp) {
+            sb.append("Adjust ONLY the visual fit of the clothing to appear one size larger: ");
+            sb.append("the garments should look slightly looser and more relaxed, with a little extra fabric — ");
+            sb.append("subtle visual cues like slightly wider shoulders, looser through the torso, and less tension in the fabric. ");
+        } else {
+            sb.append("Adjust ONLY the visual fit of the clothing to appear one size smaller: ");
+            sb.append("the garments should look slightly more fitted and closer to the body — ");
+            sb.append("subtle visual cues like a slightly narrower torso line and fabric following the body more closely. ");
+        }
+        sb.append("Do not change outfit colours, patterns, fabric type, garment type, style, or background. ");
+        sb.append("Do not redesign, add, or remove any garment or accessory. ");
+        sb.append("Do not change the person's face, skin tone, hair, or identity. ");
+        sb.append("This is an approximate visual simulation for styling purposes only — not a sizing recommendation. ");
+        sb.append("Output must look like a real fashion photograph. ");
+        sb.append("No cartoon, illustration, painting, rendering, or artistic stylization.");
+        if (height != null && !height.isBlank()) {
+            sb.append(" Person height for proportion context only: ").append(height.replaceAll("[^\\w'\".,/ ]", "")).append(".");
+        }
+        if (size != null && !size.isBlank()) {
+            sb.append(" Current usual size: ").append(size.replaceAll("[^\\w ]", "")).append(".");
+        }
+        if (fitPreference != null && !fitPreference.isBlank() && !"not_sure".equalsIgnoreCase(fitPreference)) {
+            sb.append(" Usual fit preference: ").append(fitPreference.replaceAll("[^\\w]", "")).append(".");
+        }
+        return sb.toString();
+    }
+
     private String buildWholeOutfitPrompt() {
         return "Photorealistic virtual try-on: "
             + "The FIRST IMAGE is the PERSON — preserve their face, skin tone, body shape, hair, and identity exactly. "

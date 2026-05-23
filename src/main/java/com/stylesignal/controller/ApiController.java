@@ -750,6 +750,58 @@ public class ApiController {
         }
     }
 
+    // ── Size Fit Preview ──────────────────────────────────────────────────────
+
+    @PostMapping("/try-on/fit-preview")
+    public ResponseEntity<?> fitPreview(
+            @RequestParam("preview_image")                                                              MultipartFile previewImage,
+            @RequestParam(value = "direction",      required = false, defaultValue = "up")             String direction,
+            @RequestParam(value = "height",         required = false, defaultValue = "")               String height,
+            @RequestParam(value = "size",           required = false, defaultValue = "")               String size,
+            @RequestParam(value = "fit_preference", required = false, defaultValue = "not_sure")       String fitPreference) {
+
+        log.info("POST /api/try-on/fit-preview — direction={}", direction);
+
+        if (!openAi.isConfigured()) {
+            Map<String, Object> resp = new LinkedHashMap<>();
+            resp.put("status",            "provider_required");
+            resp.put("preview_image_url", null);
+            resp.put("message",
+                "Size Fit Preview requires GPT Image. Add OPENAI_API_KEY to your .env and restart.");
+            return ResponseEntity.ok(resp);
+        }
+
+        if (previewImage == null || previewImage.isEmpty()) {
+            return ResponseEntity.badRequest().body(errorBody("No preview image provided."));
+        }
+
+        if (!"up".equalsIgnoreCase(direction) && !"down".equalsIgnoreCase(direction)) {
+            return ResponseEntity.badRequest().body(errorBody("direction must be 'up' or 'down'."));
+        }
+
+        String mimeType;
+        byte[] imageBytes;
+        try {
+            imageBytes = previewImage.getBytes();
+            mimeType   = previewImage.getContentType() != null
+                ? previewImage.getContentType().toLowerCase() : "image/jpeg";
+            if ("image/jpg".equalsIgnoreCase(mimeType)) mimeType = "image/jpeg";
+        } catch (Exception e) {
+            log.warn("Fit preview: failed to read uploaded image.");
+            return ResponseEntity.badRequest().body(errorBody("Could not read the uploaded image."));
+        }
+
+        try {
+            Map<String, Object> result = openAi.fitPreview(
+                imageBytes, mimeType, direction, height, size, fitPreference);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.warn("Fit preview generation failed; returning error.");
+            return ResponseEntity.status(500).body(
+                errorBody("Fit preview could not be generated. Please try again."));
+        }
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private Map<String, Object> errorBody(String message) {
