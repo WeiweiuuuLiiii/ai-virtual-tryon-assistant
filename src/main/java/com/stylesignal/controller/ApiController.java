@@ -605,6 +605,83 @@ public class ApiController {
         return ResponseEntity.ok(result);
     }
 
+    // ── Skin Tone Detection ───────────────────────────────────────────────────
+
+    @PostMapping("/model/detect-skin-tone")
+    public ResponseEntity<?> detectSkinTone() throws Exception {
+        log.info("POST /api/model/detect-skin-tone");
+
+        if (!storage.hasModelPhoto()) {
+            return ResponseEntity.badRequest().body(errorBody(
+                "No model photo found. Upload a photo in the My Model tab first."));
+        }
+
+        if (!claude.isConfigured()) {
+            Map<String, Object> fallback = new LinkedHashMap<>();
+            fallback.put("skin_depth",  "medium");
+            fallback.put("undertone",   "uncertain");
+            fallback.put("confidence",  0.0);
+            return ResponseEntity.ok(fallback);
+        }
+
+        byte[] photoBytes = storage.loadModelPhotoBytes();
+        try {
+            Map<String, Object> result = claude.detectSkinTone(photoBytes, "image/jpeg");
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.warn("Skin tone detection failed; returning uncertain defaults.");
+            Map<String, Object> fallback = new LinkedHashMap<>();
+            fallback.put("skin_depth",  "medium");
+            fallback.put("undertone",   "uncertain");
+            fallback.put("confidence",  0.0);
+            return ResponseEntity.ok(fallback);
+        }
+    }
+
+    // ── Color Fit Analysis ────────────────────────────────────────────────────
+
+    @PostMapping("/try-on/color-fit")
+    public ResponseEntity<?> analyzeColorFit(
+            @RequestParam("preview_image")                                                   MultipartFile previewImage,
+            @RequestParam(value = "skin_depth",  required = false, defaultValue = "medium") String skinDepth,
+            @RequestParam(value = "undertone",   required = false, defaultValue = "neutral") String undertone)
+            throws Exception {
+
+        log.info("POST /api/try-on/color-fit — depth={}, undertone={}", skinDepth, undertone);
+
+        if (previewImage == null || previewImage.isEmpty()) {
+            return ResponseEntity.badRequest().body(errorBody("No preview image provided."));
+        }
+
+        if (!claude.isConfigured()) {
+            return ResponseEntity.ok(emptyColorFit("Claude API key not configured."));
+        }
+
+        String mimeType = previewImage.getContentType() != null
+            ? previewImage.getContentType().toLowerCase() : "image/jpeg";
+        if ("image/jpg".equalsIgnoreCase(mimeType)) mimeType = "image/jpeg";
+
+        try {
+            Map<String, Object> result = claude.analyzeColorFit(
+                previewImage.getBytes(), mimeType, skinDepth, undertone);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.warn("Color fit analysis failed; returning empty result.");
+            return ResponseEntity.ok(emptyColorFit("Analysis could not be completed. Try again with a clearer photo."));
+        }
+    }
+
+    private Map<String, Object> emptyColorFit(String lightingNote) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("color_fit_score", 0);
+        m.put("verdict",         "");
+        m.put("reasons",         List.of());
+        m.put("lighting_note",   lightingNote);
+        m.put("better_colors",   List.of());
+        m.put("caution_colors",  List.of());
+        return m;
+    }
+
     // ── Full-Outfit Try-On (Whole Outfit from Reference Photo) ───────────────
 
     @PostMapping("/try-on/full-outfit")

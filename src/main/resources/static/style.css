@@ -4187,3 +4187,190 @@ body.lightbox-open { overflow: hidden; }
   transition: opacity .15s;
 }
 .btn-try-whole-outfit:hover { opacity: .88; }
+
+/* ── Skin Tone Picker (Issue 23) ────────────────────────────────────────── */
+.skin-tone-disclaimer {
+  font-size: .76rem;
+  line-height: 1.45;
+  margin-bottom: 12px;
+}
+.skin-tone-swatches {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.swatch-tile {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2.5px solid transparent;
+  cursor: pointer;
+  transition: border-color .15s, transform .1s;
+  flex-shrink: 0;
+  padding: 0;
+}
+.swatch-tile:hover { transform: scale(1.12); }
+.swatch-tile.swatch-active {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.undertone-btns {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.undertone-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  min-width: 68px;
+}
+.undertone-btn:hover { border-color: var(--accent); }
+.undertone-btn.undertone-active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg));
+}
+.undertone-btn-label {
+  font-size: .73rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1;
+}
+.undertone-btn-desc {
+  font-size: .63rem;
+  color: var(--text-faint);
+  line-height: 1;
+}
+.skin-tone-source-label {
+  font-size: .72rem;
+  color: var(--text-faint);
+  margin-top: 10px;
+  font-style: italic;
+}
+
+/* ── Color Fit Card (Issue 23) ──────────────────────────────────────────── */
+.color-fit-section {
+  border-top: 1px solid var(--border);
+  padding: 12px 0 4px;
+  margin-top: 10px;
+}
+.color-fit-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.color-fit-hdr-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.color-fit-title {
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.color-fit-subtitle {
+  font-size: .68rem;
+  color: var(--text-faint);
+}
+.btn-refresh-color-fit {
+  font-size: .68rem;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all .15s;
+  flex-shrink: 0;
+}
+.btn-refresh-color-fit:hover { border-color: var(--accent); color: var(--accent); }
+.color-fit-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.color-fit-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .78rem;
+  color: var(--text-faint);
+  padding: 4px 0;
+}
+.color-fit-score-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.color-fit-score {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+}
+.color-fit-verdict {
+  font-size: .75rem;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 10px;
+}
+.color-fit-verdict--great-fit     { background: #d4edda; color: #155724; }
+.color-fit-verdict--good-match    { background: #d4edda; color: #155724; }
+.color-fit-verdict--works-with-adjustments { background: #fff3cd; color: #856404; }
+.color-fit-verdict--challenging-palette    { background: #f8d7da; color: #721c24; }
+.color-fit-reasons {
+  margin: 0;
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.color-fit-reasons li {
+  font-size: .78rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+.color-fit-chip-label {
+  font-size: .68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--text-faint);
+  margin: 0;
+}
+.color-fit-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.color-chip {
+  font-size: .68rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+.color-chip--better  { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.color-chip--caution { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+.color-fit-lighting-note {
+  font-size: .68rem;
+  color: var(--text-faint);
+  font-style: italic;
+  line-height: 1.4;
+  margin: 0;
+}
+.color-fit-error {
+  font-size: .76rem;
+  color: var(--text-faint);
+  margin: 0;
+}

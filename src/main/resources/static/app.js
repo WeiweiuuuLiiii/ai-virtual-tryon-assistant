@@ -47,6 +47,12 @@ const state = {
   sceneWeather: null,
   // Buy check
   buyPhoto: null,
+  // Skin Tone Profile (Issue 23)
+  skinTone: { depth: null, undertone: null, source: 'none' },
+  // Color Fit Analysis (Issue 23)
+  colorFitAnalysis: null,
+  colorFitLoading: false,
+  colorFitImageUrl: null,
   // Full Outfit Reference (Issue 22)
   outfitRefFile: null,
   outfitRefUrl:  null,
@@ -60,6 +66,7 @@ const API = '';
 document.addEventListener('DOMContentLoaded', async () => {
   setupTabs();
   setupModelTab();
+  setupSkinTonePicker();
   setupStudio();
   setupOutfitRef();
   setupSceneCheck();
@@ -476,6 +483,11 @@ function renderModelCard(model, hasPhoto) {
   populateMeasurementEditFields(measurements);
 
   syncStudioModelColumn(model, hasPhoto);
+
+  // Auto-detect skin tone when model photo changes (only if not already manually set)
+  if (hasPhoto && state.skinTone.source !== 'manual') {
+    triggerSkinToneDetection();
+  }
 }
 
 function syncStudioModelColumn(_model, _hasPhoto) {
@@ -1314,6 +1326,9 @@ function renderTryOnPreview() {
       } else {
         renderCompleteTheLook();
       }
+
+      // Color Fit — fetch analysis once per unique preview image.
+      fetchColorFitIfNeeded(state.tryOnPreview.imageUrl);
     }
   }
 }
@@ -1579,6 +1594,9 @@ function cancelGeneration() {
   state.completeLookLoading     = false;
   state.completeLookError       = null;
   state.completeLookImageUrl    = null;
+  state.colorFitAnalysis        = null;
+  state.colorFitLoading         = false;
+  state.colorFitImageUrl        = null;
   renderTryOnPreview();
   updateGenerateButton();
 }
@@ -1604,6 +1622,293 @@ function cancelBatchAddToLook() {
   state.batchEditActive   = false;
   state.batchProgress     = 0;
   renderCompleteTheLook();
+}
+
+/* ── Skin Tone Picker (Issue 23) ─────────────────────────────────────────── */
+
+const SKIN_DEPTHS = [
+  { key: 'fair',         label: 'Fair',       color: '#f5dcca' },
+  { key: 'light',        label: 'Light',      color: '#e8c4a0' },
+  { key: 'light-medium', label: 'Light Med.', color: '#d4a078' },
+  { key: 'medium',       label: 'Medium',     color: '#c08060' },
+  { key: 'medium-deep',  label: 'Med. Deep',  color: '#9b6444' },
+  { key: 'deep',         label: 'Deep',       color: '#7a4428' },
+  { key: 'rich',         label: 'Rich',       color: '#4a2215' },
+];
+
+const UNDERTONES = [
+  { key: 'cool',      label: 'Cool',     desc: 'pink/rosy cast' },
+  { key: 'neutral',   label: 'Neutral',  desc: 'balanced mix' },
+  { key: 'warm',      label: 'Warm',     desc: 'golden/peachy' },
+  { key: 'olive',     label: 'Olive',    desc: 'yellow-green cast' },
+  { key: 'uncertain', label: 'Not sure', desc: 'adjust later' },
+];
+
+const _VALID_SKIN_DEPTHS   = new Set(SKIN_DEPTHS.map(d => d.key));
+const _VALID_UNDERTONES    = new Set(UNDERTONES.map(u => u.key));
+const _VALID_VERDICTS      = new Set(['Great fit', 'Good match', 'Works with adjustments', 'Challenging palette']);
+const _MAX_COLOR_LABEL_LEN = 30;
+const _MAX_REASON_LEN      = 120;
+
+function setupSkinTonePicker() {
+  const swatchesEl  = document.getElementById('skin-tone-swatches');
+  const undertoneEl = document.getElementById('undertone-btns');
+  const refreshBtn  = document.getElementById('refresh-color-fit-btn');
+
+  if (swatchesEl) {
+    SKIN_DEPTHS.forEach(d => {
+      const btn = document.createElement('button');
+      btn.className = 'swatch-tile';
+      btn.dataset.depth = d.key;
+      btn.title = d.label;
+      btn.style.background = d.color;
+      btn.setAttribute('aria-label', d.label);
+      btn.addEventListener('click', () => setSkinDepth(d.key, 'manual'));
+      swatchesEl.appendChild(btn);
+    });
+  }
+
+  if (undertoneEl) {
+    UNDERTONES.forEach(u => {
+      const btn   = document.createElement('button');
+      btn.className = 'undertone-btn';
+      btn.dataset.undertone = u.key;
+      const lbl   = document.createElement('span');
+      lbl.className = 'undertone-btn-label';
+      lbl.textContent = u.label;
+      const desc  = document.createElement('span');
+      desc.className = 'undertone-btn-desc';
+      desc.textContent = u.desc;
+      btn.appendChild(lbl);
+      btn.appendChild(desc);
+      btn.addEventListener('click', () => setSkinUndertone(u.key, 'manual'));
+      undertoneEl.appendChild(btn);
+    });
+  }
+
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => {
+      state.colorFitImageUrl = null;
+      fetchColorFitIfNeeded(state.tryOnPreview.imageUrl);
+    });
+  }
+}
+
+function setSkinDepth(depth, source) {
+  state.skinTone.depth  = depth;
+  if (source === 'manual') state.skinTone.source = 'manual';
+  renderSkinTonePicker();
+  state.colorFitImageUrl = null; // invalidate cache so next preview re-runs analysis
+}
+
+function setSkinUndertone(undertone, source) {
+  state.skinTone.undertone = undertone;
+  if (source === 'manual') state.skinTone.source = 'manual';
+  renderSkinTonePicker();
+  state.colorFitImageUrl = null;
+}
+
+function renderSkinTonePicker() {
+  document.querySelectorAll('.swatch-tile').forEach(btn => {
+    btn.classList.toggle('swatch-active', btn.dataset.depth === state.skinTone.depth);
+  });
+  document.querySelectorAll('.undertone-btn').forEach(btn => {
+    btn.classList.toggle('undertone-active', btn.dataset.undertone === state.skinTone.undertone);
+  });
+  const srcEl = document.getElementById('skin-tone-source-label');
+  if (srcEl) {
+    if (state.skinTone.source === 'auto') {
+      srcEl.textContent = 'Auto-detected from your photo. Adjust if it does not look right.';
+      srcEl.style.display = 'block';
+    } else if (state.skinTone.source === 'manual') {
+      srcEl.textContent = 'Manually set.';
+      srcEl.style.display = 'block';
+    } else {
+      srcEl.style.display = 'none';
+    }
+  }
+}
+
+async function triggerSkinToneDetection() {
+  const detecting = document.getElementById('skin-tone-detecting');
+  if (detecting) detecting.classList.remove('hidden');
+  try {
+    const resp = await fetch(`${API}/api/model/detect-skin-tone`, { method: 'POST' });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    if (_VALID_SKIN_DEPTHS.has(data.skin_depth))  state.skinTone.depth     = data.skin_depth;
+    if (_VALID_UNDERTONES.has(data.undertone))     state.skinTone.undertone = data.undertone;
+    state.skinTone.source  = 'auto';
+    state.colorFitImageUrl = null; // invalidate so next preview re-runs with new tone
+  } catch (_) {
+    // Silent fallback — picker stays at current values
+  } finally {
+    if (detecting) detecting.classList.add('hidden');
+  }
+  renderSkinTonePicker();
+}
+
+/* ── Color Fit Analysis (Issue 23) ──────────────────────────────────────── */
+
+function _validateColorFitData(data) {
+  if (!data || typeof data !== 'object') return null;
+  const score = (typeof data.color_fit_score === 'number')
+    ? Math.max(0, Math.min(10, Math.round(data.color_fit_score))) : 0;
+  const verdict      = _VALID_VERDICTS.has(data.verdict) ? data.verdict : '';
+  const reasons      = Array.isArray(data.reasons)
+    ? data.reasons.filter(r => typeof r === 'string').map(r => r.trim().slice(0, _MAX_REASON_LEN))
+    : [];
+  const lightingNote = (typeof data.lighting_note === 'string')
+    ? data.lighting_note.trim().slice(0, 200) : '';
+  const betterColors = Array.isArray(data.better_colors)
+    ? data.better_colors.filter(c => typeof c === 'string').map(c => c.trim().slice(0, _MAX_COLOR_LABEL_LEN))
+    : [];
+  const cautionColors = Array.isArray(data.caution_colors)
+    ? data.caution_colors.filter(c => typeof c === 'string').map(c => c.trim().slice(0, _MAX_COLOR_LABEL_LEN))
+    : [];
+  return { score, verdict, reasons, lightingNote, betterColors, cautionColors };
+}
+
+async function fetchColorFitIfNeeded(imageUrl) {
+  if (!imageUrl) return;
+  // Skip if same image already analysed (cache hit)
+  if (imageUrl === state.colorFitImageUrl && (state.colorFitAnalysis || state.colorFitLoading)) {
+    renderColorFitCard();
+    return;
+  }
+  state.colorFitImageUrl = imageUrl;
+  state.colorFitAnalysis = null;
+  state.colorFitLoading  = true;
+  renderColorFitCard();
+
+  try {
+    const previewBlob = await previewImageToBlob(imageUrl);
+    const form = new FormData();
+    form.append('preview_image', previewBlob, 'preview.jpg');
+    form.append('skin_depth',    state.skinTone.depth    || 'medium');
+    form.append('undertone',     state.skinTone.undertone || 'neutral');
+    const resp = await fetch(`${API}/api/try-on/color-fit`, { method: 'POST', body: form });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    state.colorFitAnalysis = _validateColorFitData(data);
+  } catch (_) {
+    state.colorFitAnalysis = null;
+  }
+  state.colorFitLoading = false;
+  renderColorFitCard();
+}
+
+function renderColorFitCard() {
+  const section    = document.getElementById('color-fit-section');
+  const contentEl  = document.getElementById('color-fit-content');
+  const refreshBtn = document.getElementById('refresh-color-fit-btn');
+  if (!section || !contentEl) return;
+
+  if (state.tryOnPreview.status !== 'ready' || !state.tryOnPreview.imageUrl) {
+    section.classList.add('hidden');
+    return;
+  }
+  section.classList.remove('hidden');
+  contentEl.textContent = '';
+
+  if (state.colorFitLoading) {
+    const wrap = document.createElement('div');
+    wrap.className = 'color-fit-loading';
+    const spinner = document.createElement('div');
+    spinner.className = 'spinner sm';
+    const msg = document.createElement('span');
+    msg.textContent = 'Analysing colour fit…';
+    wrap.appendChild(spinner);
+    wrap.appendChild(msg);
+    contentEl.appendChild(wrap);
+    if (refreshBtn) refreshBtn.classList.add('hidden');
+    return;
+  }
+
+  if (refreshBtn) refreshBtn.classList.remove('hidden');
+
+  const d = state.colorFitAnalysis;
+  if (!d || (!d.verdict && d.score === 0 && d.reasons.length === 0)) {
+    const err = document.createElement('p');
+    err.className = 'color-fit-error';
+    err.textContent = 'Colour fit analysis is unavailable. Set up the Claude API key to enable it.';
+    contentEl.appendChild(err);
+    return;
+  }
+
+  // Score + verdict
+  if (d.score > 0 || d.verdict) {
+    const row = document.createElement('div');
+    row.className = 'color-fit-score-row';
+    if (d.score > 0) {
+      const scoreEl = document.createElement('span');
+      scoreEl.className = 'color-fit-score';
+      scoreEl.textContent = d.score + '/10';
+      row.appendChild(scoreEl);
+    }
+    if (d.verdict) {
+      const verdictEl = document.createElement('span');
+      verdictEl.className = 'color-fit-verdict color-fit-verdict--' +
+        d.verdict.toLowerCase().replace(/[\s/]+/g, '-');
+      verdictEl.textContent = d.verdict;
+      row.appendChild(verdictEl);
+    }
+    contentEl.appendChild(row);
+  }
+
+  // Reasons
+  if (d.reasons.length > 0) {
+    const ul = document.createElement('ul');
+    ul.className = 'color-fit-reasons';
+    d.reasons.forEach(r => {
+      const li = document.createElement('li');
+      li.textContent = r;
+      ul.appendChild(li);
+    });
+    contentEl.appendChild(ul);
+  }
+
+  // Better colors
+  if (d.betterColors.length > 0) {
+    const lbl = document.createElement('p');
+    lbl.className = 'color-fit-chip-label';
+    lbl.textContent = 'Colours that complement:';
+    contentEl.appendChild(lbl);
+    const chips = document.createElement('div');
+    chips.className = 'color-fit-chips';
+    d.betterColors.forEach(c => {
+      const chip = document.createElement('span');
+      chip.className = 'color-chip color-chip--better';
+      chip.textContent = c;
+      chips.appendChild(chip);
+    });
+    contentEl.appendChild(chips);
+  }
+
+  // Caution colors
+  if (d.cautionColors.length > 0) {
+    const lbl = document.createElement('p');
+    lbl.className = 'color-fit-chip-label';
+    lbl.textContent = 'Colours to limit:';
+    contentEl.appendChild(lbl);
+    const chips = document.createElement('div');
+    chips.className = 'color-fit-chips';
+    d.cautionColors.forEach(c => {
+      const chip = document.createElement('span');
+      chip.className = 'color-chip color-chip--caution';
+      chip.textContent = c;
+      chips.appendChild(chip);
+    });
+    contentEl.appendChild(chips);
+  }
+
+  // Lighting note
+  if (d.lightingNote) {
+    const note = document.createElement('p');
+    note.className = 'color-fit-lighting-note';
+    note.textContent = d.lightingNote;
+    contentEl.appendChild(note);
+  }
 }
 
 /* ── Full Outfit Reference (Issue 22) ────────────────────────────────────── */

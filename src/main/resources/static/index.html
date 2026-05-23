@@ -235,6 +235,18 @@
                 &#9654; View Full Motion Preview
               </button>
             </div>
+            <!-- Color Fit — shown after static image results only -->
+            <div id="color-fit-section" class="color-fit-section hidden">
+              <div class="color-fit-hdr">
+                <div class="color-fit-hdr-left">
+                  <span class="color-fit-title">Color Fit</span>
+                  <span class="color-fit-subtitle">Palette compatibility with your visible skin tone</span>
+                </div>
+                <button id="refresh-color-fit-btn" class="btn-refresh-color-fit hidden">&#8635; Refresh</button>
+              </div>
+              <div id="color-fit-content" class="color-fit-content"></div>
+            </div>
+
             <!-- Complete the Look — shown after static image results only -->
             <div id="complete-the-look" class="complete-look-section hidden">
               <div class="complete-look-hdr">
@@ -584,6 +596,24 @@
             <div class="model-info-section">
               <p class="dna-section-label">Silhouettes to Avoid</p>
               <div id="model-avoid-silhouettes" class="tag-row"></div>
+            </div>
+          </div>
+        </details>
+
+        <!-- ── Skin Tone Profile ── -->
+        <details class="fit-details-toggle" id="skin-tone-details">
+          <summary>Skin Tone Profile — for colour matching</summary>
+          <div class="fit-analysis-inner">
+            <p class="skin-tone-disclaimer muted">Based on the lighting and colours visible in your uploaded photo. This is for styling colour analysis only — not medical or identity analysis. Adjust if it does not look right.</p>
+            <div id="skin-tone-picker">
+              <p class="dna-section-label">Shade</p>
+              <div class="skin-tone-swatches" id="skin-tone-swatches"></div>
+              <p class="dna-section-label" style="margin-top:14px">Undertone</p>
+              <div class="undertone-btns" id="undertone-btns"></div>
+              <p class="skin-tone-source-label" id="skin-tone-source-label"></p>
+            </div>
+            <div id="skin-tone-detecting" class="loading-inline hidden" style="margin-top:8px">
+              <div class="spinner sm"></div><span>Detecting visible colour…</span>
             </div>
           </div>
         </details>

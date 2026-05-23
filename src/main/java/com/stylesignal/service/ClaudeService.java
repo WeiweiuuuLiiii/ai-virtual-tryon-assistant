@@ -455,6 +455,89 @@ public class ClaudeService {
         return suggestions != null ? suggestions : List.of();
     }
 
+    // ── Skin Tone Detection ───────────────────────────────────────────────────
+
+    public Map<String, Object> detectSkinTone(byte[] imageBytes, String imageType) throws Exception {
+        validateApiKey();
+        String b64 = Base64.getEncoder().encodeToString(imageBytes);
+
+        String prompt = """
+            You are a fashion styling assistant analysing visible colour characteristics for clothing colour-matching purposes ONLY.
+
+            IMPORTANT SAFETY RULES:
+            - Do NOT infer, mention, or imply race, ethnicity, nationality, religion, or any personal identity.
+            - Focus ONLY on observable light, shadow, and undertone characteristics of the visible skin colour in this photo as they relate to colour harmony with clothing.
+            - This analysis is for styling and colour-matching purposes only — not medical, genetic, or identity analysis.
+
+            Analyse the visible skin colour in this photo and estimate:
+            1. skin_depth — the apparent shade depth. Choose one of exactly: fair, light, light-medium, medium, medium-deep, deep, rich
+            2. undertone — the visible colour cast. Choose one of exactly: cool, neutral, warm, olive, uncertain
+               (cool = pink/rosy cast, neutral = balanced mix, warm = golden/peachy cast, olive = yellow-green cast, uncertain = unclear from photo)
+            3. confidence — your confidence in this estimate (0.0 to 1.0); use lower values if lighting is poor or skin is not clearly visible.
+
+            Return ONLY valid JSON — no prose before or after:
+            {"skin_depth":"medium","undertone":"neutral","confidence":0.7}
+            """;
+
+        List<Object> content = List.of(
+            Map.of("type", "image",
+                   "source", Map.of("type", "base64", "media_type", imageType, "data", b64)),
+            Map.of("type", "text", "text", prompt)
+        );
+        return callClaude(content, 300);
+    }
+
+    // ── Color Fit Analysis ────────────────────────────────────────────────────
+
+    public Map<String, Object> analyzeColorFit(
+            byte[] previewBytes, String previewType,
+            String skinDepth, String undertone) throws Exception {
+        validateApiKey();
+        String b64          = Base64.getEncoder().encodeToString(previewBytes);
+        String safeDepth    = (skinDepth   != null && !skinDepth.isBlank())   ? skinDepth   : "medium";
+        String safeUndertone = (undertone  != null && !undertone.isBlank())   ? undertone   : "neutral";
+
+        String prompt = """
+            You are a fashion colour stylist. Analyse the colour harmony between the outfit shown in this image and the person's visible skin tone profile.
+
+            VISIBLE SKIN TONE PROFILE (based on photo colour analysis — for styling purposes only):
+            - Shade depth: %s
+            - Undertone: %s
+
+            IMPORTANT SAFETY RULES:
+            - Keep ALL language in styling, fashion, and colour-matching terms only.
+            - Do NOT make medical claims, identity assumptions, or racial/ethnic references of any kind.
+            - Base only on observable colour interactions, not on any assumption about the person.
+
+            Analyse the outfit colours and how they interact with the skin tone profile above.
+            Consider: contrast, undertone harmony, colour temperature, vibrancy.
+
+            Return ONLY valid JSON — no prose:
+            {
+              "color_fit_score": 8,
+              "verdict": "Great fit",
+              "reasons": ["Navy blue creates high contrast that suits cool undertones", "The white collar brightens the face area"],
+              "lighting_note": "Based on photo lighting — colours may appear slightly different in person.",
+              "better_colors": ["Burgundy", "Forest green", "Slate blue"],
+              "caution_colors": ["Mustard yellow"]
+            }
+
+            Rules:
+            - verdict must be one of exactly: Great fit / Good match / Works with adjustments / Challenging palette
+            - color_fit_score: integer 1–10
+            - reasons: 2–3 short styling observations, ≤15 words each
+            - better_colors: 3–5 colour alternatives that complement the skin tone profile
+            - caution_colors: 0–3 colours that may clash with the skin tone profile
+            """.formatted(safeDepth, safeUndertone);
+
+        List<Object> content = List.of(
+            Map.of("type", "image",
+                   "source", Map.of("type", "base64", "media_type", previewType, "data", b64)),
+            Map.of("type", "text", "text", prompt)
+        );
+        return callClaude(content, 700);
+    }
+
     // ── Outfit Reference Analysis ─────────────────────────────────────────────
 
     public boolean isConfigured() {
