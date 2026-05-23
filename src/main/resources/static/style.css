@@ -1950,6 +1950,8 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
 }
 .studio-extra-slot {
   position: relative;
+  flex: 0 0 68px;
+  min-width: 68px;
   width: 68px;
   height: 68px;
   border: 1.5px dashed var(--border);
