@@ -456,21 +456,46 @@ public class ApiController {
             ? new HashSet<>()
             : new HashSet<>(Arrays.asList(assignedSlots.split(",")));
 
-        // Curated items in priority order; slots already in the outfit are skipped.
-        List<Map<String, Object>> candidates = List.of(
-            Map.of("slot", "bag",            "name", "Small Black Shoulder Bag",
-                   "reason", "Versatile everyday essential"),
-            Map.of("slot", "earrings",       "name", "Gold Hoop Earrings",
-                   "reason", "Adds warmth and polish"),
-            Map.of("slot", "glasses",        "name", "Thin Black Glasses",
-                   "reason", "Defines the face effortlessly"),
-            Map.of("slot", "hair_accessory", "name", "Silk Bow Hair Clip",
-                   "reason", "Elevates any hairstyle"),
-            Map.of("slot", "outerwear",      "name", "Light Trench Coat",
-                   "reason", "Classic layering piece"),
-            Map.of("slot", "shoes",          "name", "Black Loafers",
-                   "reason", "Grounded and versatile")
-        );
+        // 37-item pool interleaved across all slot types; slots already in the outfit are skipped.
+        List<Map<String, Object>> candidates = new java.util.ArrayList<>(List.of(
+            Map.of("slot","bag",            "name","Small Black Shoulder Bag",     "reason","Versatile everyday essential"),
+            Map.of("slot","earrings",       "name","Gold Hoop Earrings",           "reason","Adds warmth and polish"),
+            Map.of("slot","glasses",        "name","Thin Black Glasses",           "reason","Defines the face effortlessly"),
+            Map.of("slot","hair_accessory", "name","Silk Bow Hair Clip",           "reason","Elevates any hairstyle"),
+            Map.of("slot","scarf",          "name","Cream Silk Scarf",             "reason","Luxurious soft finishing touch"),
+            Map.of("slot","necklace",       "name","Gold Pendant Necklace",        "reason","Delicate statement at the neckline"),
+            Map.of("slot","shoes",          "name","Black Loafers",                "reason","Grounded and versatile"),
+            Map.of("slot","outerwear",      "name","Light Trench Coat",            "reason","Classic layering piece"),
+            Map.of("slot","bracelet",       "name","Gold Bangle Bracelet",         "reason","Warm accent that catches light"),
+            Map.of("slot","belt",           "name","Black Leather Belt",           "reason","Defines the waist and anchors the look"),
+            Map.of("slot","hat",            "name","Black Wide Brim Hat",          "reason","Dramatic and sun-protective"),
+            Map.of("slot","watch",          "name","Gold Watch",                   "reason","Refined punctuation on the wrist"),
+            Map.of("slot","bag",            "name","Tan Leather Tote Bag",         "reason","Adds warmth and practicality"),
+            Map.of("slot","earrings",       "name","Pearl Drop Earrings",          "reason","Timeless feminine elegance"),
+            Map.of("slot","glasses",        "name","Brown Tortoise Round Glasses", "reason","Warm intellectual charm"),
+            Map.of("slot","hair_accessory", "name","Pearl Headband",               "reason","Polished and put-together"),
+            Map.of("slot","scarf",          "name","Black Wool Scarf",             "reason","Cozy and effortlessly chic"),
+            Map.of("slot","necklace",       "name","Pearl Strand Necklace",        "reason","Classic elegance, always in style"),
+            Map.of("slot","shoes",          "name","White Sneakers",               "reason","Fresh and effortlessly casual"),
+            Map.of("slot","outerwear",      "name","Camel Blazer",                 "reason","Sharp structure and warmth"),
+            Map.of("slot","tights",         "name","Black Sheer Tights",           "reason","Polishes legs and extends the season"),
+            Map.of("slot","socks",          "name","White Ankle Socks",            "reason","Fresh casual detail"),
+            Map.of("slot","bag",            "name","White Crossbody Bag",          "reason","Fresh and hands-free ease"),
+            Map.of("slot","earrings",       "name","Silver Stud Earrings",         "reason","Clean and versatile accent"),
+            Map.of("slot","glasses",        "name","Gold Rimless Glasses",         "reason","Subtle sophisticated detail"),
+            Map.of("slot","hair_accessory", "name","Black Velvet Scrunchie",       "reason","Effortless retro texture"),
+            Map.of("slot","scarf",          "name","Navy Stripe Scarf",            "reason","Graphic accent with warmth"),
+            Map.of("slot","necklace",       "name","Silver Chain Necklace",        "reason","Minimalist shine and versatility"),
+            Map.of("slot","shoes",          "name","Nude Block Heel Pumps",        "reason","Leg-lengthening elegance"),
+            Map.of("slot","outerwear",      "name","Navy Denim Jacket",            "reason","Casual cool contrast"),
+            Map.of("slot","bracelet",       "name","Silver Chain Bracelet",        "reason","Cool minimalist wrist detail"),
+            Map.of("slot","belt",           "name","Tan Woven Belt",               "reason","Relaxed texture with structure"),
+            Map.of("slot","hat",            "name","Cream Fedora Hat",             "reason","Effortless boho sophistication"),
+            Map.of("slot","watch",          "name","Silver Minimalist Watch",      "reason","Clean precision and elegance"),
+            Map.of("slot","tights",         "name","Nude Tights",                  "reason","Seamless skin-tone coverage"),
+            Map.of("slot","socks",          "name","Black Crew Socks",             "reason","Understated everyday finish"),
+            Map.of("slot","hat",            "name","Navy Knit Beanie",             "reason","Casual warmth and texture")
+        ));
 
         return candidates.stream()
             .filter(s -> !assigned.contains(s.get("slot")))

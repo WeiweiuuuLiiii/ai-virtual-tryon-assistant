@@ -27,6 +27,7 @@ const state = {
   batchEditActive: false,           // true specifically during a batch edit (subset of addToLookInFlight)
   batchProgress: 0,                 // 0-100 for batch progress bar animation
   completeLookSelected: new Set(),  // Set of `${slot}::${name}` keys for batch selection
+  completeLookHistory: [],          // slot::name keys recently shown; FIFO cap 30 (~10 refreshes)
   tryOnCache: new Map(),            // generation cache key → {status, mode, imageUrl, videoUrl}
   addToLookCache: new Map(),        // add-to-look cache key → result imageUrl (single + batch)
   // Studio — legacy (kept for API compatibility)
@@ -1118,18 +1119,64 @@ function buildGenerationCacheKey() {
   ].join('\x00');
 }
 
+const FALLBACK_POOL = [
+  { slot:'bag',            name:'Small Black Shoulder Bag',     reason:'Versatile everyday essential' },
+  { slot:'earrings',       name:'Gold Hoop Earrings',           reason:'Adds warmth and polish' },
+  { slot:'glasses',        name:'Thin Black Glasses',           reason:'Defines the face effortlessly' },
+  { slot:'hair_accessory', name:'Silk Bow Hair Clip',           reason:'Elevates any hairstyle' },
+  { slot:'scarf',          name:'Cream Silk Scarf',             reason:'Luxurious soft finishing touch' },
+  { slot:'necklace',       name:'Gold Pendant Necklace',        reason:'Delicate statement at the neckline' },
+  { slot:'shoes',          name:'Black Loafers',                reason:'Grounded and versatile' },
+  { slot:'outerwear',      name:'Light Trench Coat',            reason:'Classic layering piece' },
+  { slot:'bracelet',       name:'Gold Bangle Bracelet',         reason:'Warm accent that catches light' },
+  { slot:'belt',           name:'Black Leather Belt',           reason:'Defines the waist and anchors the look' },
+  { slot:'hat',            name:'Black Wide Brim Hat',          reason:'Dramatic and sun-protective' },
+  { slot:'watch',          name:'Gold Watch',                   reason:'Refined punctuation on the wrist' },
+  { slot:'bag',            name:'Tan Leather Tote Bag',         reason:'Adds warmth and practicality' },
+  { slot:'earrings',       name:'Pearl Drop Earrings',          reason:'Timeless feminine elegance' },
+  { slot:'glasses',        name:'Brown Tortoise Round Glasses', reason:'Warm intellectual charm' },
+  { slot:'hair_accessory', name:'Pearl Headband',               reason:'Polished and put-together' },
+  { slot:'scarf',          name:'Black Wool Scarf',             reason:'Cozy and effortlessly chic' },
+  { slot:'necklace',       name:'Pearl Strand Necklace',        reason:'Classic elegance, always in style' },
+  { slot:'shoes',          name:'White Sneakers',               reason:'Fresh and effortlessly casual' },
+  { slot:'outerwear',      name:'Camel Blazer',                 reason:'Sharp structure and warmth' },
+  { slot:'tights',         name:'Black Sheer Tights',           reason:'Polishes legs and extends the season' },
+  { slot:'socks',          name:'White Ankle Socks',            reason:'Fresh casual detail' },
+  { slot:'bag',            name:'White Crossbody Bag',          reason:'Fresh and hands-free ease' },
+  { slot:'earrings',       name:'Silver Stud Earrings',         reason:'Clean and versatile accent' },
+  { slot:'glasses',        name:'Gold Rimless Glasses',         reason:'Subtle sophisticated detail' },
+  { slot:'hair_accessory', name:'Black Velvet Scrunchie',       reason:'Effortless retro texture' },
+  { slot:'scarf',          name:'Navy Stripe Scarf',            reason:'Graphic accent with warmth' },
+  { slot:'necklace',       name:'Silver Chain Necklace',        reason:'Minimalist shine and versatility' },
+  { slot:'shoes',          name:'Nude Block Heel Pumps',        reason:'Leg-lengthening elegance' },
+  { slot:'outerwear',      name:'Navy Denim Jacket',            reason:'Casual cool contrast' },
+  { slot:'bracelet',       name:'Silver Chain Bracelet',        reason:'Cool minimalist wrist detail' },
+  { slot:'belt',           name:'Tan Woven Belt',               reason:'Relaxed texture with structure' },
+  { slot:'hat',            name:'Cream Fedora Hat',             reason:'Effortless boho sophistication' },
+  { slot:'watch',          name:'Silver Minimalist Watch',      reason:'Clean precision and elegance' },
+  { slot:'tights',         name:'Nude Tights',                  reason:'Seamless skin-tone coverage' },
+  { slot:'socks',          name:'Black Crew Socks',             reason:'Understated everyday finish' },
+  { slot:'hat',            name:'Navy Knit Beanie',             reason:'Casual warmth and texture' },
+];
+
+function _addSuggestionHistory(suggestions) {
+  for (const s of suggestions) {
+    const key = `${s.slot}::${s.name}`;
+    const idx = state.completeLookHistory.indexOf(key);
+    if (idx !== -1) state.completeLookHistory.splice(idx, 1);
+    state.completeLookHistory.push(key);
+    if (state.completeLookHistory.length > 30) state.completeLookHistory.shift();
+  }
+}
+
 function buildClientFallbackSuggestions() {
-  const assigned = new Set(
+  const assigned   = new Set(
     Object.entries(state.slotAssignments).filter(([, id]) => !!id).map(([slot]) => slot)
   );
-  return [
-    { slot: 'bag',            name: 'Small Black Shoulder Bag', reason: 'Versatile everyday essential' },
-    { slot: 'earrings',       name: 'Gold Hoop Earrings',       reason: 'Adds warmth and polish' },
-    { slot: 'glasses',        name: 'Thin Black Glasses',       reason: 'Defines the face effortlessly' },
-    { slot: 'hair_accessory', name: 'Silk Bow Hair Clip',       reason: 'Elevates any hairstyle' },
-    { slot: 'outerwear',      name: 'Light Trench Coat',        reason: 'Classic layering piece' },
-    { slot: 'shoes',          name: 'Black Loafers',            reason: 'Grounded and versatile' },
-  ].filter(c => !assigned.has(c.slot)).slice(0, 3);
+  const historySet = new Set(state.completeLookHistory);
+  const available  = FALLBACK_POOL.filter(c => !assigned.has(c.slot));
+  const fresh      = available.filter(c => !historySet.has(`${c.slot}::${c.name}`));
+  return (fresh.length >= 3 ? fresh : available).slice(0, 3);
 }
 
 function renderTryOnPreview() {
@@ -1328,6 +1375,7 @@ async function runTryOnGenerate() {
   // Abort any previous in-flight generation and stamp this one with a unique id.
   if (state.activeAbortController) state.activeAbortController.abort();
   state.generationRequestId++;
+  state.completeLookHistory = []; // new preview → fresh suggestion history
   const myId       = state.generationRequestId;
   const controller = new AbortController();
   state.activeAbortController = controller;
@@ -1500,6 +1548,7 @@ function cancelGeneration() {
   state.batchEditActive         = false;
   state.batchProgress           = 0;
   state.completeLookSelected    = new Set();
+  state.completeLookHistory     = [];
   state.tryOnPreview.status     = 'idle';
   state.tryOnPreview.imageUrl   = null;
   state.tryOnPreview.videoUrl   = null;
@@ -1733,20 +1782,151 @@ function _ctl_svgDress(c) {
     <path d="M48,22 L44,68 L32,130 L36,130 L48,68 L52,22 Z" fill="${c.light}" opacity="0.3"/>`;
 }
 
+function _ctl_svgScarf(c) {
+  return `${_ctl_bg(c)}
+    <path d="M18,44 Q60,18 102,44 L98,62 Q60,38 22,62 Z" fill="${c.main}"/>
+    <path d="M22,62 Q60,38 98,62 L94,80 Q60,56 26,80 Z" fill="${c.light}" opacity="0.75"/>
+    <path d="M26,80 Q60,56 94,80 L90,98 Q60,74 30,98 Z" fill="${c.main}" opacity="0.85"/>
+    <path d="M30,98 L20,148" stroke="${c.dark}" stroke-width="20" stroke-linecap="round" fill="none"/>
+    <path d="M90,98 L100,148" stroke="${c.main}" stroke-width="16" stroke-linecap="round" fill="none"/>
+    <path d="M22,132 L28,148" stroke="${c.light}" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.5"/>`;
+}
+
+function _ctl_svgNecklace(c, name) {
+  const bg = _ctl_bg(c);
+  if (/pearl|bead/i.test(name || '')) {
+    return `${bg}
+      <circle cx="20" cy="52" r="7" fill="${c.main}"/><circle cx="32" cy="66" r="7" fill="${c.main}"/>
+      <circle cx="46" cy="78" r="7" fill="${c.main}"/><circle cx="60" cy="82" r="7" fill="${c.main}"/>
+      <circle cx="74" cy="78" r="7" fill="${c.main}"/><circle cx="88" cy="66" r="7" fill="${c.main}"/>
+      <circle cx="100" cy="52" r="7" fill="${c.main}"/>
+      <circle cx="22" cy="48" r="2" fill="white" opacity="0.5"/><circle cx="62" cy="78" r="2" fill="white" opacity="0.5"/>
+      <path d="M20,52 Q16,38 22,28 Q30,18 40,26" fill="none" stroke="${c.main}" stroke-width="3" stroke-linecap="round"/>
+      <path d="M100,52 Q104,38 98,28 Q90,18 80,26" fill="none" stroke="${c.main}" stroke-width="3" stroke-linecap="round"/>`;
+  }
+  return `${bg}
+    <path d="M22,48 Q60,112 98,48" fill="none" stroke="${c.main}" stroke-width="4" stroke-linecap="round"/>
+    <path d="M22,48 Q14,36 20,26 Q28,16 38,24" fill="none" stroke="${c.main}" stroke-width="3" stroke-linecap="round"/>
+    <path d="M98,48 Q106,36 100,26 Q92,16 82,24" fill="none" stroke="${c.main}" stroke-width="3" stroke-linecap="round"/>
+    <ellipse cx="60" cy="116" rx="10" ry="14" fill="${c.main}"/>
+    <ellipse cx="57" cy="112" rx="3" ry="4" fill="white" opacity="0.35"/>`;
+}
+
+function _ctl_svgBracelet(c, name) {
+  const bg = _ctl_bg(c);
+  if (/bead|pearl|charm/i.test(name || '')) {
+    return `${bg}
+      <ellipse cx="60" cy="80" rx="42" ry="21" fill="none" stroke="${c.main}" stroke-width="3"/>
+      <circle cx="18" cy="80" r="9" fill="${c.main}"/><circle cx="31" cy="60" r="9" fill="${c.light}"/>
+      <circle cx="51" cy="56" r="9" fill="${c.main}"/><circle cx="69" cy="56" r="9" fill="${c.light}"/>
+      <circle cx="89" cy="60" r="9" fill="${c.main}"/><circle cx="102" cy="80" r="9" fill="${c.light}"/>
+      <circle cx="20" cy="76" r="3" fill="white" opacity="0.4"/>`;
+  }
+  return `${bg}
+    <ellipse cx="60" cy="80" rx="44" ry="22" fill="none" stroke="${c.main}" stroke-width="16"/>
+    <ellipse cx="60" cy="80" rx="44" ry="22" fill="none" stroke="${c.light}" stroke-width="4" opacity="0.45"/>
+    <rect x="50" y="61" width="20" height="14" rx="3" fill="${c.dark}"/>
+    <rect x="52" y="63" width="16" height="10" rx="2" fill="${c.light}" opacity="0.6"/>`;
+}
+
+function _ctl_svgBelt(c) {
+  return `${_ctl_bg(c)}
+    <rect x="6" y="62" width="108" height="26" rx="5" fill="${c.main}"/>
+    <rect x="6" y="62" width="108" height="9" rx="5" fill="${c.light}" opacity="0.35"/>
+    <rect x="44" y="58" width="32" height="34" rx="5" fill="${c.dark}" opacity="0.9"/>
+    <rect x="46" y="60" width="28" height="30" rx="4" fill="${c.main}"/>
+    <circle cx="60" cy="75" r="8" fill="${c.dark}" opacity="0.85"/>
+    <circle cx="60" cy="75" r="4.5" fill="${c.light}" opacity="0.55"/>
+    <circle cx="12" cy="75" r="4" fill="${c.dark}" opacity="0.45"/>
+    <circle cx="22" cy="75" r="4" fill="${c.dark}" opacity="0.45"/>
+    <circle cx="32" cy="75" r="4" fill="${c.dark}" opacity="0.45"/>`;
+}
+
+function _ctl_svgHat(c, name) {
+  const n = name || '';
+  const bg = _ctl_bg(c);
+  if (/beanie|knit|wool/i.test(n)) {
+    return `${bg}
+      <path d="M20,102 Q22,44 60,36 Q98,44 100,102 Z" fill="${c.main}"/>
+      <rect x="18" y="98" width="84" height="18" rx="9" fill="${c.dark}" opacity="0.8"/>
+      <path d="M30,82 Q60,74 90,82" stroke="${c.light}" stroke-width="5" fill="none" opacity="0.5"/>
+      <path d="M26,97 Q60,88 94,97" stroke="${c.light}" stroke-width="4" fill="none" opacity="0.4"/>
+      <circle cx="60" cy="38" r="11" fill="${c.dark}" opacity="0.7"/>`;
+  }
+  if (/fedora|wide|brim/i.test(n)) {
+    return `${bg}
+      <ellipse cx="60" cy="90" rx="56" ry="13" fill="${c.dark}" opacity="0.85"/>
+      <path d="M24,90 Q28,46 60,38 Q92,46 96,90 Z" fill="${c.main}"/>
+      <ellipse cx="60" cy="90" rx="36" ry="9" fill="${c.main}"/>
+      <path d="M30,70 Q60,62 90,70" stroke="${c.light}" stroke-width="4" fill="none" opacity="0.45"/>`;
+  }
+  return `${bg}
+    <ellipse cx="60" cy="96" rx="52" ry="11" fill="${c.dark}" opacity="0.8"/>
+    <path d="M26,96 Q28,50 60,42 Q92,50 94,96 Z" fill="${c.main}"/>
+    <ellipse cx="60" cy="96" rx="34" ry="9" fill="${c.main}"/>
+    <path d="M32,76 Q60,68 88,76" stroke="${c.light}" stroke-width="4" fill="none" opacity="0.4"/>`;
+}
+
+function _ctl_svgWatch(c) {
+  return `${_ctl_bg(c)}
+    <rect x="44" y="20" width="8" height="36" rx="4" fill="${c.dark}" opacity="0.8"/>
+    <rect x="68" y="20" width="8" height="36" rx="4" fill="${c.dark}" opacity="0.8"/>
+    <rect x="44" y="94" width="8" height="36" rx="4" fill="${c.dark}" opacity="0.8"/>
+    <rect x="68" y="94" width="8" height="36" rx="4" fill="${c.dark}" opacity="0.8"/>
+    <rect x="18" y="52" width="84" height="46" rx="14" fill="${c.dark}"/>
+    <rect x="20" y="54" width="80" height="42" rx="12" fill="${c.main}"/>
+    <circle cx="60" cy="75" r="17" fill="${c.bg}" stroke="${c.dark}" stroke-width="2.5"/>
+    <line x1="60" y1="75" x2="60" y2="62" stroke="${c.dark}" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="60" y1="75" x2="70" y2="79" stroke="${c.dark}" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="60" cy="75" r="2.5" fill="${c.dark}"/>`;
+}
+
+function _ctl_svgTights(c) {
+  return `${_ctl_bg(c)}
+    <path d="M36,18 L28,148" stroke="${c.main}" stroke-width="30" stroke-linecap="round" fill="none"/>
+    <path d="M84,18 L92,148" stroke="${c.main}" stroke-width="30" stroke-linecap="round" fill="none"/>
+    <path d="M36,18 L84,18 L80,60 L60,65 L40,60 Z" fill="${c.main}"/>
+    <path d="M40,28 L34,148" stroke="${c.light}" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.35"/>
+    <path d="M80,28 L86,148" stroke="${c.light}" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.35"/>`;
+}
+
+function _ctl_svgSocks(c, name) {
+  const bg = _ctl_bg(c);
+  if (/ankle|low/i.test(name || '')) {
+    return `${bg}
+      <path d="M34,74 Q32,102 26,120 Q28,142 50,142 Q72,132 74,120 L70,98 Q78,82 78,74 Z" fill="${c.main}"/>
+      <rect x="31" y="64" width="50" height="14" rx="5" fill="${c.dark}" opacity="0.7"/>
+      <path d="M38,82 Q40,112 34,130" stroke="${c.light}" stroke-width="4" fill="none" opacity="0.4"/>`;
+  }
+  return `${bg}
+    <path d="M34,24 Q32,82 26,120 Q28,142 50,142 Q72,132 74,120 L70,92 Q78,74 78,24 Z" fill="${c.main}"/>
+    <rect x="31" y="14" width="50" height="14" rx="5" fill="${c.dark}" opacity="0.65"/>
+    <path d="M34,50 L78,50" stroke="${c.light}" stroke-width="5" fill="none" opacity="0.4"/>
+    <path d="M38,62 Q40,102 34,130" stroke="${c.light}" stroke-width="4" fill="none" opacity="0.35"/>`;
+}
+
 // Returns an SVG data URI thumbnail for a suggestion card
 function generateSuggestionThumbnail(slot, name) {
   const c = _ctl_color(name);
   let inner = '';
   switch (slot) {
-    case 'bag':            inner = _ctl_svgBag(c);              break;
-    case 'glasses':        inner = _ctl_svgGlasses(c, name);    break;
-    case 'earrings':       inner = _ctl_svgEarrings(c, name);   break;
+    case 'bag':            inner = _ctl_svgBag(c);                 break;
+    case 'glasses':        inner = _ctl_svgGlasses(c, name);       break;
+    case 'earrings':       inner = _ctl_svgEarrings(c, name);      break;
     case 'hair_accessory': inner = _ctl_svgHairAccessory(c, name); break;
-    case 'shoes':          inner = _ctl_svgShoes(c, name);      break;
-    case 'outerwear':      inner = _ctl_svgOuterwear(c, name);  break;
-    case 'top':            inner = _ctl_svgTop(c);              break;
-    case 'bottom':         inner = _ctl_svgBottom(c, name);     break;
-    case 'dress':          inner = _ctl_svgDress(c);            break;
+    case 'shoes':          inner = _ctl_svgShoes(c, name);         break;
+    case 'outerwear':      inner = _ctl_svgOuterwear(c, name);     break;
+    case 'top':            inner = _ctl_svgTop(c);                 break;
+    case 'bottom':         inner = _ctl_svgBottom(c, name);        break;
+    case 'dress':          inner = _ctl_svgDress(c);               break;
+    case 'scarf':          inner = _ctl_svgScarf(c);               break;
+    case 'necklace':       inner = _ctl_svgNecklace(c, name);      break;
+    case 'bracelet':       inner = _ctl_svgBracelet(c, name);      break;
+    case 'belt':           inner = _ctl_svgBelt(c);                break;
+    case 'hat':            inner = _ctl_svgHat(c, name);           break;
+    case 'watch':          inner = _ctl_svgWatch(c);               break;
+    case 'tights':         inner = _ctl_svgTights(c);              break;
+    case 'socks':          inner = _ctl_svgSocks(c, name);         break;
     default:
       inner = `${_ctl_bg(c)}<path d="M60,20 L96,60 L60,130 L24,60 Z" fill="${c.main}"/>`;
   }
@@ -1872,8 +2052,10 @@ async function fetchCompleteTheLookSuggestions() {
     .join(',');
   if (!assignedSlots) return;
 
-  // Req 7: show curated fallbacks immediately — no loading spinner.
-  state.completeLookSuggestions = buildClientFallbackSuggestions();
+  // Show curated fallbacks immediately — no loading spinner.
+  const fallbacks = buildClientFallbackSuggestions();
+  _addSuggestionHistory(fallbacks);
+  state.completeLookSuggestions = fallbacks;
   state.completeLookLoading     = false;
   state.completeLookError       = null;
   state.completeLookSelected    = new Set(); // clear stale selections when suggestions change
@@ -1888,8 +2070,13 @@ async function fetchCompleteTheLookSuggestions() {
     const result = await resp.json();
     const server  = result.suggestions || [];
     if (server.length > 0) {
+      // Filter recently shown items; if all were recently shown, show them anyway
+      const historySet = new Set(state.completeLookHistory);
+      const fresh = server.filter(s => !historySet.has(`${s.slot}::${s.name}`));
+      const toShow = fresh.length > 0 ? fresh : server;
+      _addSuggestionHistory(toShow);
       state.completeLookSelected.clear(); // clear before replacement so stale selections don't survive
-      state.completeLookSuggestions = server;
+      state.completeLookSuggestions = toShow;
       state.completeLookError       = null;
       renderCompleteTheLook();
     }

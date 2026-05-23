@@ -420,8 +420,19 @@ public class ClaudeService {
         String prompt = """
             You are a fashion stylist AI. The user's outfit currently includes these slots: %s.
             Suggest exactly 3 complementary items from the remaining unassigned slots to complete the look.
-            Available slots: top, outerwear, bottom, dress, shoes, bag, glasses, earrings, hair_accessory.
+            Available slots: top, outerwear, bottom, dress, shoes, bag, glasses, earrings, hair_accessory,
+            scarf, necklace, bracelet, belt, hat, watch, tights, socks.
             Only suggest slots NOT already assigned.
+
+            Slot guidance for newer types:
+            - scarf: draped at neck or over shoulders (e.g. "Cream Silk Scarf", "Navy Stripe Wool Scarf")
+            - necklace: pendant or strand with metal/stone detail (e.g. "Gold Pendant Necklace", "Pearl Strand Necklace")
+            - bracelet: cuff or chain on the wrist (e.g. "Gold Bangle Bracelet", "Silver Chain Bracelet")
+            - belt: defines the waist, specify material and color (e.g. "Black Leather Belt", "Tan Woven Belt")
+            - hat: fedora, beanie, beret, or wide-brim with material (e.g. "Cream Fedora Hat", "Navy Knit Beanie")
+            - watch: metal or leather-strap timepiece (e.g. "Gold Watch", "Silver Minimalist Watch")
+            - tights: sheer or opaque legwear (e.g. "Black Sheer Tights", "Nude Tights")
+            - socks: ankle or crew length (e.g. "White Ankle Socks", "Black Crew Socks")
 
             For each suggestion:
             - slot: exact slot key (e.g. "bag")
