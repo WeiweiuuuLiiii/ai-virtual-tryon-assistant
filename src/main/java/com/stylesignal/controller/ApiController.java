@@ -754,13 +754,13 @@ public class ApiController {
 
     @PostMapping("/try-on/fit-preview")
     public ResponseEntity<?> fitPreview(
-            @RequestParam("preview_image")                                                              MultipartFile previewImage,
-            @RequestParam(value = "direction",      required = false, defaultValue = "up")             String direction,
-            @RequestParam(value = "height",         required = false, defaultValue = "")               String height,
-            @RequestParam(value = "size",           required = false, defaultValue = "")               String size,
-            @RequestParam(value = "fit_preference", required = false, defaultValue = "not_sure")       String fitPreference) {
+            @RequestParam("preview_image")                                                                  MultipartFile previewImage,
+            @RequestParam(value = "fit_adjustment",  required = false, defaultValue = "size_up")           String fitAdjustment,
+            @RequestParam(value = "height",          required = false, defaultValue = "")                  String height,
+            @RequestParam(value = "size",            required = false, defaultValue = "")                  String size,
+            @RequestParam(value = "fit_preference",  required = false, defaultValue = "not_sure")          String fitPreference) {
 
-        log.info("POST /api/try-on/fit-preview — direction={}", direction);
+        log.info("POST /api/try-on/fit-preview — fit_adjustment={}", fitAdjustment);
 
         if (!openAi.isConfigured()) {
             Map<String, Object> resp = new LinkedHashMap<>();
@@ -775,8 +775,9 @@ public class ApiController {
             return ResponseEntity.badRequest().body(errorBody("No preview image provided."));
         }
 
-        if (!"up".equalsIgnoreCase(direction) && !"down".equalsIgnoreCase(direction)) {
-            return ResponseEntity.badRequest().body(errorBody("direction must be 'up' or 'down'."));
+        if (!"size_up".equalsIgnoreCase(fitAdjustment) && !"size_down".equalsIgnoreCase(fitAdjustment)) {
+            return ResponseEntity.badRequest().body(
+                errorBody("fit_adjustment must be 'size_up' or 'size_down'."));
         }
 
         String mimeType;
@@ -793,7 +794,8 @@ public class ApiController {
 
         try {
             Map<String, Object> result = openAi.fitPreview(
-                imageBytes, mimeType, direction, height, size, fitPreference);
+                imageBytes, mimeType, fitAdjustment, height, size, fitPreference);
+            result.put("fit_adjustment", fitAdjustment);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             log.warn("Fit preview generation failed; returning error.");

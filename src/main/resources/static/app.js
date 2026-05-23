@@ -55,12 +55,12 @@ const state = {
   colorFitImageUrl: null,
   // Fit Preview (Issue 24)
   fitPreview: {
-    up:   { imageUrl: null, loading: false, requestId: 0 },
-    down: { imageUrl: null, loading: false, requestId: 0 },
+    size_up:   { imageUrl: null, loading: false, requestId: 0 },
+    size_down: { imageUrl: null, loading: false, requestId: 0 },
   },
   fitPreviewBaseImageUrl: null,
-  fitPreviewLastDirection: null,
-  fitPreviewController: { up: null, down: null },
+  fitPreviewLastAdjustment: null,        // 'size_up' | 'size_down' | null
+  fitPreviewController: { size_up: null, size_down: null },
   fitPreviewCache: new Map(),
   // Full Outfit Reference (Issue 22)
   outfitRefFile: null,
@@ -1350,12 +1350,20 @@ function renderTryOnPreview() {
       // Color Fit — fetch analysis once per unique preview image.
       fetchColorFitIfNeeded(state.tryOnPreview.imageUrl);
 
-      // Fit Preview — clear stale results when base image changes.
+      // Fit Preview — abort, invalidate, and clear when base image changes (Finding 4).
       if (state.tryOnPreview.imageUrl !== state.fitPreviewBaseImageUrl) {
-        state.fitPreviewBaseImageUrl     = state.tryOnPreview.imageUrl;
-        state.fitPreview.up.imageUrl     = null;
-        state.fitPreview.down.imageUrl   = null;
-        state.fitPreviewLastDirection    = null;
+        state.fitPreviewController.size_up?.abort();
+        state.fitPreviewController.size_down?.abort();
+        state.fitPreviewController.size_up      = null;
+        state.fitPreviewController.size_down    = null;
+        state.fitPreview.size_up.requestId     += 1;
+        state.fitPreview.size_down.requestId   += 1;
+        state.fitPreview.size_up.loading        = false;
+        state.fitPreview.size_down.loading      = false;
+        state.fitPreviewBaseImageUrl            = state.tryOnPreview.imageUrl;
+        state.fitPreview.size_up.imageUrl       = null;
+        state.fitPreview.size_down.imageUrl     = null;
+        state.fitPreviewLastAdjustment          = null;
         state.fitPreviewCache.clear();
       }
       renderFitPreviewSection();
@@ -1944,12 +1952,13 @@ function renderColorFitCard() {
 /* ── Size Fit Preview (Issue 24) ─────────────────────────────────────────── */
 
 function setupFitPreview() {
-  document.getElementById('fit-size-up-btn')?.addEventListener('click',   () => triggerFitPreview('up'));
-  document.getElementById('fit-size-down-btn')?.addEventListener('click', () => triggerFitPreview('down'));
+  document.getElementById('fit-size-up-btn')?.addEventListener('click',   () => triggerFitPreview('size_up'));
+  document.getElementById('fit-size-down-btn')?.addEventListener('click', () => triggerFitPreview('size_down'));
   document.getElementById('fit-preview-cancel-btn')?.addEventListener('click', cancelFitPreview);
+  document.getElementById('fit-preview-reset-btn')?.addEventListener('click',  resetFitPreview);
 }
 
-async function triggerFitPreview(direction) {
+async function triggerFitPreview(fitAdjustment) {
   const baseUrl = state.tryOnPreview.imageUrl;
   if (!baseUrl || state.tryOnPreview.videoUrl) return;
 
@@ -1957,40 +1966,42 @@ async function triggerFitPreview(direction) {
   const size   = (document.getElementById('fit-size-input')?.value    || '').trim();
   const pref   =  document.getElementById('fit-pref-select')?.value   || 'not_sure';
 
-  // Cache hit: same base image + same inputs already generated for this direction.
-  const cacheKey = `${direction}::${height}::${size}::${pref}`;
+  // Cache hit: same base image + same inputs already generated for this adjustment.
+  const cacheKey = `${fitAdjustment}::${height}::${size}::${pref}`;
   if (state.fitPreviewCache.has(cacheKey)) {
-    state.fitPreview[direction].imageUrl = state.fitPreviewCache.get(cacheKey);
-    state.fitPreviewLastDirection = direction;
+    state.fitPreview[fitAdjustment].imageUrl = state.fitPreviewCache.get(cacheKey);
+    state.fitPreviewLastAdjustment = fitAdjustment;
     renderFitPreviewSection();
     return;
   }
 
-  // Cancel any in-flight request for this direction.
-  state.fitPreviewController[direction]?.abort();
+  // Cancel any in-flight request for this adjustment.
+  state.fitPreviewController[fitAdjustment]?.abort();
   const controller = new AbortController();
-  state.fitPreviewController[direction] = controller;
+  state.fitPreviewController[fitAdjustment] = controller;
 
-  state.fitPreview[direction].loading    = true;
-  state.fitPreview[direction].requestId += 1;
-  const myId = state.fitPreview[direction].requestId;
+  state.fitPreview[fitAdjustment].loading    = true;
+  state.fitPreview[fitAdjustment].requestId += 1;
+  const myId = state.fitPreview[fitAdjustment].requestId;
 
-  startFitPreviewProgress(direction);
+  startFitPreviewProgress(fitAdjustment);
 
   let previewBlob;
   try {
     previewBlob = await previewImageToBlob(baseUrl);
-  } catch {
-    state.fitPreview[direction].loading = false;
+  } catch (err) {
+    // Preserve the safe user-facing message from previewImageToBlob (Finding 5).
+    state.fitPreview[fitAdjustment].loading = false;
     finishFitPreviewProgress();
     renderFitPreviewSection();
-    showToast('Could not prepare preview image. Try again.', true);
+    showToast(err?.message ||
+      'Could not use this preview for fit editing. Try generating with GPT Image Static Try-On.', true);
     return;
   }
 
   const form = new FormData();
   form.append('preview_image', previewBlob, 'preview.jpg');
-  form.append('direction', direction);
+  form.append('fit_adjustment', fitAdjustment);
   if (height) form.append('height', height);
   if (size)   form.append('size',   size);
   if (pref)   form.append('fit_preference', pref);
@@ -2001,22 +2012,24 @@ async function triggerFitPreview(direction) {
     if (!resp.ok) await apiError(resp);
     const data = await resp.json();
 
-    if (state.fitPreview[direction].requestId !== myId) return; // stale
+    // Stale guard: cancelled, superseded, or base image changed (Finding 3 & 4).
+    if (state.fitPreview[fitAdjustment].requestId !== myId) return;
+    if (state.fitPreviewBaseImageUrl !== baseUrl) return;
 
     if (data.preview_image_url) {
-      state.fitPreview[direction].imageUrl = data.preview_image_url;
-      state.fitPreviewLastDirection = direction;
+      state.fitPreview[fitAdjustment].imageUrl = data.preview_image_url;
+      state.fitPreviewLastAdjustment = fitAdjustment;
       state.fitPreviewCache.set(cacheKey, data.preview_image_url);
     } else {
       showToast(data.message || 'Fit preview could not be generated.', true);
     }
   } catch (err) {
     if (err.name === 'AbortError') return;
-    if (state.fitPreview[direction].requestId !== myId) return;
+    if (state.fitPreview[fitAdjustment].requestId !== myId) return;
     showToast('Fit preview failed. Please try again.', true);
   } finally {
-    if (state.fitPreview[direction].requestId === myId) {
-      state.fitPreview[direction].loading = false;
+    if (state.fitPreview[fitAdjustment].requestId === myId) {
+      state.fitPreview[fitAdjustment].loading = false;
       finishFitPreviewProgress();
       renderFitPreviewSection();
     }
@@ -2024,19 +2037,41 @@ async function triggerFitPreview(direction) {
 }
 
 function cancelFitPreview() {
-  state.fitPreviewController.up?.abort();
-  state.fitPreviewController.down?.abort();
-  state.fitPreviewController.up   = null;
-  state.fitPreviewController.down = null;
-  state.fitPreview.up.loading     = false;
-  state.fitPreview.down.loading   = false;
+  // Abort and increment requestId so any late-arriving results are discarded (Finding 3).
+  state.fitPreviewController.size_up?.abort();
+  state.fitPreviewController.size_down?.abort();
+  state.fitPreviewController.size_up      = null;
+  state.fitPreviewController.size_down    = null;
+  state.fitPreview.size_up.requestId     += 1;
+  state.fitPreview.size_down.requestId   += 1;
+  state.fitPreview.size_up.loading        = false;
+  state.fitPreview.size_down.loading      = false;
+  finishFitPreviewProgress();
+  renderFitPreviewSection();
+}
+
+function resetFitPreview() {
+  // Abort and invalidate in-flight requests (Finding 2 & 3).
+  state.fitPreviewController.size_up?.abort();
+  state.fitPreviewController.size_down?.abort();
+  state.fitPreviewController.size_up      = null;
+  state.fitPreviewController.size_down    = null;
+  state.fitPreview.size_up.requestId     += 1;
+  state.fitPreview.size_down.requestId   += 1;
+  state.fitPreview.size_up.loading        = false;
+  state.fitPreview.size_down.loading      = false;
+  // Clear results — base preview image is unchanged.
+  state.fitPreview.size_up.imageUrl       = null;
+  state.fitPreview.size_down.imageUrl     = null;
+  state.fitPreviewLastAdjustment          = null;
+  state.fitPreviewCache.clear();
   finishFitPreviewProgress();
   renderFitPreviewSection();
 }
 
 let _fitPreviewProgressTimer = null;
 
-function startFitPreviewProgress(direction) {
+function startFitPreviewProgress(fitAdjustment) {
   const fill  = document.getElementById('fit-preview-progress-fill');
   const msg   = document.getElementById('fit-preview-progress-msg');
   const prog  = document.getElementById('fit-preview-progress');
@@ -2046,7 +2081,7 @@ function startFitPreviewProgress(direction) {
   if (prog)  prog.classList.remove('hidden');
   if (upBtn) upBtn.disabled = true;
   if (dnBtn) dnBtn.disabled = true;
-  if (msg)   msg.textContent = direction === 'up'
+  if (msg)   msg.textContent = fitAdjustment === 'size_up'
     ? 'Generating size up preview…'
     : 'Generating size down preview…';
 
@@ -2091,14 +2126,14 @@ function renderFitPreviewSection() {
   section.classList.remove('hidden');
 
   // Show side-by-side comparison if a result exists.
-  const dir       = state.fitPreviewLastDirection;
-  const resultUrl = dir ? state.fitPreview[dir].imageUrl : null;
+  const adj       = state.fitPreviewLastAdjustment;
+  const resultUrl = adj ? state.fitPreview[adj].imageUrl : null;
   if (resultUrl && origImg && resultImg && comparison) {
     comparison.classList.remove('hidden');
     origImg.src   = state.tryOnPreview.imageUrl;
     resultImg.src = resultUrl;
     if (resultLabel) {
-      resultLabel.textContent = dir === 'up'
+      resultLabel.textContent = adj === 'size_up'
         ? 'One Size Up (Looser)'
         : 'One Size Down (More Fitted)';
     }

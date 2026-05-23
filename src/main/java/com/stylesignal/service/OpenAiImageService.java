@@ -199,13 +199,13 @@ public class OpenAiImageService {
      */
     public Map<String, Object> fitPreview(
             byte[] previewBytes, String previewType,
-            String direction, String height, String size, String fitPreference) throws Exception {
+            String fitAdjustment, String height, String size, String fitPreference) throws Exception {
 
         String boundary = "----OpenAiBoundary" + UUID.randomUUID().toString().replace("-", "");
-        String prompt   = buildFitPreviewPrompt(direction, height, size, fitPreference);
+        String prompt   = buildFitPreviewPrompt(fitAdjustment, height, size, fitPreference);
         byte[] body     = buildAddItemBody(boundary, prompt, previewBytes, previewType, null, null, true);
 
-        log.info("GPT Image fit-preview request — direction={}", direction);
+        log.info("GPT Image fit-preview request — fit_adjustment={}", fitAdjustment);
 
         HttpRequest req = HttpRequest.newBuilder()
             .uri(URI.create(OPENAI_API + "/images/edits"))
@@ -241,7 +241,7 @@ public class OpenAiImageService {
 
         Map<String, Object> result = mapper.readValue(resp.body(), new TypeReference<>() {});
         String dataUrl = extractImageDataUrl(result, usedOptFormat);
-        log.info("GPT Image fit-preview complete — direction={}", direction);
+        log.info("GPT Image fit-preview complete — fit_adjustment={}", fitAdjustment);
 
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("status",            "ready");
@@ -249,8 +249,8 @@ public class OpenAiImageService {
         return out;
     }
 
-    private String buildFitPreviewPrompt(String direction, String height, String size, String fitPreference) {
-        boolean sizeUp = "up".equalsIgnoreCase(direction);
+    private String buildFitPreviewPrompt(String fitAdjustment, String height, String size, String fitPreference) {
+        boolean sizeUp = "size_up".equalsIgnoreCase(fitAdjustment);
         StringBuilder sb = new StringBuilder();
         sb.append("Photorealistic virtual fit simulation: ");
         sb.append("Keep the same person, face, skin tone, hair, body shape, pose, and identity exactly. ");

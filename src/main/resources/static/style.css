@@ -4520,3 +4520,18 @@ body.lightbox-open { overflow: hidden; }
   display: block;
   object-fit: cover;
 }
+.btn-reset-fit-preview {
+  font-size: .72rem;
+  padding: 4px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.btn-reset-fit-preview:hover {
+  background: var(--surface-hover, rgba(0,0,0,.04));
+  color: var(--text);
+}
