@@ -4661,8 +4661,9 @@ body.lightbox-open { overflow: hidden; }
 }
 .looks-compare-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  align-items: start;
 }
 .looks-compare-item {
   display: flex;
@@ -4671,7 +4672,8 @@ body.lightbox-open { overflow: hidden; }
 }
 .looks-compare-img {
   width: 100%;
-  max-height: 320px;
+  max-height: 60vh;
+  min-height: 180px;
   object-fit: contain;
   border-radius: 8px;
   background: var(--bg);
@@ -4932,6 +4934,241 @@ body.lightbox-open { overflow: hidden; }
 @media (max-width: 640px) {
   .looks-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
   .looks-compare-grid { grid-template-columns: 1fr 1fr; }
+  .looks-compare-img { max-height: 40vh; }
   .looks-page { padding: 16px 12px 32px; }
   .looks-page-hdr { flex-direction: column; }
+}
+
+/* ── Generation Plan section ──────────────────────────────────────────────── */
+.plan-section {
+  margin-top: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px 24px;
+}
+.plan-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.plan-hdr-left {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.plan-title {
+  font-size: .95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.plan-subtitle {
+  font-size: .76rem;
+  color: var(--text-muted);
+}
+.btn-plan-clear {
+  font-size: .74rem;
+  padding: 5px 11px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all .12s;
+}
+.btn-plan-clear:hover { background: rgba(0,0,0,.04); color: var(--text); }
+.plan-controls {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.plan-control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 160px;
+}
+.plan-control-label {
+  font-size: .72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.plan-fit-btns {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.btn-plan-fit {
+  font-size: .76rem;
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all .12s;
+}
+.btn-plan-fit:hover { border-color: var(--border-strong); color: var(--text); }
+.btn-plan-fit.active {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+  color: var(--accent-dark);
+  font-weight: 600;
+}
+.plan-scene-select {
+  font-size: .82rem;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  min-width: 220px;
+}
+.plan-scene-select:focus { outline: none; border-color: var(--accent); }
+.plan-items-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.plan-items-list {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-height: 28px;
+  align-items: center;
+}
+.plan-items-empty {
+  font-size: .78rem;
+  color: var(--text-faint);
+  font-style: italic;
+}
+.plan-item-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent);
+  border-radius: 20px;
+  padding: 3px 8px 3px 10px;
+  font-size: .74rem;
+}
+.plan-item-slot {
+  color: var(--text-faint);
+  font-size: .68rem;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+.plan-item-name { color: var(--accent-dark); font-weight: 600; }
+.btn-plan-remove-item {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: .80rem;
+  line-height: 1;
+  padding: 0 2px;
+  transition: color .1s;
+}
+.btn-plan-remove-item:hover { color: #C53030; }
+.plan-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+.plan-estimate {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: .78rem;
+  color: var(--text-muted);
+}
+.plan-est-label { font-weight: 500; }
+.plan-est-time, .plan-est-credits { color: var(--text); font-weight: 600; }
+.plan-est-sep { color: var(--text-faint); }
+.plan-status-row {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.plan-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: .82rem;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+}
+.plan-status-processing {
+  background: var(--warning-bg);
+  color: var(--warning);
+  border: 1px solid rgba(183,119,13,.2);
+}
+.plan-status-complete {
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid rgba(45,125,70,.2);
+}
+.plan-status-failed {
+  background: #FFF5F5;
+  color: #C53030;
+  border: 1px solid #FED7D7;
+}
+.plan-result-preview {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.plan-result-img {
+  width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  display: block;
+}
+
+/* Add-to-Plan button on Complete-the-Look cards */
+.btn-add-to-plan {
+  font-size: .68rem;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent);
+  background: var(--accent-bg);
+  color: var(--accent-dark);
+  cursor: pointer;
+  transition: all .12s;
+  white-space: nowrap;
+}
+.btn-add-to-plan:hover { background: var(--accent); color: #fff; }
+.btn-add-to-plan.btn-in-plan {
+  background: var(--accent-dark);
+  color: #fff;
+  border-color: var(--accent-dark);
+  cursor: default;
+}
+
+@media (max-width: 640px) {
+  .plan-section { padding: 16px; }
+  .plan-controls { flex-direction: column; gap: 12px; }
+  .plan-footer { flex-direction: column; align-items: flex-start; }
 }

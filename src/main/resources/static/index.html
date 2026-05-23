@@ -365,6 +365,78 @@
         </div>
       </div>
 
+      <!-- ── High-Quality Generation Plan ── -->
+      <div id="plan-section" class="plan-section hidden">
+        <div class="plan-hdr">
+          <div class="plan-hdr-left">
+            <span class="plan-title">High-Quality Generation Plan</span>
+            <span class="plan-subtitle">Stage changes, then send one combined GPT Image request</span>
+          </div>
+          <button id="plan-clear-btn" class="btn-plan-clear">&#8635; Clear Plan</button>
+        </div>
+
+        <div class="plan-controls">
+          <div class="plan-control-group">
+            <label class="plan-control-label">Fit Shift</label>
+            <div class="plan-fit-btns" id="plan-fit-btns">
+              <button class="btn-plan-fit active" data-fit="none">Original Fit</button>
+              <button class="btn-plan-fit" data-fit="size_up">&#8679; Size Up</button>
+              <button class="btn-plan-fit" data-fit="size_down">&#8681; Size Down</button>
+            </div>
+          </div>
+          <div class="plan-control-group">
+            <label class="plan-control-label" for="plan-scene-select">Scene / Lighting</label>
+            <select class="plan-scene-select" id="plan-scene-select">
+              <option value="original">Original (no change)</option>
+              <option value="daytime">&#9728; Daytime — bright natural light</option>
+              <option value="night">&#127749; Night — warm city ambient</option>
+              <option value="sunset">&#127749; Sunset — golden hour</option>
+              <option value="indoor_warm">&#127774; Indoor — warm ambient</option>
+              <option value="street_flash">&#128247; Street — flash photography</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="plan-items-section">
+          <span class="plan-control-label">Staged Accessories</span>
+          <div id="plan-items-list" class="plan-items-list">
+            <span class="plan-items-empty">None — use &ldquo;+ Plan&rdquo; on Complete the Look cards above.</span>
+          </div>
+        </div>
+
+        <div class="plan-footer">
+          <div class="plan-estimate">
+            <span class="plan-est-label">Estimated:</span>
+            <span class="plan-est-time" id="plan-est-time">~1 min</span>
+            <span class="plan-est-sep">·</span>
+            <span class="plan-est-credits" id="plan-est-credits">~$0.04</span>
+          </div>
+          <button class="btn btn-primary" id="plan-generate-btn" disabled>
+            &#9889; Generate High-Quality Look
+          </button>
+        </div>
+
+        <div id="plan-status-row" class="plan-status-row hidden">
+          <div id="plan-status-processing" class="plan-status plan-status-processing hidden">
+            <div class="spinner sm"></div>
+            <span>Generating — this may take 1&#8211;3 minutes. Keep this page open.</span>
+          </div>
+          <div id="plan-status-complete" class="plan-status plan-status-complete hidden">
+            <span>&#10003; Generation complete</span>
+            <button class="btn-save-look" id="plan-save-result-btn">&#10132; Save Look</button>
+            <button class="btn-view-larger" id="plan-view-result-btn">&#8689; View Larger</button>
+          </div>
+          <div id="plan-status-failed" class="plan-status plan-status-failed hidden">
+            <span id="plan-status-failed-msg">Generation failed. Please try again.</span>
+            <button class="btn btn-outline" id="plan-retry-btn" style="font-size:.78rem;padding:5px 12px">Retry</button>
+          </div>
+        </div>
+
+        <div id="plan-result-preview" class="plan-result-preview hidden">
+          <img id="plan-result-img" class="plan-result-img" src="" alt="Generated high-quality look" />
+        </div>
+      </div>
+
       <!-- ── AI Review Panel (below 3-column layout) ── -->
       <div class="studio-ai-review">
         <div class="studio-ai-review-hdr">

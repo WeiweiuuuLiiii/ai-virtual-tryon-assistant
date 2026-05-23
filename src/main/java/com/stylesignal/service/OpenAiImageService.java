@@ -709,6 +709,130 @@ public class OpenAiImageService {
     }
 
     // ---------------------------------------------------------------------------
+    // Generation Plan (Issue 26)
+    // ---------------------------------------------------------------------------
+
+    public Map<String, Object> generatePlanLook(
+            byte[] previewBytes, String previewType,
+            List<Map<String, String>> planItems,
+            String fitShift, String scene) throws Exception {
+
+        byte[] normalizedPreview = normalizeImageSize(previewBytes, previewType);
+        String prompt   = buildPlanPrompt(planItems, fitShift, scene);
+        String boundary = "----OpenAiBoundary" + UUID.randomUUID().toString().replace("-", "");
+        byte[] body     = buildAddItemBody(boundary, prompt, normalizedPreview, previewType, null, null, true);
+
+        log.info("Sending GPT Image plan-look request — items={}, fit_shift={}, scene={}",
+                 planItems == null ? 0 : planItems.size(), fitShift, scene);
+
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(OPENAI_API + "/images/edits"))
+                .header("Authorization", "Bearer " + apiKey)
+                .header("Content-Type",  "multipart/form-data; boundary=" + boundary)
+                .POST(HttpRequest.BodyPublishers.ofByteArray(body))
+                .build();
+
+        HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+        boolean usedOptFormat = isUsingOptimizedFormat();
+
+        if (resp.statusCode() != 200 && usedOptFormat) {
+            String boundary2 = "----OpenAiBoundary" + UUID.randomUUID().toString().replace("-", "");
+            byte[] body2     = buildAddItemBody(boundary2, prompt, normalizedPreview, previewType, null, null, false);
+            HttpRequest req2 = HttpRequest.newBuilder()
+                    .uri(URI.create(OPENAI_API + "/images/edits"))
+                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Content-Type",  "multipart/form-data; boundary=" + boundary2)
+                    .POST(HttpRequest.BodyPublishers.ofByteArray(body2))
+                    .build();
+            resp = http.send(req2, HttpResponse.BodyHandlers.ofString());
+            usedOptFormat = false;
+            if (resp.statusCode() != 200) throwClassified(resp.statusCode(), resp.body(), "plan-look (fallback)");
+            log.info("GPT Image plan-look succeeded via fallback");
+        } else if (resp.statusCode() != 200) {
+            throwClassified(resp.statusCode(), resp.body(), "plan-look");
+        }
+
+        Map<String, Object> result = mapper.readValue(resp.body(), new TypeReference<>() {});
+        String dataUrl = extractImageDataUrl(result, usedOptFormat);
+        log.info("GPT Image plan-look complete");
+
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("status",            "ready");
+        out.put("preview_image_url", dataUrl);
+        return out;
+    }
+
+    private String buildPlanPrompt(List<Map<String, String>> planItems, String fitShift, String scene) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("High-quality virtual styling update: ");
+        sb.append("Keep the same person, face, skin tone, hair, body shape, pose, and identity exactly. ");
+        sb.append("Keep the background and environment exactly. ");
+
+        if (planItems != null && !planItems.isEmpty()) {
+            sb.append("Add the following accessories and styling items to the outfit — ");
+            sb.append("preserve all existing clothing and colours exactly: ");
+            for (int i = 0; i < planItems.size(); i++) {
+                Map<String, String> item = planItems.get(i);
+                String slot = item.getOrDefault("slot", "");
+                String name = item.getOrDefault("name", "");
+                if (!name.isBlank()) {
+                    sb.append(name);
+                    if (!slot.isBlank()) sb.append(" (").append(slot.replace("_", " ")).append(")");
+                    if (i < planItems.size() - 1) sb.append(", ");
+                }
+            }
+            sb.append(". ");
+        }
+
+        if ("size_up".equalsIgnoreCase(fitShift)) {
+            sb.append("Show the outfit fitting one size looser. Keep all other details identical. ");
+        } else if ("size_down".equalsIgnoreCase(fitShift)) {
+            sb.append("Show the outfit fitting one size more fitted. Keep all other details identical. ");
+        }
+
+        switch (scene == null ? "original" : scene.toLowerCase()) {
+            case "daytime"      -> sb.append("Change the lighting to bright natural daylight. Keep person and outfit unchanged. ");
+            case "night"        -> sb.append("Change the scene to nighttime with warm ambient city lighting. Keep person and outfit unchanged. ");
+            case "sunset"       -> sb.append("Change the lighting to warm golden sunset light. Keep person and outfit unchanged. ");
+            case "indoor_warm"  -> sb.append("Change the lighting to warm indoor ambient light. Keep person and outfit unchanged. ");
+            case "street_flash" -> sb.append("Change the lighting to a street photography flash effect. Keep person and outfit unchanged. ");
+        }
+
+        sb.append("Do not change face, hair, or identity under any circumstance. ");
+        sb.append("Maintain photorealistic quality.");
+        return sb.toString();
+    }
+
+    private byte[] normalizeImageSize(byte[] imageBytes, String mimeType) {
+        if (imageBytes == null || imageBytes.length == 0) return imageBytes;
+        final int MAX_DIM = 1024;
+        try {
+            java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(imageBytes);
+            java.awt.image.BufferedImage img  = javax.imageio.ImageIO.read(bais);
+            if (img == null) return imageBytes;
+            int w = img.getWidth(), h = img.getHeight();
+            if (w <= MAX_DIM && h <= MAX_DIM) return imageBytes;
+            double scale = (double) MAX_DIM / Math.max(w, h);
+            int nw = (int)(w * scale), nh = (int)(h * scale);
+            java.awt.image.BufferedImage scaled = new java.awt.image.BufferedImage(
+                    nw, nh, java.awt.image.BufferedImage.TYPE_INT_RGB);
+            java.awt.Graphics2D g2d = scaled.createGraphics();
+            g2d.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
+                                 java.awt.RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            g2d.drawImage(img, 0, 0, nw, nh, null);
+            g2d.dispose();
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            String fmt = (mimeType != null && mimeType.contains("png")) ? "png" : "jpeg";
+            javax.imageio.ImageIO.write(scaled, fmt, baos);
+            log.info("Normalized image from {}x{} to {}x{}", w, h, nw, nh);
+            return baos.toByteArray();
+        } catch (Exception e) {
+            log.warn("Image normalization failed; using original bytes");
+            return imageBytes;
+        }
+    }
+
+    // ---------------------------------------------------------------------------
     // Response parsing
     // ---------------------------------------------------------------------------
 

@@ -841,6 +841,57 @@ public class ApiController {
         }
     }
 
+    // ── Generation Plan ───────────────────────────────────────────────────────
+
+    @PostMapping("/try-on/generate-plan")
+    public ResponseEntity<?> generatePlan(
+            @RequestParam("preview_image") MultipartFile previewImage,
+            @RequestParam(value = "plan_items",  required = false, defaultValue = "[]") String planItemsJson,
+            @RequestParam(value = "fit_shift",   required = false, defaultValue = "none") String fitShift,
+            @RequestParam(value = "scene",       required = false, defaultValue = "original") String scene)
+            throws Exception {
+
+        log.info("POST /api/try-on/generate-plan — fit_shift={}, scene={}", fitShift, scene);
+
+        if (!openAi.isConfigured()) {
+            Map<String, Object> resp = new LinkedHashMap<>();
+            resp.put("status", "provider_required");
+            resp.put("preview_image_url", null);
+            resp.put("message", "Generate Plan requires GPT Image. Add OPENAI_API_KEY to your .env and restart.");
+            return ResponseEntity.ok(resp);
+        }
+
+        if (previewImage == null || previewImage.isEmpty()) {
+            return ResponseEntity.badRequest().body(errorBody("No preview image provided."));
+        }
+
+        List<Map<String, String>> planItems;
+        try {
+            planItems = mapper.readValue(planItemsJson, new TypeReference<>() {});
+        } catch (Exception e) {
+            planItems = List.of();
+        }
+
+        String mimeType = previewImage.getContentType() != null
+                ? previewImage.getContentType().toLowerCase() : "image/jpeg";
+        if ("image/jpg".equalsIgnoreCase(mimeType)) mimeType = "image/jpeg";
+        byte[] imageBytes = previewImage.getBytes();
+
+        try {
+            Map<String, Object> result = openAi.generatePlanLook(imageBytes, mimeType, planItems, fitShift, scene);
+            return ResponseEntity.ok(result);
+        } catch (OpenAiProviderException e) {
+            log.warn("Generate plan provider error — category={}", e.getCategory());
+            Map<String, Object> resp = new LinkedHashMap<>();
+            resp.put("status",  "failed");
+            resp.put("message", e.getMessage());
+            return ResponseEntity.ok(resp);
+        } catch (Exception e) {
+            log.warn("Generate plan failed; returning error.");
+            return ResponseEntity.status(500).body(errorBody("Plan generation failed. Please try again."));
+        }
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private Map<String, Object> errorBody(String message) {

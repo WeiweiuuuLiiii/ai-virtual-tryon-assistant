@@ -65,6 +65,13 @@ const state = {
   // Saved Looks (Issue 25)
   savedLooks: [],
   looksCompareSelected: new Set(),
+  // Generation Plan (Issue 26)
+  planItems: [],
+  planFitShift: 'none',
+  planScene: 'original',
+  planStatus: 'idle',
+  planResult: null,
+  planCache: new Map(),
   // Full Outfit Reference (Issue 22)
   outfitRefFile: null,
   outfitRefUrl:  null,
@@ -85,6 +92,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupSceneCheck();
   setupBuyCheck();
   setupLooks();
+  setupPlanSection();
   loadSavedLooks();
   await Promise.all([loadModel(), loadProfile(), loadTryOnProviders()]);
 });
@@ -1375,6 +1383,8 @@ function renderTryOnPreview() {
   }
   // Fit Preview section is now outside the right panel — always sync its visibility.
   renderFitPreviewSection();
+  // Plan section visibility tracks try-on preview state.
+  renderPlanSection();
 }
 
 let _generatingProgressTimer = null;
@@ -2791,7 +2801,9 @@ function renderCompleteTheLook() {
     const isSelected = state.completeLookSelected.has(selKey);
     const isActive   = inFlight && state.addToLookActiveIdx === i;
     const isWaiting  = inFlight && !state.batchEditActive && state.addToLookActiveIdx !== i;
-    const addTxt     = isActive ? 'Adding…' : (isWaiting ? 'Wait for current edit' : '+ Add to Look');
+    const addTxt     = isActive ? 'Adding…' : (isWaiting ? 'Wait for current edit' : '+ Add Now');
+    const planKey    = `${s.slot}::${s.name}`;
+    const inPlan     = state.planItems.some(p => p.slot === s.slot && p.name === s.name);
     return `
       <div class="complete-look-card${isSelected ? ' ctl-selected' : ''}">
         <button class="ctl-card-check${isSelected ? ' ctl-checked' : ''}"
@@ -2807,6 +2819,7 @@ function renderCompleteTheLook() {
         </div>
         <div class="complete-look-card-actions">
           <button class="btn-add-to-look" data-index="${i}" ${inFlight ? 'disabled' : ''}>${addTxt}</button>
+          <button class="btn-add-to-plan${inPlan ? ' btn-in-plan' : ''}" data-index="${i}" title="${inPlan ? 'Already in plan' : 'Stage for high-quality plan'}">${inPlan ? '&#10003; In Plan' : '+ Plan'}</button>
           <button class="btn-add-to-wardrobe" data-index="${i}" ${inFlight ? 'disabled' : ''}>+ Wardrobe</button>
         </div>
       </div>`;
@@ -2817,6 +2830,9 @@ function renderCompleteTheLook() {
   });
   cardsEl.querySelectorAll('.btn-add-to-look').forEach(btn => {
     btn.addEventListener('click', () => addSuggestionToLook(parseInt(btn.dataset.index, 10)));
+  });
+  cardsEl.querySelectorAll('.btn-add-to-plan').forEach(btn => {
+    btn.addEventListener('click', () => addToPlan(parseInt(btn.dataset.index, 10)));
   });
   cardsEl.querySelectorAll('.btn-add-to-wardrobe').forEach(btn => {
     btn.addEventListener('click', () => addSuggestionToWardrobe(parseInt(btn.dataset.index, 10), btn));
@@ -4354,6 +4370,235 @@ function openLooksLightbox(imageUrl, caption) {
   if (lightboxCap) lightboxCap.textContent = caption || 'Saved Look';
   lightbox.classList.remove('hidden');
   document.body.classList.add('lightbox-open');
+}
+
+/* ── Generation Plan (Issue 26) ─────────────────────────────── */
+
+function addToPlan(idx) {
+  const s = state.completeLookSuggestions[idx];
+  if (!s) return;
+  const already = state.planItems.some(p => p.slot === s.slot && p.name === s.name);
+  if (already) { showToast('Already staged in plan.'); return; }
+  state.planItems.push({ slot: s.slot, name: s.name });
+  state.planStatus = 'idle';
+  state.planResult = null;
+  renderCompleteTheLook();
+  renderPlanSection();
+}
+
+function removeFromPlan(slot, name) {
+  state.planItems = state.planItems.filter(p => !(p.slot === slot && p.name === name));
+  state.planStatus = 'idle';
+  state.planResult = null;
+  renderCompleteTheLook();
+  renderPlanSection();
+}
+
+function clearPlan() {
+  state.planItems    = [];
+  state.planFitShift = 'none';
+  state.planScene    = 'original';
+  state.planStatus   = 'idle';
+  state.planResult   = null;
+  renderCompleteTheLook();
+  renderPlanSection();
+}
+
+function estimatePlan() {
+  const hasItems = state.planItems.length > 0;
+  const hasFit   = state.planFitShift !== 'none';
+  const hasScene = state.planScene    !== 'original';
+  const hasChanges = hasItems || hasFit || hasScene;
+  let secs    = 60;
+  let credits = 0.04;
+  secs    += state.planItems.length * 30;
+  credits += state.planItems.length * 0.02;
+  if (hasFit)   { secs += 30; credits += 0.02; }
+  if (hasScene) { secs += 45; credits += 0.03; }
+  const mins = Math.ceil(secs / 60);
+  return { time: `~${mins} min`, credits: `~$${credits.toFixed(2)}`, hasChanges };
+}
+
+function buildPlanCacheKey() {
+  const base = (state.tryOnPreview.imageUrl || '').slice(-40);
+  const items = [...state.planItems].sort((a, b) =>
+    (a.slot + a.name).localeCompare(b.slot + b.name));
+  return JSON.stringify({ base, items, fit: state.planFitShift, scene: state.planScene });
+}
+
+async function generatePlan() {
+  if (state.planStatus === 'processing') return;
+  if (!state.tryOnPreview.imageUrl) { showToast('Generate a try-on preview first.', true); return; }
+
+  const cacheKey = buildPlanCacheKey();
+  const cached   = state.planCache.get(cacheKey);
+  if (cached) {
+    state.planResult = cached;
+    state.planStatus = 'complete';
+    renderPlanSection();
+    return;
+  }
+
+  state.planStatus = 'processing';
+  renderPlanSection();
+
+  try {
+    // Fetch the preview image as a blob to POST as multipart.
+    const imgUrl = state.tryOnPreview.imageUrl;
+    let blob;
+    if (imgUrl.startsWith('data:')) {
+      const [meta, b64] = imgUrl.split(',');
+      const mime = (meta.match(/data:([^;]+)/) || [])[1] || 'image/jpeg';
+      const bin  = atob(b64);
+      const buf  = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+      blob = new Blob([buf], { type: mime });
+    } else {
+      const r = await fetch(imgUrl);
+      blob = await r.blob();
+    }
+
+    const form = new FormData();
+    form.append('preview_image', blob, 'preview.jpg');
+    form.append('plan_items', JSON.stringify(state.planItems));
+    form.append('fit_shift',  state.planFitShift);
+    form.append('scene',      state.planScene);
+
+    const resp = await fetch(`${API}/api/try-on/generate-plan`, { method: 'POST', body: form });
+    if (!resp.ok) throw new Error(`Server error ${resp.status}`);
+    const data = await resp.json();
+
+    if (data.status === 'failed' || data.status === 'provider_required') {
+      state.planStatus = 'failed';
+      state.planResult = { message: data.message || 'Generation failed.' };
+    } else if (data.preview_image_url) {
+      state.planResult = { imageUrl: data.preview_image_url };
+      state.planCache.set(cacheKey, state.planResult);
+      state.planStatus = 'complete';
+    } else {
+      throw new Error('No image returned from server.');
+    }
+  } catch (err) {
+    state.planStatus = 'failed';
+    state.planResult = { message: err.message || 'Generation failed. Please try again.' };
+  }
+  renderPlanSection();
+}
+
+function renderPlanSection() {
+  const section = document.getElementById('plan-section');
+  if (!section) return;
+
+  // Show only when a try-on preview is ready with an image (not video).
+  const isVisible = state.tryOnPreview.status === 'ready' && !!state.tryOnPreview.imageUrl && !state.tryOnPreview.videoUrl;
+  section.classList.toggle('hidden', !isVisible);
+  if (!isVisible) return;
+
+  // Fit buttons active state.
+  section.querySelectorAll('.btn-plan-fit').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.fit === state.planFitShift);
+  });
+
+  // Scene select value.
+  const sceneEl = document.getElementById('plan-scene-select');
+  if (sceneEl && sceneEl.value !== state.planScene) sceneEl.value = state.planScene;
+
+  // Staged accessories list.
+  const listEl = document.getElementById('plan-items-list');
+  if (listEl) {
+    if (state.planItems.length === 0) {
+      listEl.innerHTML = '<span class="plan-items-empty">None — use &ldquo;+ Plan&rdquo; on Complete the Look cards above.</span>';
+    } else {
+      listEl.innerHTML = state.planItems.map(p => `
+        <div class="plan-item-chip">
+          <span class="plan-item-slot">${escHtml((p.slot || '').replace(/_/g, ' '))}</span>
+          <span class="plan-item-name">${escHtml(p.name || '')}</span>
+          <button class="btn-plan-remove-item" data-slot="${escHtml(p.slot)}" data-name="${escHtml(p.name)}" title="Remove">&times;</button>
+        </div>`).join('');
+      listEl.querySelectorAll('.btn-plan-remove-item').forEach(btn => {
+        btn.addEventListener('click', () => removeFromPlan(btn.dataset.slot, btn.dataset.name));
+      });
+    }
+  }
+
+  // Estimate.
+  const est = estimatePlan();
+  const timeEl    = document.getElementById('plan-est-time');
+  const credEl    = document.getElementById('plan-est-credits');
+  if (timeEl)  timeEl.textContent  = est.time;
+  if (credEl)  credEl.textContent  = est.credits;
+
+  // Generate button.
+  const genBtn = document.getElementById('plan-generate-btn');
+  if (genBtn) genBtn.disabled = !est.hasChanges || state.planStatus === 'processing';
+
+  // Status row.
+  const statusRow  = document.getElementById('plan-status-row');
+  const stProc     = document.getElementById('plan-status-processing');
+  const stComplete = document.getElementById('plan-status-complete');
+  const stFailed   = document.getElementById('plan-status-failed');
+  const stFailMsg  = document.getElementById('plan-status-failed-msg');
+
+  const showStatus = state.planStatus !== 'idle';
+  statusRow?.classList.toggle('hidden', !showStatus);
+  stProc?.classList.toggle('hidden',     state.planStatus !== 'processing');
+  stComplete?.classList.toggle('hidden', state.planStatus !== 'complete');
+  stFailed?.classList.toggle('hidden',   state.planStatus !== 'failed');
+
+  if (stFailMsg && state.planStatus === 'failed' && state.planResult?.message) {
+    stFailMsg.textContent = state.planResult.message;
+  }
+
+  // Result preview.
+  const resultDiv = document.getElementById('plan-result-preview');
+  const resultImg = document.getElementById('plan-result-img');
+  const show = state.planStatus === 'complete' && state.planResult?.imageUrl;
+  resultDiv?.classList.toggle('hidden', !show);
+  if (show && resultImg && resultImg.src !== state.planResult.imageUrl) {
+    resultImg.src = state.planResult.imageUrl;
+  }
+}
+
+function setupPlanSection() {
+  // Fit shift buttons.
+  document.getElementById('plan-fit-btns')?.addEventListener('click', e => {
+    const btn = e.target.closest('.btn-plan-fit');
+    if (!btn) return;
+    state.planFitShift = btn.dataset.fit;
+    state.planStatus   = 'idle';
+    state.planResult   = null;
+    renderPlanSection();
+  });
+
+  // Scene select.
+  document.getElementById('plan-scene-select')?.addEventListener('change', e => {
+    state.planScene  = e.target.value;
+    state.planStatus = 'idle';
+    state.planResult = null;
+    renderPlanSection();
+  });
+
+  // Clear button.
+  document.getElementById('plan-clear-btn')?.addEventListener('click', clearPlan);
+
+  // Generate button.
+  document.getElementById('plan-generate-btn')?.addEventListener('click', generatePlan);
+
+  // Retry button.
+  document.getElementById('plan-retry-btn')?.addEventListener('click', generatePlan);
+
+  // Save result button.
+  document.getElementById('plan-save-result-btn')?.addEventListener('click', () => {
+    const url = state.planResult?.imageUrl;
+    if (!url) { showToast('No result to save.', true); return; }
+    saveLook(url, 'plan', null, state.planFitShift !== 'none' ? state.planFitShift : null);
+  });
+
+  // View Larger button.
+  document.getElementById('plan-view-result-btn')?.addEventListener('click', () => {
+    const url = state.planResult?.imageUrl;
+    if (url) openLooksLightbox(url, 'High-Quality Generated Look');
+  });
 }
 
 function setupLooks() {
