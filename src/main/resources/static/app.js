@@ -86,6 +86,7 @@ const API = '';
 /* ── Boot ───────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', async () => {
   setupTabs();
+  setupLanding();
   setupModelTab();
   setupSkinTonePicker();
   setupFitPreview();
@@ -202,6 +203,25 @@ function setupTabs() {
       section.classList.add('active');
     });
   });
+}
+
+/* ── Landing ─────────────────────────────────────────────────── */
+function setupLanding() {
+  const enterBtn = document.getElementById('landing-enter-btn');
+  const outfitBtn = document.getElementById('landing-outfit-btn');
+
+  if (enterBtn) {
+    enterBtn.addEventListener('click', () => {
+      document.querySelector('[data-tab="studio"]')?.click();
+    });
+  }
+
+  if (outfitBtn) {
+    outfitBtn.addEventListener('click', () => {
+      document.querySelector('[data-tab="studio"]')?.click();
+      setTimeout(() => document.getElementById('studio-asset-input')?.click(), 150);
+    });
+  }
 }
 
 /* ── Model: Load ────────────────────────────────────────────── */
