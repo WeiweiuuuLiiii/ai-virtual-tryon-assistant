@@ -219,7 +219,7 @@ function setupLanding() {
   if (outfitBtn) {
     outfitBtn.addEventListener('click', () => {
       document.querySelector('[data-tab="studio"]')?.click();
-      setTimeout(() => document.getElementById('studio-asset-input')?.click(), 150);
+      setTimeout(() => document.getElementById('btn-add-outfit-ref')?.click(), 150);
     });
   }
 }
