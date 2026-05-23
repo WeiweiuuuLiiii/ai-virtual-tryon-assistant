@@ -4052,6 +4052,24 @@ body.lightbox-open { overflow: hidden; }
   opacity: .45;
   cursor: not-allowed;
 }
+.btn-stage-plan {
+  font-size: .65rem;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn-stage-plan:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.btn-stage-plan:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
 .btn-clear-selection {
   font-size: .63rem;
   font-weight: 500;

@@ -72,6 +72,8 @@ const state = {
   planStatus: 'idle',
   planResult: null,
   planCache: new Map(),
+  planRequestId: 0,
+  activePlanAbortController: null,
   // Full Outfit Reference (Issue 22)
   outfitRefFile: null,
   outfitRefUrl:  null,
@@ -1378,6 +1380,17 @@ function renderTryOnPreview() {
         state.fitPreview.size_down.imageUrl     = null;
         state.fitPreviewLastAdjustment          = null;
         state.fitPreviewCache.clear();
+
+        // Generation Plan — abort in-flight request and reset all plan state when base changes.
+        state.activePlanAbortController?.abort();
+        state.activePlanAbortController = null;
+        state.planRequestId            += 1;
+        state.planItems                 = [];
+        state.planFitShift              = 'none';
+        state.planScene                 = 'original';
+        state.planStatus                = 'idle';
+        state.planResult                = null;
+        state.planCache.clear();
       }
     }
   }
@@ -2774,10 +2787,12 @@ function renderCompleteTheLook() {
   // Batch action bar — visible when ≥1 card selected and no edit running
   if (batchActionBar) {
     batchActionBar.classList.toggle('hidden', effectiveSelCount === 0 || state.addToLookInFlight);
-    const countEl   = document.getElementById('batch-selected-count');
-    const applyBtn  = document.getElementById('apply-selected-btn');
-    if (countEl)  countEl.textContent  = effectiveSelCount === 1 ? '1 selected' : `${effectiveSelCount} selected`;
-    if (applyBtn) applyBtn.disabled    = effectiveSelCount === 0;
+    const countEl        = document.getElementById('batch-selected-count');
+    const applyBtn       = document.getElementById('apply-selected-btn');
+    const stagePlanBtn   = document.getElementById('stage-selected-plan-btn');
+    if (countEl)      countEl.textContent = effectiveSelCount === 1 ? '1 selected' : `${effectiveSelCount} selected`;
+    if (applyBtn)     applyBtn.disabled   = effectiveSelCount === 0;
+    if (stagePlanBtn) stagePlanBtn.disabled = effectiveSelCount === 0;
   }
 
   if (state.completeLookLoading) {
@@ -3353,6 +3368,7 @@ function setupStudio() {
   document.getElementById('cancel-edit-btn')?.addEventListener('click', cancelAddToLook);
   document.getElementById('cancel-batch-btn')?.addEventListener('click', cancelBatchAddToLook);
   document.getElementById('apply-selected-btn')?.addEventListener('click', applySelectedToLook);
+  document.getElementById('stage-selected-plan-btn')?.addEventListener('click', addSelectedToPlan);
   document.getElementById('clear-selection-btn')?.addEventListener('click', () => {
     state.completeLookSelected = new Set();
     renderCompleteTheLook();
@@ -4386,6 +4402,24 @@ function addToPlan(idx) {
   renderPlanSection();
 }
 
+function addSelectedToPlan() {
+  const toAdd = state.completeLookSuggestions.filter(s =>
+    state.completeLookSelected.has(`${s.slot}::${s.name}`)
+  );
+  if (toAdd.length === 0) { showToast('No cards selected.', true); return; }
+  let added = 0;
+  for (const s of toAdd) {
+    const already = state.planItems.some(p => p.slot === s.slot && p.name === s.name);
+    if (!already) { state.planItems.push({ slot: s.slot, name: s.name }); added++; }
+  }
+  state.planStatus = 'idle';
+  state.planResult = null;
+  state.completeLookSelected = new Set();
+  renderCompleteTheLook();
+  renderPlanSection();
+  showToast(added === 0 ? 'All selected items already in plan.' : `${added} item${added > 1 ? 's' : ''} staged in plan.`);
+}
+
 function removeFromPlan(slot, name) {
   state.planItems = state.planItems.filter(p => !(p.slot === slot && p.name === name));
   state.planStatus = 'idle';
@@ -4420,7 +4454,7 @@ function estimatePlan() {
 }
 
 function buildPlanCacheKey() {
-  const base = (state.tryOnPreview.imageUrl || '').slice(-40);
+  const base  = state.tryOnPreview.imageUrl || '';
   const items = [...state.planItems].sort((a, b) =>
     (a.slot + a.name).localeCompare(b.slot + b.name));
   return JSON.stringify({ base, items, fit: state.planFitShift, scene: state.planScene });
@@ -4430,8 +4464,8 @@ async function generatePlan() {
   if (state.planStatus === 'processing') return;
   if (!state.tryOnPreview.imageUrl) { showToast('Generate a try-on preview first.', true); return; }
 
-  const cacheKey = buildPlanCacheKey();
-  const cached   = state.planCache.get(cacheKey);
+  const cacheKey  = buildPlanCacheKey();
+  const cached    = state.planCache.get(cacheKey);
   if (cached) {
     state.planResult = cached;
     state.planStatus = 'complete';
@@ -4439,24 +4473,37 @@ async function generatePlan() {
     return;
   }
 
+  // Stale guard: capture request id and base image url before any await.
+  state.planRequestId += 1;
+  const myRequestId = state.planRequestId;
+  const baseUrl     = state.tryOnPreview.imageUrl;
+
+  state.activePlanAbortController?.abort();
+  const controller = new AbortController();
+  state.activePlanAbortController = controller;
+
   state.planStatus = 'processing';
   renderPlanSection();
 
+  function isStale() {
+    return myRequestId !== state.planRequestId || state.tryOnPreview.imageUrl !== baseUrl;
+  }
+
   try {
     // Fetch the preview image as a blob to POST as multipart.
-    const imgUrl = state.tryOnPreview.imageUrl;
     let blob;
-    if (imgUrl.startsWith('data:')) {
-      const [meta, b64] = imgUrl.split(',');
+    if (baseUrl.startsWith('data:')) {
+      const [meta, b64] = baseUrl.split(',');
       const mime = (meta.match(/data:([^;]+)/) || [])[1] || 'image/jpeg';
       const bin  = atob(b64);
       const buf  = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
       blob = new Blob([buf], { type: mime });
     } else {
-      const r = await fetch(imgUrl);
+      const r = await fetch(baseUrl, { signal: controller.signal });
       blob = await r.blob();
     }
+    if (isStale()) return;
 
     const form = new FormData();
     form.append('preview_image', blob, 'preview.jpg');
@@ -4464,9 +4511,12 @@ async function generatePlan() {
     form.append('fit_shift',  state.planFitShift);
     form.append('scene',      state.planScene);
 
-    const resp = await fetch(`${API}/api/try-on/generate-plan`, { method: 'POST', body: form });
+    const resp = await fetch(`${API}/api/try-on/generate-plan`,
+      { method: 'POST', body: form, signal: controller.signal });
+    if (isStale()) return;
     if (!resp.ok) throw new Error(`Server error ${resp.status}`);
     const data = await resp.json();
+    if (isStale()) return;
 
     if (data.status === 'failed' || data.status === 'provider_required') {
       state.planStatus = 'failed';
@@ -4479,10 +4529,14 @@ async function generatePlan() {
       throw new Error('No image returned from server.');
     }
   } catch (err) {
+    if (isStale() || err.name === 'AbortError') return;
     state.planStatus = 'failed';
     state.planResult = { message: err.message || 'Generation failed. Please try again.' };
   }
-  renderPlanSection();
+  if (!isStale()) {
+    state.activePlanAbortController = null;
+    renderPlanSection();
+  }
 }
 
 function renderPlanSection() {
