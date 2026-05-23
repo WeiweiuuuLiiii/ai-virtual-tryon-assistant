@@ -4253,14 +4253,42 @@ function editThisLook(id) {
   const look = state.savedLooks.find(l => l.id === id);
   if (!look?.imageUrl) return;
 
-  // Load the saved look into the AI mirror — no GPT call.
+  // ── Abort and clear Fit Preview state ──────────────────────
+  state.fitPreviewController.size_up?.abort();
+  state.fitPreviewController.size_down?.abort();
+  state.fitPreviewController.size_up    = null;
+  state.fitPreviewController.size_down  = null;
+  state.fitPreview.size_up.requestId   += 1;
+  state.fitPreview.size_down.requestId += 1;
+  state.fitPreview.size_up.loading      = false;
+  state.fitPreview.size_down.loading    = false;
+  state.fitPreview.size_up.imageUrl     = null;
+  state.fitPreview.size_down.imageUrl   = null;
+  state.fitPreviewLastAdjustment        = null;
+  state.fitPreviewCache.clear();
+  state.fitPreviewBaseImageUrl          = null;
+
+  // ── Abort and clear Planned Edits state ────────────────────
+  state.activePlanAbortController?.abort();
+  state.activePlanAbortController = null;
+  state.planRequestId            += 1;
+  state.planItems                 = [];
+  state.planFitShift              = 'none';
+  state.planScene                 = 'original';
+  state.planStatus                = 'idle';
+  state.planResult                = null;
+  state.planCache.clear();
+
+  // ── Load saved look into the AI mirror — no GPT call ───────
   state.tryOnPreview.status   = 'ready';
   state.tryOnPreview.imageUrl = look.imageUrl;
   state.tryOnPreview.videoUrl = null;
   state.tryOnPreview.message  = null;
-  // Force Complete the Look, Color Fit, Fit Preview to re-run for this image.
-  state.completeLookImageUrl  = null;
-  state.colorFitImageUrl      = null;
+  state.tryOnPreview.mode     = 'saved_look';
+
+  // Force Complete the Look and Color Fit to re-run for this image.
+  state.completeLookImageUrl = null;
+  state.colorFitImageUrl     = null;
 
   // Switch to AI Studio tab.
   document.querySelector('[data-tab="studio"]')?.click();
