@@ -1665,14 +1665,24 @@ function renderOutfitRefCard() {
   if (preview && state.outfitRefUrl) preview.src = state.outfitRefUrl;
 
   if (analysis) {
+    analysis.textContent = '';
     if (state.outfitRefAnalysisLoading) {
-      analysis.innerHTML = '<span class="outfit-ref-analysis-loading">Analyzing outfit…</span>';
+      const el = document.createElement('span');
+      el.className = 'outfit-ref-analysis-loading';
+      el.textContent = 'Analyzing outfit…';
+      analysis.appendChild(el);
     } else if (!state.outfitRefAnalysis || state.outfitRefAnalysis.length === 0) {
-      analysis.innerHTML = '<span class="outfit-ref-analysis-error">Could not detect pieces — outfit will still be applied.</span>';
+      const el = document.createElement('span');
+      el.className = 'outfit-ref-analysis-error';
+      el.textContent = 'Could not detect every item, but you can still try this full look.';
+      analysis.appendChild(el);
     } else {
-      analysis.innerHTML = state.outfitRefAnalysis
-        .map(p => `<span class="outfit-ref-chip">${_slotEmoji(p.slot)} ${p.description}</span>`)
-        .join('');
+      state.outfitRefAnalysis.forEach(p => {
+        const chip = document.createElement('span');
+        chip.className = 'outfit-ref-chip';
+        chip.textContent = _slotEmoji(p.slot) + ' ' + p.description;
+        analysis.appendChild(chip);
+      });
     }
   }
 }
@@ -1682,6 +1692,27 @@ function _slotEmoji(slot) {
   return t ? t.emoji : '👗';
 }
 
+const _ALLOWED_OUTFIT_SLOTS = new Set([
+  'top', 'bottom', 'outerwear', 'dress', 'shoes',
+  'bag', 'glasses', 'earrings', 'hair_accessory',
+  'scarf', 'necklace', 'bracelet', 'belt', 'hat', 'watch', 'tights', 'socks',
+]);
+const _MAX_DESCRIPTION_LENGTH = 80;
+
+function _validateOutfitPieces(raw) {
+  if (!Array.isArray(raw)) return [];
+  const valid = [];
+  for (const p of raw) {
+    if (!p || typeof p !== 'object') continue;
+    if (!_ALLOWED_OUTFIT_SLOTS.has(p.slot)) continue;
+    if (typeof p.description !== 'string') continue;
+    const desc = p.description.trim().slice(0, _MAX_DESCRIPTION_LENGTH);
+    if (!desc) continue;
+    valid.push({ slot: p.slot, description: desc });
+  }
+  return valid;
+}
+
 async function fetchOutfitRefAnalysis(file) {
   try {
     const form = new FormData();
@@ -1689,7 +1720,7 @@ async function fetchOutfitRefAnalysis(file) {
     const resp = await fetch(`${API}/api/try-on/analyze-outfit`, { method: 'POST', body: form });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
-    state.outfitRefAnalysis = Array.isArray(data.detected_pieces) ? data.detected_pieces : [];
+    state.outfitRefAnalysis = _validateOutfitPieces(data.detected_pieces);
   } catch (err) {
     state.outfitRefAnalysis = [];
   }

@@ -663,9 +663,14 @@ public class ApiController {
             ? outfitImg.getContentType().toLowerCase() : "image/jpeg";
         if ("image/jpg".equalsIgnoreCase(mimeType)) mimeType = "image/jpeg";
 
-        Map<String, Object> result = claude.analyzeOutfitReference(
-            outfitImg.getBytes(), mimeType);
-        return ResponseEntity.ok(result);
+        try {
+            Map<String, Object> result = claude.analyzeOutfitReference(
+                outfitImg.getBytes(), mimeType);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.warn("Outfit reference analysis failed; continuing without detected pieces.");
+            return ResponseEntity.ok(Map.of("detected_pieces", List.of()));
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
