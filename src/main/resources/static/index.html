@@ -372,14 +372,14 @@
         <div class="plan-hdr">
           <div class="plan-hdr-left">
             <span class="plan-title">High-Quality Generation Plan</span>
-            <span class="plan-subtitle">Stage multiple changes first, then generate one polished high-quality look.</span>
+            <span class="plan-subtitle">Add AI suggestions or your own styling ideas, then apply them together to the current look.</span>
           </div>
           <button id="plan-clear-btn" class="btn-plan-clear">&#8635; Clear Plan</button>
         </div>
 
         <div id="plan-empty-msg" class="plan-empty-msg hidden">
           <span class="plan-empty-title">No staged changes yet.</span>
-          <span class="plan-empty-body">Add accessories using &ldquo;+ Plan&rdquo; on the cards above, choose a fit shift, or select a scene to create a planned look.</span>
+          <span class="plan-empty-body">Use &ldquo;+ Plan&rdquo; on the suggestion cards above, add your own idea in the input below, choose a fit shift, or select a scene.</span>
         </div>
 
         <div class="plan-controls">
@@ -404,10 +404,34 @@
           </div>
         </div>
 
+        <div class="plan-custom-row" id="plan-custom-row">
+          <select id="plan-custom-type" class="plan-custom-type">
+            <option value="">Item type&hellip;</option>
+            <option value="bag">Bag</option>
+            <option value="scarf">Scarf</option>
+            <option value="necklace">Necklace</option>
+            <option value="bracelet">Bracelet</option>
+            <option value="belt">Belt</option>
+            <option value="hat">Hat</option>
+            <option value="watch">Watch</option>
+            <option value="glasses">Glasses</option>
+            <option value="earrings">Earrings</option>
+            <option value="hair_accessory">Hair accessory</option>
+            <option value="outerwear">Outerwear</option>
+            <option value="shoes">Shoes</option>
+            <option value="tights">Tights</option>
+            <option value="socks">Socks</option>
+            <option value="other">Other</option>
+          </select>
+          <input id="plan-custom-desc" class="plan-custom-desc" type="text"
+                 placeholder="e.g. small burgundy velvet handbag" maxlength="80" />
+          <button id="plan-custom-add-btn" class="btn-plan-custom-add">+ Add to Plan</button>
+        </div>
+
         <div class="plan-items-section">
-          <span class="plan-control-label">Staged Accessories</span>
+          <span class="plan-control-label">Staged Edits</span>
           <div id="plan-items-list" class="plan-items-list">
-            <span class="plan-items-empty">None — use &ldquo;+ Plan&rdquo; on Complete the Look cards above.</span>
+            <span class="plan-items-empty">None staged yet.</span>
           </div>
         </div>
 

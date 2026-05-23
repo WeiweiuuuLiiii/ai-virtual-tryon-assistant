@@ -4391,6 +4391,43 @@ function openLooksLightbox(imageUrl, caption) {
 
 /* ── Generation Plan (Issue 26) ─────────────────────────────── */
 
+const PLAN_SLOT_ALLOWLIST = new Set([
+  'bag', 'scarf', 'necklace', 'bracelet', 'belt', 'hat', 'watch',
+  'glasses', 'earrings', 'hair_accessory', 'outerwear', 'shoes',
+  'tights', 'socks', 'other',
+]);
+
+function addCustomToPlan() {
+  const typeEl = document.getElementById('plan-custom-type');
+  const descEl = document.getElementById('plan-custom-desc');
+  const slot   = (typeEl?.value || '').trim();
+  const name   = (descEl?.value || '').trim().slice(0, 80);
+
+  if (!slot || !PLAN_SLOT_ALLOWLIST.has(slot)) {
+    showToast('Please select an item type.', true);
+    return;
+  }
+  if (!name) {
+    showToast('Please enter a description.', true);
+    descEl?.focus();
+    return;
+  }
+
+  const already = state.planItems.some(p => p.slot === slot && p.name === name);
+  if (already) { showToast('Already staged in plan.'); return; }
+
+  invalidatePlanRequest();
+  state.planItems.push({ slot, name });
+  state.planStatus = 'idle';
+  state.planResult = null;
+
+  if (typeEl) typeEl.value = '';
+  if (descEl) descEl.value = '';
+
+  renderCompleteTheLook();
+  renderPlanSection();
+}
+
 function invalidatePlanRequest() {
   if (state.activePlanAbortController) {
     state.activePlanAbortController.abort();
@@ -4658,6 +4695,12 @@ function setupPlanSection() {
     state.planStatus = 'idle';
     state.planResult = null;
     renderPlanSection();
+  });
+
+  // Custom item input.
+  document.getElementById('plan-custom-add-btn')?.addEventListener('click', addCustomToPlan);
+  document.getElementById('plan-custom-desc')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); addCustomToPlan(); }
   });
 
   // Clear button.
