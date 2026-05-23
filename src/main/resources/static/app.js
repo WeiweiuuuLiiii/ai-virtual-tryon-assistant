@@ -1366,9 +1366,10 @@ function renderTryOnPreview() {
         state.fitPreviewLastAdjustment          = null;
         state.fitPreviewCache.clear();
       }
-      renderFitPreviewSection();
     }
   }
+  // Fit Preview section is now outside the right panel — always sync its visibility.
+  renderFitPreviewSection();
 }
 
 let _generatingProgressTimer = null;
@@ -2006,6 +2007,21 @@ async function triggerFitPreview(fitAdjustment) {
   if (size)   form.append('size',   size);
   if (pref)   form.append('fit_preference', pref);
 
+  let timedOut = false;
+  // 3-minute slow message — update progress text but keep waiting.
+  const slowTimer = setTimeout(() => {
+    if (state.fitPreview[fitAdjustment].requestId !== myId) return;
+    const msg = document.getElementById('fit-preview-progress-msg');
+    if (msg) msg.textContent =
+      'Still generating fit preview… high-quality edits can take extra time.';
+  }, 180_000);
+  // 5-minute hard timeout — abort and show a graceful error.
+  const hardTimer = setTimeout(() => {
+    if (state.fitPreview[fitAdjustment].requestId !== myId) return;
+    timedOut = true;
+    controller.abort();
+  }, 300_000);
+
   try {
     const resp = await fetch(`${API}/api/try-on/fit-preview`,
       { method: 'POST', body: form, signal: controller.signal });
@@ -2024,10 +2040,19 @@ async function triggerFitPreview(fitAdjustment) {
       showToast(data.message || 'Fit preview could not be generated.', true);
     }
   } catch (err) {
-    if (err.name === 'AbortError') return;
+    if (err.name === 'AbortError') {
+      // Timeout abort: show graceful message. User-cancel: requestId was incremented, so
+      // the timedOut check below is false — silently return.
+      if (timedOut && state.fitPreview[fitAdjustment].requestId === myId) {
+        showToast('Could not generate fit preview in time. Please try again.', true);
+      }
+      return;
+    }
     if (state.fitPreview[fitAdjustment].requestId !== myId) return;
     showToast('Fit preview failed. Please try again.', true);
   } finally {
+    clearTimeout(slowTimer);
+    clearTimeout(hardTimer);
     if (state.fitPreview[fitAdjustment].requestId === myId) {
       state.fitPreview[fitAdjustment].loading = false;
       finishFitPreviewProgress();

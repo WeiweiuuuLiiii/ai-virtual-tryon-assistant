@@ -4375,47 +4375,57 @@ body.lightbox-open { overflow: hidden; }
   margin: 0;
 }
 
-/* ── Size Fit Preview (Issue 24) ──────────────────────────────────────────── */
+/* ── Size Fit Preview (Issue 24) — full-width section below outfit builder ── */
 .fit-preview-section {
-  margin-top: 12px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 14px 16px;
+  margin-top: 16px;
   background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px 24px;
 }
 .fit-preview-hdr {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 .fit-preview-hdr-left {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 .fit-preview-title {
-  font-size: .88rem;
+  font-size: .95rem;
   font-weight: 600;
   color: var(--text);
   letter-spacing: .01em;
 }
 .fit-preview-subtitle {
-  font-size: .72rem;
+  font-size: .76rem;
   color: var(--text-muted);
 }
+/* Controls row: inputs + buttons laid out horizontally with flex-wrap */
 .fit-preview-inputs {
   display: flex;
-  gap: 10px;
+  align-items: flex-end;
+  gap: 12px;
   flex-wrap: wrap;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 .fit-preview-input-group {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  flex: 1;
-  min-width: 90px;
+  min-width: 110px;
+  flex: 0 1 140px;
+}
+.fit-preview-action-group {
+  display: flex;
+  align-items: flex-end;
+  flex: 1 1 auto;
+  min-width: 260px;
 }
 .fit-preview-label {
   font-size: .72rem;
@@ -4424,10 +4434,10 @@ body.lightbox-open { overflow: hidden; }
 }
 .fit-preview-input,
 .fit-preview-select {
-  font-size: .78rem;
-  padding: 5px 8px;
+  font-size: .82rem;
+  padding: 6px 10px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 7px;
   background: var(--bg);
   color: var(--text);
   width: 100%;
@@ -4437,19 +4447,19 @@ body.lightbox-open { overflow: hidden; }
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  margin-bottom: 10px;
+  flex: 1;
 }
 .btn-fit-preview {
-  flex: 1;
-  font-size: .78rem;
-  padding: 7px 10px;
+  flex: 1 1 auto;
+  font-size: .82rem;
+  padding: 7px 14px;
   border-radius: 7px;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
   cursor: pointer;
   transition: background .15s;
-  min-width: 130px;
+  white-space: nowrap;
 }
 .btn-fit-preview:hover:not(:disabled) {
   background: rgba(88,98,209,.08);
@@ -4462,7 +4472,7 @@ body.lightbox-open { overflow: hidden; }
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 .fit-preview-progress-msgs {
   display: flex;
@@ -4470,7 +4480,7 @@ body.lightbox-open { overflow: hidden; }
   gap: 2px;
 }
 .fit-preview-progress-msgs span:first-child {
-  font-size: .8rem;
+  font-size: .82rem;
   color: var(--text);
 }
 .fit-preview-progress-sub {
@@ -4490,39 +4500,41 @@ body.lightbox-open { overflow: hidden; }
   transition: width .4s ease;
 }
 .fit-preview-disclaimer {
-  font-size: .70rem;
+  font-size: .72rem;
   color: var(--text-faint);
   font-style: italic;
-  margin: 0 0 8px;
+  margin: 0 0 14px;
   line-height: 1.4;
 }
+/* Side-by-side comparison — two equal columns, images tall enough to see detail */
 .fit-preview-comparison {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-top: 8px;
+  gap: 16px;
 }
 .fit-preview-col {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
+  gap: 8px;
 }
 .fit-preview-col-label {
-  font-size: .75rem;
+  font-size: .80rem;
   font-weight: 600;
   color: var(--text-muted);
   text-align: center;
 }
 .fit-preview-img {
   width: 100%;
-  border-radius: 8px;
+  max-height: 480px;
+  border-radius: 10px;
   display: block;
-  object-fit: cover;
+  object-fit: contain;
+  background: var(--bg);
 }
 .btn-reset-fit-preview {
-  font-size: .72rem;
-  padding: 4px 9px;
+  font-size: .74rem;
+  padding: 5px 11px;
   border-radius: 6px;
   border: 1px solid var(--border);
   background: transparent;
@@ -4532,6 +4544,12 @@ body.lightbox-open { overflow: hidden; }
   flex-shrink: 0;
 }
 .btn-reset-fit-preview:hover {
-  background: var(--surface-hover, rgba(0,0,0,.04));
+  background: rgba(0,0,0,.04);
   color: var(--text);
+}
+/* Responsive: stack comparison on narrow screens */
+@media (max-width: 640px) {
+  .fit-preview-section { padding: 16px; }
+  .fit-preview-comparison { grid-template-columns: 1fr; }
+  .fit-preview-action-group { min-width: 0; width: 100%; }
 }
