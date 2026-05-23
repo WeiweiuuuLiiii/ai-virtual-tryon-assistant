@@ -656,9 +656,6 @@ public class ClaudeService {
         }
 
         String json = extractJson(rawText);
-        log.debug("Extracted JSON (first 200): {}",
-            json.length() > 200 ? json.substring(0, 200) + "…" : json);
-
         try {
             return mapper.readValue(json, new TypeReference<>() {});
         } catch (Exception e) {
