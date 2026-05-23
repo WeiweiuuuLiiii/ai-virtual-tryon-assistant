@@ -3739,6 +3739,11 @@ body.lightbox-open { overflow: hidden; }
   font-size: .68rem;
   color: var(--text-faint);
 }
+.complete-look-hint {
+  font-size: .65rem;
+  color: var(--text-faint, #bbb);
+  margin-top: 1px;
+}
 .complete-look-cards {
   display: flex;
   flex-direction: column;
@@ -4986,6 +4991,34 @@ body.lightbox-open { overflow: hidden; }
 .plan-subtitle {
   font-size: .76rem;
   color: var(--text-muted);
+}
+.plan-empty-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 14px;
+  background: var(--bg-subtle, #f9f9f7);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 2px;
+}
+.plan-empty-title {
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.plan-empty-body {
+  font-size: .73rem;
+  color: var(--text-faint, #aaa);
+  line-height: 1.45;
+}
+.plan-distinction-note {
+  font-size: .71rem;
+  color: var(--text-faint, #aaa);
+  line-height: 1.4;
+  margin: 6px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
 }
 .btn-plan-clear {
   font-size: .74rem;

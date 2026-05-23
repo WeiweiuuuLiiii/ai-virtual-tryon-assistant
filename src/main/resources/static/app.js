@@ -2855,20 +2855,21 @@ function renderCompleteTheLook() {
 }
 
 async function fetchCompleteTheLookSuggestions() {
-  const assignedSlots = Object.entries(state.slotAssignments)
-    .filter(([, id]) => !!id)
-    .map(([slot]) => slot)
-    .join(',');
-  if (!assignedSlots) return;
-
-  // Show curated fallbacks immediately — no loading spinner.
+  // Always show curated fallbacks immediately so cards are never empty.
   const fallbacks = buildClientFallbackSuggestions();
   _addSuggestionHistory(fallbacks);
   state.completeLookSuggestions = fallbacks;
   state.completeLookLoading     = false;
   state.completeLookError       = null;
-  state.completeLookSelected    = new Set(); // clear stale selections when suggestions change
+  state.completeLookSelected    = new Set();
   renderCompleteTheLook();
+
+  // Claude-personalized suggestions require at least one assigned slot.
+  const assignedSlots = Object.entries(state.slotAssignments)
+    .filter(([, id]) => !!id)
+    .map(([slot]) => slot)
+    .join(',');
+  if (!assignedSlots) return;
 
   // Fetch Claude-personalized suggestions in the background.
   try {
@@ -4560,6 +4561,20 @@ function renderPlanSection() {
   section.classList.toggle('hidden', !isVisible);
   if (!isVisible) return;
 
+  const est = estimatePlan();
+
+  // Empty-state message — visible when nothing staged yet.
+  const emptyMsg = document.getElementById('plan-empty-msg');
+  emptyMsg?.classList.toggle('hidden', est.hasChanges);
+
+  // Staged items section — hide when empty to avoid "None" clutter.
+  const itemsSection = section.querySelector('.plan-items-section');
+  itemsSection?.classList.toggle('hidden', !est.hasChanges);
+
+  // Estimate row — hide when empty (no changes = nothing to estimate).
+  const estimateEl = section.querySelector('.plan-estimate');
+  estimateEl?.classList.toggle('hidden', !est.hasChanges);
+
   // Fit buttons active state.
   section.querySelectorAll('.btn-plan-fit').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.fit === state.planFitShift);
@@ -4571,9 +4586,9 @@ function renderPlanSection() {
 
   // Staged accessories list.
   const listEl = document.getElementById('plan-items-list');
-  if (listEl) {
+  if (listEl && est.hasChanges) {
     if (state.planItems.length === 0) {
-      listEl.innerHTML = '<span class="plan-items-empty">None — use &ldquo;+ Plan&rdquo; on Complete the Look cards above.</span>';
+      listEl.innerHTML = '<span class="plan-items-empty">No accessories staged — changes are fit shift or scene only.</span>';
     } else {
       listEl.innerHTML = state.planItems.map(p => `
         <div class="plan-item-chip">
@@ -4587,10 +4602,9 @@ function renderPlanSection() {
     }
   }
 
-  // Estimate.
-  const est = estimatePlan();
-  const timeEl    = document.getElementById('plan-est-time');
-  const credEl    = document.getElementById('plan-est-credits');
+  // Estimate values.
+  const timeEl = document.getElementById('plan-est-time');
+  const credEl = document.getElementById('plan-est-credits');
   if (timeEl)  timeEl.textContent  = est.time;
   if (credEl)  credEl.textContent  = est.credits;
 

@@ -258,6 +258,7 @@
                 <div class="complete-look-hdr-left">
                   <span class="complete-look-title">Complete the Look</span>
                   <span class="complete-look-subtitle">AI-suggested items to add</span>
+                  <span class="complete-look-hint">+ Plan stages for later &nbsp;&middot;&nbsp; Add Now applies immediately via GPT Image</span>
                 </div>
                 <button id="refresh-suggestions-btn" class="btn-refresh-suggestions hidden">&#8635; Refresh</button>
               </div>
@@ -307,7 +308,7 @@
         <div class="fit-preview-hdr">
           <div class="fit-preview-hdr-left">
             <span class="fit-preview-title">Size Fit Preview</span>
-            <span class="fit-preview-subtitle">Visual simulation — actual fit varies by brand, fabric, and cut</span>
+            <span class="fit-preview-subtitle">Generate a separate side-by-side size comparison — does not affect Generation Plan.</span>
           </div>
           <button id="fit-preview-reset-btn" class="btn-reset-fit-preview">&#8635; Reset</button>
         </div>
@@ -371,9 +372,14 @@
         <div class="plan-hdr">
           <div class="plan-hdr-left">
             <span class="plan-title">High-Quality Generation Plan</span>
-            <span class="plan-subtitle">Stage changes, then send one combined GPT Image request</span>
+            <span class="plan-subtitle">Stage multiple changes first, then generate one polished high-quality look.</span>
           </div>
           <button id="plan-clear-btn" class="btn-plan-clear">&#8635; Clear Plan</button>
+        </div>
+
+        <div id="plan-empty-msg" class="plan-empty-msg hidden">
+          <span class="plan-empty-title">No staged changes yet.</span>
+          <span class="plan-empty-body">Add accessories using &ldquo;+ Plan&rdquo; on the cards above, choose a fit shift, or select a scene to create a planned look.</span>
         </div>
 
         <div class="plan-controls">
@@ -416,6 +422,8 @@
             &#9889; Generate High-Quality Look
           </button>
         </div>
+
+        <p class="plan-distinction-note">Not the same as Size Fit Preview. Use Size Fit Preview for a quick side-by-side size comparison. Stage a Fit Shift here to include it in the final planned look.</p>
 
         <div id="plan-status-row" class="plan-status-row hidden">
           <div id="plan-status-processing" class="plan-status plan-status-processing hidden">
