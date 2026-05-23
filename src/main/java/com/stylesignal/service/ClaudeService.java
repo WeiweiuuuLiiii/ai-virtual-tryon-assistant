@@ -455,6 +455,36 @@ public class ClaudeService {
         return suggestions != null ? suggestions : List.of();
     }
 
+    // ── Outfit Reference Analysis ─────────────────────────────────────────────
+
+    public boolean isConfigured() {
+        return apiKey != null && !apiKey.isBlank() && !apiKey.startsWith("your_");
+    }
+
+    public Map<String, Object> analyzeOutfitReference(byte[] imageBytes, String imageType) throws Exception {
+        validateApiKey();
+        String b64 = Base64.getEncoder().encodeToString(imageBytes);
+
+        String prompt = """
+            You are a fashion analyst AI. Analyze this outfit reference photo.
+
+            Identify every visible clothing item and accessory worn by the person (or shown in a flat-lay).
+            For each item provide:
+            - slot: the item type — one of exactly: top, bottom, dress, outerwear, shoes, bag, glasses, earrings, hair_accessory, scarf, necklace, bracelet, belt, hat, watch, tights, socks
+            - description: a concise description (≤15 words) with colour, material, and style
+
+            Return ONLY valid JSON — no prose before or after:
+            {"detected_pieces":[{"slot":"top","description":"White cotton button-down shirt with collar"},{"slot":"bottom","description":"Dark blue straight-leg jeans"}]}
+            """;
+
+        List<Object> content = List.of(
+            Map.of("type", "image", "source",
+                   Map.of("type", "base64", "media_type", imageType, "data", b64)),
+            Map.of("type", "text", "text", prompt)
+        );
+        return callClaude(content, 600);
+    }
+
     // ── Buy Check ─────────────────────────────────────────────────────────────
 
     public Map<String, Object> checkPurchase(MultipartFile photo, Map<String, Object> profile) throws Exception {

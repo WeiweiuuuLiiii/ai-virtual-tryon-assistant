@@ -4067,3 +4067,123 @@ body.lightbox-open { overflow: hidden; }
   border-color: var(--text-muted);
   color: var(--text);
 }
+
+/* ── Full Outfit Reference (Issue 22) ──────────────────────────────────── */
+.full-outfit-ref-section {
+  border-top: 1px solid var(--border);
+  padding: 10px 8px 8px;
+  margin-top: 10px;
+  flex-shrink: 0;
+}
+.full-outfit-ref-hdr {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.full-outfit-ref-title {
+  font-size: .72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--text-faint);
+  flex: 1;
+}
+.btn-add-outfit-ref {
+  font-size: .7rem;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all .15s;
+  flex-shrink: 0;
+}
+.btn-add-outfit-ref:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.full-outfit-ref-hint {
+  font-size: .72rem;
+  color: var(--text-faint);
+  line-height: 1.4;
+  margin: 0 0 8px;
+}
+.outfit-ref-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.outfit-ref-card.hidden { display: none; }
+.outfit-ref-img-wrap {
+  position: relative;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  line-height: 0;
+}
+.outfit-ref-img {
+  width: 100%;
+  display: block;
+  border-radius: var(--radius-sm);
+  max-height: 220px;
+  object-fit: cover;
+}
+.outfit-ref-remove {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,.55);
+  color: #fff;
+  font-size: .7rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  transition: background .15s;
+}
+.outfit-ref-remove:hover { background: #c0392b; }
+.outfit-ref-analysis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-height: 18px;
+}
+.outfit-ref-analysis-loading {
+  font-size: .72rem;
+  color: var(--text-faint);
+  font-style: italic;
+}
+.outfit-ref-analysis-error {
+  font-size: .72rem;
+  color: var(--text-faint);
+}
+.outfit-ref-chip {
+  font-size: .65rem;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.btn-try-whole-outfit {
+  font-size: .78rem;
+  font-weight: 600;
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  width: 100%;
+  transition: opacity .15s;
+}
+.btn-try-whole-outfit:hover { opacity: .88; }

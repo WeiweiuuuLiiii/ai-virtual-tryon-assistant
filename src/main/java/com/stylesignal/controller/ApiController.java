@@ -605,6 +605,69 @@ public class ApiController {
         return ResponseEntity.ok(result);
     }
 
+    // ── Full-Outfit Try-On (Whole Outfit from Reference Photo) ───────────────
+
+    @PostMapping("/try-on/full-outfit")
+    public ResponseEntity<?> tryWholeOutfit(
+            @RequestParam("outfit_ref") MultipartFile outfitRef) throws Exception {
+
+        log.info("POST /api/try-on/full-outfit");
+
+        if (!openAi.isConfigured()) {
+            Map<String, Object> resp = new LinkedHashMap<>();
+            resp.put("status",            "provider_required");
+            resp.put("mode",              "provider_stub");
+            resp.put("preview_image_url", null);
+            resp.put("message",
+                "Try Whole Outfit requires GPT Image. Add OPENAI_API_KEY to your .env and restart.");
+            return ResponseEntity.ok(resp);
+        }
+
+        if (!storage.hasModelPhoto()) {
+            return ResponseEntity.badRequest().body(errorBody(
+                "Build your body model first — go to the My Model tab and upload a full-body photo."));
+        }
+
+        if (outfitRef == null || outfitRef.isEmpty()) {
+            return ResponseEntity.badRequest().body(errorBody("No outfit reference photo provided."));
+        }
+
+        byte[] modelBytes  = storage.loadModelPhotoBytes();
+        byte[] outfitBytes = outfitRef.getBytes();
+        String outfitType  = outfitRef.getContentType() != null
+            ? outfitRef.getContentType().toLowerCase() : "image/jpeg";
+        if ("image/jpg".equalsIgnoreCase(outfitType)) outfitType = "image/jpeg";
+
+        Map<String, Object> result = openAi.tryWholeOutfit(
+            modelBytes, "image/jpeg", outfitBytes, outfitType);
+        return ResponseEntity.ok(result);
+    }
+
+    // ── Outfit Reference Analysis ─────────────────────────────────────────────
+
+    @PostMapping("/try-on/analyze-outfit")
+    public ResponseEntity<?> analyzeOutfitReference(
+            @RequestParam("outfit_img") MultipartFile outfitImg) throws Exception {
+
+        log.info("POST /api/try-on/analyze-outfit");
+
+        if (outfitImg == null || outfitImg.isEmpty()) {
+            return ResponseEntity.badRequest().body(errorBody("No outfit image provided."));
+        }
+
+        if (!claude.isConfigured()) {
+            return ResponseEntity.ok(Map.of("detected_pieces", List.of()));
+        }
+
+        String mimeType = outfitImg.getContentType() != null
+            ? outfitImg.getContentType().toLowerCase() : "image/jpeg";
+        if ("image/jpg".equalsIgnoreCase(mimeType)) mimeType = "image/jpeg";
+
+        Map<String, Object> result = claude.analyzeOutfitReference(
+            outfitImg.getBytes(), mimeType);
+        return ResponseEntity.ok(result);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private Map<String, Object> errorBody(String message) {

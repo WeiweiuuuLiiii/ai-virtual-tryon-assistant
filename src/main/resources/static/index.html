@@ -76,6 +76,28 @@
               <!-- Asset cards rendered by JS -->
             </div>
           </div>
+
+          <!-- ── Full Outfit Reference ── -->
+          <div class="full-outfit-ref-section">
+            <div class="full-outfit-ref-hdr">
+              <span class="full-outfit-ref-title">Try Whole Outfit</span>
+              <button class="btn-add-outfit-ref" id="btn-add-outfit-ref">+ Upload</button>
+              <input type="file" id="outfit-ref-input" accept="image/*" hidden />
+            </div>
+            <p class="full-outfit-ref-hint" id="full-outfit-ref-hint">Upload a model or outfit photo to try the whole look at once.</p>
+            <div id="outfit-ref-card" class="outfit-ref-card hidden">
+              <div class="outfit-ref-img-wrap">
+                <img id="outfit-ref-preview" class="outfit-ref-img" src="" alt="Outfit reference" />
+                <button class="outfit-ref-remove" id="outfit-ref-remove" title="Remove">✕</button>
+              </div>
+              <div id="outfit-ref-analysis" class="outfit-ref-analysis">
+                <span class="outfit-ref-analysis-loading">Analyzing outfit…</span>
+              </div>
+              <button class="btn btn-try-whole-outfit" id="btn-try-whole-outfit">
+                Try the Whole Outfit
+              </button>
+            </div>
+          </div>
         </aside>
 
         <!-- ── CENTER: Outfit Builder ── -->

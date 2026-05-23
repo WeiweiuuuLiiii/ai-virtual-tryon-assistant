@@ -125,6 +125,90 @@ public class OpenAiImageService {
     }
 
     /**
+     * Generates a try-on where the user's model photo (identity) wears the complete
+     * outfit visible in an inspiration/reference photo.
+     *
+     * @param modelBytes    raw bytes of the user's model photo (identity source)
+     * @param modelType     MIME type of the model photo
+     * @param outfitRefBytes raw bytes of the outfit reference photo (style source only)
+     * @param outfitRefType MIME type of the outfit reference photo
+     */
+    public Map<String, Object> tryWholeOutfit(
+            byte[] modelBytes, String modelType,
+            byte[] outfitRefBytes, String outfitRefType) throws Exception {
+
+        String boundary = "----OpenAiBoundary" + UUID.randomUUID().toString().replace("-", "");
+        String prompt   = buildWholeOutfitPrompt();
+        byte[] body     = buildAddItemBody(boundary, prompt,
+                                           modelBytes, modelType,
+                                           outfitRefBytes, outfitRefType, true);
+
+        log.info("Sending GPT Image whole-outfit request — model={}", model);
+
+        HttpRequest req = HttpRequest.newBuilder()
+            .uri(URI.create(OPENAI_API + "/images/edits"))
+            .header("Authorization", "Bearer " + apiKey)
+            .header("Content-Type",  "multipart/form-data; boundary=" + boundary)
+            .POST(HttpRequest.BodyPublishers.ofByteArray(body))
+            .build();
+
+        HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+        boolean usedOptFormat = isUsingOptimizedFormat();
+
+        if (resp.statusCode() != 200 && usedOptFormat) {
+            log.warn("Optimized format rejected for whole-outfit (HTTP {}); retrying without output_format", resp.statusCode());
+            String boundary2 = "----OpenAiBoundary" + UUID.randomUUID().toString().replace("-", "");
+            byte[] body2     = buildAddItemBody(boundary2, prompt,
+                                                modelBytes, modelType,
+                                                outfitRefBytes, outfitRefType, false);
+            HttpRequest req2 = HttpRequest.newBuilder()
+                .uri(URI.create(OPENAI_API + "/images/edits"))
+                .header("Authorization", "Bearer " + apiKey)
+                .header("Content-Type",  "multipart/form-data; boundary=" + boundary2)
+                .POST(HttpRequest.BodyPublishers.ofByteArray(body2))
+                .build();
+            resp = http.send(req2, HttpResponse.BodyHandlers.ofString());
+            usedOptFormat = false;
+            if (resp.statusCode() != 200) {
+                log.warn("GPT Image whole-outfit fallback also failed — HTTP {}", resp.statusCode());
+                throw new RuntimeException("OpenAI Images API request failed (HTTP " + resp.statusCode() + ").");
+            }
+            log.info("GPT Image whole-outfit succeeded via fallback");
+        } else if (resp.statusCode() != 200) {
+            log.warn("GPT Image whole-outfit failed — HTTP {}", resp.statusCode());
+            throw new RuntimeException("OpenAI Images API request failed (HTTP " + resp.statusCode() + ").");
+        }
+
+        Map<String, Object> result = mapper.readValue(resp.body(), new TypeReference<>() {});
+        String dataUrl = extractImageDataUrl(result, usedOptFormat);
+        log.info("GPT Image whole-outfit complete — {} chars", dataUrl.length());
+
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("status",            "ready");
+        out.put("mode",              "gpt_image_tryon");
+        out.put("preview_image_url", dataUrl);
+        out.put("preview_video_url", null);
+        out.put("message",           null);
+        return out;
+    }
+
+    private String buildWholeOutfitPrompt() {
+        return "Photorealistic virtual try-on: "
+            + "The FIRST IMAGE is the PERSON — preserve their face, skin tone, body shape, hair, and identity exactly. "
+            + "The SECOND IMAGE is the OUTFIT REFERENCE ONLY — do not use the face, body type, hair, or identity of any person shown in it. "
+            + "Dress the person from the first image in the complete outfit shown in the second image. "
+            + "Reproduce every visible garment and accessory from the reference: "
+            + "clothing (top, jacket, trousers, skirt, dress), shoes, bags, and accessories (glasses, jewellery, scarf, hat, belt, etc.). "
+            + "Match each item's exact colour, pattern, texture, cut, and fit as shown in the reference. "
+            + "Preserve the first person's face, skin tone, body shape, hair, and identity exactly — do not alter them. "
+            + "Do not copy or reference the face, hairstyle, skin tone, or body proportions from the second image. "
+            + "The output person must be identifiable as the person from the first image wearing the outfit from the second image. "
+            + "Maintain a natural, photorealistic pose and lighting consistent with a fashion photograph. "
+            + "Output must look like a real fashion photograph. "
+            + "No cartoon, illustration, painting, rendering, or artistic stylization.";
+    }
+
+    /**
      * Edits an existing preview image to add a single described item (for Complete the Look).
      * If referenceBytes is provided (SVG thumbnail rendered to PNG), it is sent as a second
      * image so the model can see the item's colour and shape, not just a text description.

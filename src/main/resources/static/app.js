@@ -47,6 +47,11 @@ const state = {
   sceneWeather: null,
   // Buy check
   buyPhoto: null,
+  // Full Outfit Reference (Issue 22)
+  outfitRefFile: null,
+  outfitRefUrl:  null,
+  outfitRefAnalysis: null,  // [{slot, description}, ...] or null
+  outfitRefAnalysisLoading: false,
 };
 
 const API = '';
@@ -56,6 +61,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupTabs();
   setupModelTab();
   setupStudio();
+  setupOutfitRef();
   setupSceneCheck();
   setupBuyCheck();
   await Promise.all([loadModel(), loadProfile(), loadTryOnProviders()]);
@@ -1598,6 +1604,165 @@ function cancelBatchAddToLook() {
   state.batchEditActive   = false;
   state.batchProgress     = 0;
   renderCompleteTheLook();
+}
+
+/* ── Full Outfit Reference (Issue 22) ────────────────────────────────────── */
+
+function setupOutfitRef() {
+  const btn   = document.getElementById('btn-add-outfit-ref');
+  const input = document.getElementById('outfit-ref-input');
+  const rmBtn = document.getElementById('outfit-ref-remove');
+  const tryBtn = document.getElementById('btn-try-whole-outfit');
+
+  if (btn && input) {
+    btn.addEventListener('click', () => input.click());
+    input.addEventListener('change', e => {
+      const file = e.target.files?.[0];
+      if (file) handleOutfitRefUpload(file);
+      input.value = '';
+    });
+  }
+  if (rmBtn) rmBtn.addEventListener('click', clearOutfitRef);
+  if (tryBtn) tryBtn.addEventListener('click', runTryWholeOutfit);
+}
+
+function handleOutfitRefUpload(file) {
+  if (state.outfitRefUrl) URL.revokeObjectURL(state.outfitRefUrl);
+  state.outfitRefFile     = file;
+  state.outfitRefUrl      = URL.createObjectURL(file);
+  state.outfitRefAnalysis = null;
+  state.outfitRefAnalysisLoading = true;
+  renderOutfitRefCard();
+  fetchOutfitRefAnalysis(file);
+}
+
+function clearOutfitRef() {
+  if (state.outfitRefUrl) URL.revokeObjectURL(state.outfitRefUrl);
+  state.outfitRefFile     = null;
+  state.outfitRefUrl      = null;
+  state.outfitRefAnalysis = null;
+  state.outfitRefAnalysisLoading = false;
+  renderOutfitRefCard();
+}
+
+function renderOutfitRefCard() {
+  const hint    = document.getElementById('full-outfit-ref-hint');
+  const card    = document.getElementById('outfit-ref-card');
+  const preview = document.getElementById('outfit-ref-preview');
+  const analysis = document.getElementById('outfit-ref-analysis');
+
+  if (!card) return;
+
+  if (!state.outfitRefFile) {
+    card.classList.add('hidden');
+    if (hint) hint.classList.remove('hidden');
+    return;
+  }
+
+  card.classList.remove('hidden');
+  if (hint) hint.classList.add('hidden');
+
+  if (preview && state.outfitRefUrl) preview.src = state.outfitRefUrl;
+
+  if (analysis) {
+    if (state.outfitRefAnalysisLoading) {
+      analysis.innerHTML = '<span class="outfit-ref-analysis-loading">Analyzing outfit…</span>';
+    } else if (!state.outfitRefAnalysis || state.outfitRefAnalysis.length === 0) {
+      analysis.innerHTML = '<span class="outfit-ref-analysis-error">Could not detect pieces — outfit will still be applied.</span>';
+    } else {
+      analysis.innerHTML = state.outfitRefAnalysis
+        .map(p => `<span class="outfit-ref-chip">${_slotEmoji(p.slot)} ${p.description}</span>`)
+        .join('');
+    }
+  }
+}
+
+function _slotEmoji(slot) {
+  const t = (window.ASSET_TYPES || ASSET_TYPES).find(x => x.key === slot);
+  return t ? t.emoji : '👗';
+}
+
+async function fetchOutfitRefAnalysis(file) {
+  try {
+    const form = new FormData();
+    form.append('outfit_img', file);
+    const resp = await fetch(`${API}/api/try-on/analyze-outfit`, { method: 'POST', body: form });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    state.outfitRefAnalysis = Array.isArray(data.detected_pieces) ? data.detected_pieces : [];
+  } catch (err) {
+    state.outfitRefAnalysis = [];
+  }
+  state.outfitRefAnalysisLoading = false;
+  renderOutfitRefCard();
+}
+
+async function runTryWholeOutfit() {
+  if (!state.outfitRefFile) return;
+
+  // Abort any running generation and stamp this one.
+  if (state.activeAbortController) state.activeAbortController.abort();
+  state.generationRequestId++;
+  state.completeLookHistory = [];
+  const myId       = state.generationRequestId;
+  const controller = new AbortController();
+  state.activeAbortController = controller;
+
+  state.tryOnPreview.status   = 'generating';
+  state.tryOnPreview.imageUrl = null;
+  state.tryOnPreview.videoUrl = null;
+  state.tryOnPreview.message  = null;
+  renderTryOnPreview();
+  updateGenerateButton();
+
+  // Update progress message to reflect whole-outfit operation.
+  const msgEl = document.getElementById('tryon-generating-msg');
+  const subEl = document.getElementById('tryon-generating-sub');
+  if (msgEl) msgEl.textContent = 'Applying the full outfit to your model…';
+  if (subEl) subEl.textContent = 'This may take 1–3 minutes. Keep this page open.';
+
+  startGenerationProgress(myId, false);
+
+  try {
+    const form = new FormData();
+    form.append('outfit_ref', state.outfitRefFile);
+    const resp = await fetch(`${API}/api/try-on/full-outfit`, {
+      method: 'POST',
+      body:   form,
+      signal: controller.signal,
+    });
+    if (myId !== state.generationRequestId) return;
+
+    const result = await resp.json();
+    if (myId !== state.generationRequestId) return;
+
+    await finishGenerationProgress();
+    if (myId !== state.generationRequestId) return;
+
+    if (result.status === 'ready') {
+      state.tryOnPreview.status   = 'ready';
+      state.tryOnPreview.mode     = result.mode || 'gpt_image_tryon';
+      state.tryOnPreview.imageUrl = result.preview_image_url;
+      state.tryOnPreview.videoUrl = null;
+      state.tryOnPreview.message  = null;
+    } else if (result.status === 'provider_required') {
+      state.tryOnPreview.status  = 'provider_required';
+      state.tryOnPreview.message = result.message || 'GPT Image provider not configured.';
+    } else {
+      state.tryOnPreview.status  = 'failed';
+      state.tryOnPreview.message = result.message || result.error || 'Generation failed.';
+    }
+  } catch (err) {
+    if (myId !== state.generationRequestId) return;
+    if (err.name === 'AbortError') return;
+    stopGenerationProgress(false);
+    state.tryOnPreview.status  = 'failed';
+    state.tryOnPreview.message = err.message || 'Generation failed.';
+  }
+
+  state.activeAbortController = null;
+  renderTryOnPreview();
+  updateGenerateButton();
 }
 
 function toggleSuggestionSelection(idx) {
