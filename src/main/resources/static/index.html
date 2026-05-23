@@ -24,6 +24,10 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="4"/><path d="M5.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/></svg>
           My Model
         </button>
+        <button class="tab-btn" data-tab="looks" role="tab">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+          My Looks
+        </button>
       </nav>
     </div>
   </header>
@@ -225,6 +229,7 @@
             <!-- Shown for image results (GPT Image / FASHN / IDM-VTON) -->
             <div id="tryon-image-actions" class="tryon-stable-actions hidden">
               <button class="btn-view-larger" id="tryon-img-view-larger-btn">&#8689; View Larger Preview</button>
+              <button class="btn-save-look" id="tryon-save-look-btn">&#10132; Save Look</button>
             </div>
             <!-- Shown for WaveSpeed canvas still-frame -->
             <div id="tryon-stable-actions" class="tryon-stable-actions hidden">
@@ -345,10 +350,17 @@
           <div class="fit-preview-col">
             <span class="fit-preview-col-label">Original</span>
             <img id="fit-preview-original-img" class="fit-preview-img" src="" alt="Original preview" />
+            <div class="fit-preview-col-actions">
+              <button class="btn-view-larger" id="fit-preview-orig-view-btn">&#8689; View Larger</button>
+            </div>
           </div>
           <div class="fit-preview-col">
             <span class="fit-preview-col-label" id="fit-preview-result-label">Size Preview</span>
             <img id="fit-preview-result-img" class="fit-preview-img" src="" alt="Fit size preview" />
+            <div class="fit-preview-col-actions">
+              <button class="btn-view-larger" id="fit-preview-result-view-btn">&#8689; View Larger</button>
+              <button class="btn-save-look" id="fit-preview-save-btn">&#10132; Save Look</button>
+            </div>
           </div>
         </div>
       </div>
@@ -715,6 +727,61 @@
             </div>
           </div>
         </details>
+
+      </div>
+    </section>
+
+    <!-- ── MY LOOKS TAB ── -->
+    <section id="tab-looks" class="tab-content hidden">
+      <div class="looks-page">
+
+        <div class="looks-page-hdr">
+          <div class="looks-page-hdr-left">
+            <h2>My Saved Looks</h2>
+            <p class="muted">Save try-on previews to compare and revisit your favourite outfits.</p>
+          </div>
+          <div class="looks-scene-selector">
+            <label class="looks-scene-label" for="looks-scene-select">Scene / Lighting</label>
+            <select class="looks-scene-select" id="looks-scene-select" disabled>
+              <option value="">All Scenes</option>
+              <option value="class">📚 Class</option>
+              <option value="work">💼 Work</option>
+              <option value="casual">☕ Casual</option>
+              <option value="date">✨ Date</option>
+              <option value="dinner">🍽 Dinner</option>
+              <option value="party">🎉 Party</option>
+              <option value="outdoor">🌿 Outdoor</option>
+            </select>
+            <span class="looks-scene-note">Scene lighting filter — coming soon</span>
+          </div>
+        </div>
+
+        <!-- Compare Board — visible when 2–4 looks are selected -->
+        <div id="looks-compare-board" class="looks-compare-board hidden">
+          <div class="looks-compare-hdr">
+            <div class="looks-compare-hdr-left">
+              <span class="looks-compare-title">Comparing <span id="looks-compare-count">2</span> Looks</span>
+              <span class="looks-compare-sub">Select up to 4 looks to compare side by side.</span>
+            </div>
+            <button id="looks-compare-clear-btn" class="btn btn-outline">Clear</button>
+          </div>
+          <div id="looks-compare-grid" class="looks-compare-grid">
+            <!-- Filled by renderCompareBoard() -->
+          </div>
+        </div>
+
+        <!-- Empty state -->
+        <div id="looks-empty-state" class="looks-empty-state hidden">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity=".3"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+          <p>No looks saved yet.</p>
+          <p class="muted">Generate a try-on in the Studio and click <strong>Save Look</strong> to get started.</p>
+          <button class="btn btn-primary" id="looks-go-studio-btn">Go to Studio</button>
+        </div>
+
+        <!-- Looks grid -->
+        <div id="looks-grid" class="looks-grid">
+          <!-- Rendered by renderSavedLooks() -->
+        </div>
 
       </div>
     </section>

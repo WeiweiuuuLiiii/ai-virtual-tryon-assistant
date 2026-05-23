@@ -62,6 +62,9 @@ const state = {
   fitPreviewLastAdjustment: null,        // 'size_up' | 'size_down' | null
   fitPreviewController: { size_up: null, size_down: null },
   fitPreviewCache: new Map(),
+  // Saved Looks (Issue 25)
+  savedLooks: [],
+  looksCompareSelected: new Set(),
   // Full Outfit Reference (Issue 22)
   outfitRefFile: null,
   outfitRefUrl:  null,
@@ -81,6 +84,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupOutfitRef();
   setupSceneCheck();
   setupBuyCheck();
+  setupLooks();
+  loadSavedLooks();
   await Promise.all([loadModel(), loadProfile(), loadTryOnProviders()]);
 });
 
@@ -4086,6 +4091,275 @@ function renderBuyResult(r) {
 }
 
 /* ── Helpers ─────────────────────────────────────────────────── */
+
+/* ── Saved Looks (Issue 25) ──────────────────────────────────────────────── */
+
+const LOOKS_KEY = 'stylesignal_saved_looks';
+const LOOKS_MAX = 20;
+
+function loadSavedLooks() {
+  try {
+    const raw = localStorage.getItem(LOOKS_KEY);
+    if (!raw) { renderSavedLooks(); return; }
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      state.savedLooks = parsed.filter(
+        l => l && typeof l.id === 'string' && typeof l.imageUrl === 'string'
+      );
+    }
+  } catch (_) {}
+  renderSavedLooks();
+}
+
+function persistLooks() {
+  try {
+    localStorage.setItem(LOOKS_KEY, JSON.stringify(state.savedLooks));
+  } catch (_) {}
+}
+
+function saveLook(imageUrl, source, label, fitAdjustment) {
+  if (!imageUrl) return;
+  const now = new Date();
+  const look = {
+    id: `look-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    imageUrl,
+    label: label || formatLookLabel(source, fitAdjustment),
+    source: source || 'try-on',
+    date: now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+    notes: '',
+    favorite: false,
+    fitAdjustment: fitAdjustment || null,
+  };
+  state.savedLooks.unshift(look);
+  if (state.savedLooks.length > LOOKS_MAX) state.savedLooks = state.savedLooks.slice(0, LOOKS_MAX);
+  persistLooks();
+  showToast('Look saved! Open "My Looks" to view and compare.');
+  renderSavedLooks();
+}
+
+function formatLookLabel(source, fitAdjustment) {
+  if (source === 'fit-preview') {
+    const adj = fitAdjustment === 'size_up' ? 'Size Up'
+              : fitAdjustment === 'size_down' ? 'Size Down' : '';
+    return adj ? `Fit Preview — ${adj}` : 'Fit Preview';
+  }
+  return 'Try-On Look';
+}
+
+function deleteLook(id) {
+  state.savedLooks = state.savedLooks.filter(l => l.id !== id);
+  state.looksCompareSelected.delete(id);
+  persistLooks();
+  renderSavedLooks();
+  renderCompareBoard();
+}
+
+function updateLookNotes(id, notes) {
+  const look = state.savedLooks.find(l => l.id === id);
+  if (look) { look.notes = notes; persistLooks(); }
+}
+
+function updateLookLabel(id, label) {
+  const look = state.savedLooks.find(l => l.id === id);
+  if (look) { look.label = label || 'Saved Look'; persistLooks(); }
+}
+
+function toggleLookFavorite(id) {
+  const look = state.savedLooks.find(l => l.id === id);
+  if (!look) return;
+  look.favorite = !look.favorite;
+  persistLooks();
+  renderSavedLooks();
+}
+
+function toggleLookCompare(id) {
+  if (state.looksCompareSelected.has(id)) {
+    state.looksCompareSelected.delete(id);
+  } else {
+    if (state.looksCompareSelected.size >= 4) {
+      showToast('You can compare up to 4 looks at a time.', true);
+      return;
+    }
+    state.looksCompareSelected.add(id);
+  }
+  renderSavedLooks();
+  renderCompareBoard();
+}
+
+function renderSavedLooks() {
+  const grid       = document.getElementById('looks-grid');
+  const emptyState = document.getElementById('looks-empty-state');
+  if (!grid) return;
+
+  if (state.savedLooks.length === 0) {
+    grid.innerHTML = '';
+    emptyState?.classList.remove('hidden');
+    renderCompareBoard();
+    return;
+  }
+  emptyState?.classList.add('hidden');
+
+  grid.innerHTML = state.savedLooks.map(look => {
+    const isSelected   = state.looksCompareSelected.has(look.id);
+    const isFitPreview = look.source === 'fit-preview';
+    const adj          = look.fitAdjustment;
+
+    let badges = '';
+    if (isFitPreview) badges += `<span class="look-badge look-badge-fitpreview">Fit Preview</span>`;
+    if (adj === 'size_up')   badges += `<span class="look-badge look-badge-sizeup">Size Up</span>`;
+    if (adj === 'size_down') badges += `<span class="look-badge look-badge-sizedown">Size Down</span>`;
+
+    const favCls   = look.favorite ? ' look-card-fav-active' : '';
+    const selCls   = isSelected    ? ' look-card-selected'    : '';
+    const favIcon  = look.favorite ? '&#9829;' : '&#9825;';
+    const favTitle = look.favorite ? 'Remove from favourites' : 'Add to favourites';
+    const cmpLabel = isSelected    ? '&#10003; In Compare'    : 'Compare';
+    const cmpCls   = isSelected    ? ' look-btn-compare-active' : '';
+
+    return `
+      <div class="look-card${selCls}" data-id="${escHtml(look.id)}">
+        <div class="look-card-img-wrap">
+          <img class="look-card-img" src="${escHtml(look.imageUrl)}" alt="${escHtml(look.label)}" loading="lazy" />
+          <button class="look-card-fav${favCls}" data-id="${escHtml(look.id)}" title="${favTitle}" aria-label="${favTitle}">${favIcon}</button>
+          ${badges ? `<div class="look-card-badges">${badges}</div>` : ''}
+        </div>
+        <div class="look-card-body">
+          <div class="look-card-meta">
+            <span class="look-card-label" contenteditable="true" data-id="${escHtml(look.id)}" title="Click to rename">${escHtml(look.label)}</span>
+            <span class="look-card-date">${escHtml(look.date)}</span>
+          </div>
+          <textarea class="look-card-notes" data-id="${escHtml(look.id)}" placeholder="Add notes…" rows="2">${escHtml(look.notes)}</textarea>
+          <div class="look-card-actions">
+            <button class="btn-look-view" data-id="${escHtml(look.id)}" data-url="${escHtml(look.imageUrl)}">&#8689; View</button>
+            <button class="btn-look-compare${cmpCls}" data-id="${escHtml(look.id)}">${cmpLabel}</button>
+            <button class="btn-look-delete" data-id="${escHtml(look.id)}">Delete</button>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  grid.querySelectorAll('.look-card-fav').forEach(btn => {
+    btn.addEventListener('click', e => { e.stopPropagation(); toggleLookFavorite(btn.dataset.id); });
+  });
+  grid.querySelectorAll('.look-card-img').forEach(img => {
+    img.style.cursor = 'pointer';
+    img.addEventListener('click', () => openLooksLightbox(img.src, img.alt));
+  });
+  grid.querySelectorAll('.btn-look-view').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const look = state.savedLooks.find(l => l.id === btn.dataset.id);
+      if (look) openLooksLightbox(look.imageUrl, look.label);
+    });
+  });
+  grid.querySelectorAll('.btn-look-compare').forEach(btn => {
+    btn.addEventListener('click', () => toggleLookCompare(btn.dataset.id));
+  });
+  grid.querySelectorAll('.btn-look-delete').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (confirm('Delete this saved look?')) deleteLook(btn.dataset.id);
+    });
+  });
+  grid.querySelectorAll('.look-card-notes').forEach(ta => {
+    ta.addEventListener('change', () => updateLookNotes(ta.dataset.id, ta.value));
+  });
+  grid.querySelectorAll('.look-card-label[contenteditable]').forEach(el => {
+    el.addEventListener('blur', () => updateLookLabel(el.dataset.id, el.textContent.trim()));
+    el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } });
+  });
+
+  renderCompareBoard();
+}
+
+function renderCompareBoard() {
+  const board   = document.getElementById('looks-compare-board');
+  const grid    = document.getElementById('looks-compare-grid');
+  const countEl = document.getElementById('looks-compare-count');
+  if (!board || !grid) return;
+
+  const selected = state.savedLooks.filter(l => state.looksCompareSelected.has(l.id));
+  if (selected.length < 2) { board.classList.add('hidden'); return; }
+
+  board.classList.remove('hidden');
+  if (countEl) countEl.textContent = selected.length;
+
+  grid.innerHTML = selected.map(look => `
+    <div class="looks-compare-item">
+      <img class="looks-compare-img" src="${escHtml(look.imageUrl)}" alt="${escHtml(look.label)}" />
+      <div class="looks-compare-label">${escHtml(look.label)}</div>
+      ${look.notes ? `<div class="looks-compare-notes">${escHtml(look.notes)}</div>` : ''}
+    </div>`).join('');
+}
+
+function openLooksLightbox(imageUrl, caption) {
+  const lightbox      = document.getElementById('tryon-lightbox');
+  const lightboxImg   = document.getElementById('tryon-lightbox-img');
+  const lightboxVideo = document.getElementById('tryon-lightbox-video');
+  const lightboxCap   = document.getElementById('tryon-lightbox-caption');
+  if (!lightbox || !lightboxImg || !imageUrl) return;
+  lightboxImg.src = imageUrl;
+  lightboxImg.classList.remove('hidden');
+  if (lightboxVideo) { lightboxVideo.pause(); lightboxVideo.removeAttribute('src'); lightboxVideo.classList.add('hidden'); }
+  if (lightboxCap) lightboxCap.textContent = caption || 'Saved Look';
+  lightbox.classList.remove('hidden');
+  document.body.classList.add('lightbox-open');
+}
+
+function setupLooks() {
+  document.getElementById('looks-go-studio-btn')?.addEventListener('click', () => {
+    document.querySelector('[data-tab="studio"]')?.click();
+  });
+
+  document.getElementById('tryon-save-look-btn')?.addEventListener('click', () => {
+    const url = state.tryOnPreview.imageUrl;
+    if (!url) return;
+    saveLook(url, 'try-on', null, null);
+  });
+
+  document.getElementById('fit-preview-save-btn')?.addEventListener('click', () => {
+    const adj = state.fitPreviewLastAdjustment;
+    const url = adj ? state.fitPreview[adj]?.imageUrl : null;
+    if (!url) { showToast('Generate a fit preview first.', true); return; }
+    saveLook(url, 'fit-preview', null, adj);
+  });
+
+  document.getElementById('fit-preview-orig-view-btn')?.addEventListener('click', () => {
+    const url = state.tryOnPreview.imageUrl;
+    if (url) openLooksLightbox(url, 'Original Preview');
+  });
+  document.getElementById('fit-preview-original-img')?.addEventListener('click', () => {
+    const url = document.getElementById('fit-preview-original-img')?.src;
+    if (url && url !== window.location.href) openLooksLightbox(url, 'Original Preview');
+  });
+
+  document.getElementById('fit-preview-result-view-btn')?.addEventListener('click', () => {
+    const adj = state.fitPreviewLastAdjustment;
+    const url = adj ? state.fitPreview[adj]?.imageUrl : null;
+    const cap = adj === 'size_up' ? 'Size Up Preview' : 'Size Down Preview';
+    if (url) openLooksLightbox(url, cap);
+  });
+  document.getElementById('fit-preview-result-img')?.addEventListener('click', () => {
+    const adj = state.fitPreviewLastAdjustment;
+    const url = adj ? state.fitPreview[adj]?.imageUrl : null;
+    const cap = adj === 'size_up' ? 'Size Up Preview' : 'Size Down Preview';
+    if (url) openLooksLightbox(url, cap);
+  });
+
+  document.getElementById('looks-compare-clear-btn')?.addEventListener('click', () => {
+    state.looksCompareSelected = new Set();
+    renderSavedLooks();
+    renderCompareBoard();
+  });
+}
+
+function escHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 async function apiError(resp) {
   try {
