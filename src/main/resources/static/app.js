@@ -4249,6 +4249,26 @@ function toggleLookCompare(id) {
   renderCompareBoard();
 }
 
+function editThisLook(id) {
+  const look = state.savedLooks.find(l => l.id === id);
+  if (!look?.imageUrl) return;
+
+  // Load the saved look into the AI mirror — no GPT call.
+  state.tryOnPreview.status   = 'ready';
+  state.tryOnPreview.imageUrl = look.imageUrl;
+  state.tryOnPreview.videoUrl = null;
+  state.tryOnPreview.message  = null;
+  // Force Complete the Look, Color Fit, Fit Preview to re-run for this image.
+  state.completeLookImageUrl  = null;
+  state.colorFitImageUrl      = null;
+
+  // Switch to AI Studio tab.
+  document.querySelector('[data-tab="studio"]')?.click();
+
+  renderTryOnPreview();
+  showToast(`"${look.label}" loaded — apply edits, plan changes, or generate.`);
+}
+
 function renderSavedLooks() {
   const grid       = document.getElementById('looks-grid');
   const emptyState = document.getElementById('looks-empty-state');
@@ -4291,6 +4311,7 @@ function renderSavedLooks() {
           </div>
           <textarea class="look-card-notes" data-id="${escHtml(look.id)}" placeholder="Add notes…" rows="2">${escHtml(look.notes)}</textarea>
           <div class="look-card-actions">
+            <button class="btn-look-edit" data-id="${escHtml(look.id)}">&#9999; Edit This Look</button>
             <button class="btn-look-view" data-id="${escHtml(look.id)}" data-url="${escHtml(look.imageUrl)}">&#8689; View</button>
             <button class="btn-look-compare${cmpCls}" data-id="${escHtml(look.id)}">${cmpLabel}</button>
             <button class="btn-look-delete" data-id="${escHtml(look.id)}">Delete</button>
@@ -4299,6 +4320,9 @@ function renderSavedLooks() {
       </div>`;
   }).join('');
 
+  grid.querySelectorAll('.btn-look-edit').forEach(btn => {
+    btn.addEventListener('click', () => editThisLook(btn.dataset.id));
+  });
   grid.querySelectorAll('.look-card-fav').forEach(btn => {
     btn.addEventListener('click', e => { e.stopPropagation(); toggleLookFavorite(btn.dataset.id); });
   });
