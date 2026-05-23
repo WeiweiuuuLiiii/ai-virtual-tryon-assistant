@@ -2927,7 +2927,7 @@ async function addSuggestionToLook(idx) {
       renderTryOnPreview();
       // Req 6: do NOT auto-refresh suggestions — keep existing cards.
     } else {
-      showToast('Could not add this item to the look. Please try again.', true);
+      showToast(result.message || 'Could not add this item to the look. Please try again.', true);
     }
   } catch (err) {
     // Req 5: AbortError = user cancelled; stale = superseded — both silent.
@@ -3037,7 +3037,7 @@ async function applySelectedToLook() {
       renderTryOnPreview();
       // No auto-refresh of suggestions (Issue 19 Req 6)
     } else {
-      showToast('Could not apply batch edit. Please try again.', true);
+      showToast(result.message || 'Could not apply batch edit. Please try again.', true);
     }
   } catch (err) {
     if (err.name === 'AbortError' || myAddId !== state.addToLookRequestId) return; // silent cancel/stale
