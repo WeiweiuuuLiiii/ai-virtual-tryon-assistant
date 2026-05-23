@@ -4390,11 +4390,20 @@ function openLooksLightbox(imageUrl, caption) {
 
 /* ── Generation Plan (Issue 26) ─────────────────────────────── */
 
+function invalidatePlanRequest() {
+  if (state.activePlanAbortController) {
+    state.activePlanAbortController.abort();
+    state.activePlanAbortController = null;
+  }
+  state.planRequestId += 1;
+}
+
 function addToPlan(idx) {
   const s = state.completeLookSuggestions[idx];
   if (!s) return;
   const already = state.planItems.some(p => p.slot === s.slot && p.name === s.name);
   if (already) { showToast('Already staged in plan.'); return; }
+  invalidatePlanRequest();
   state.planItems.push({ slot: s.slot, name: s.name });
   state.planStatus = 'idle';
   state.planResult = null;
@@ -4412,6 +4421,7 @@ function addSelectedToPlan() {
     const already = state.planItems.some(p => p.slot === s.slot && p.name === s.name);
     if (!already) { state.planItems.push({ slot: s.slot, name: s.name }); added++; }
   }
+  invalidatePlanRequest();
   state.planStatus = 'idle';
   state.planResult = null;
   state.completeLookSelected = new Set();
@@ -4422,6 +4432,7 @@ function addSelectedToPlan() {
 
 function removeFromPlan(slot, name) {
   state.planItems = state.planItems.filter(p => !(p.slot === slot && p.name === name));
+  invalidatePlanRequest();
   state.planStatus = 'idle';
   state.planResult = null;
   renderCompleteTheLook();
@@ -4432,6 +4443,7 @@ function clearPlan() {
   state.planItems    = [];
   state.planFitShift = 'none';
   state.planScene    = 'original';
+  invalidatePlanRequest();
   state.planStatus   = 'idle';
   state.planResult   = null;
   renderCompleteTheLook();
@@ -4619,6 +4631,7 @@ function setupPlanSection() {
     const btn = e.target.closest('.btn-plan-fit');
     if (!btn) return;
     state.planFitShift = btn.dataset.fit;
+    invalidatePlanRequest();
     state.planStatus   = 'idle';
     state.planResult   = null;
     renderPlanSection();
@@ -4627,6 +4640,7 @@ function setupPlanSection() {
   // Scene select.
   document.getElementById('plan-scene-select')?.addEventListener('change', e => {
     state.planScene  = e.target.value;
+    invalidatePlanRequest();
     state.planStatus = 'idle';
     state.planResult = null;
     renderPlanSection();
