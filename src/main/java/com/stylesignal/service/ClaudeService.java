@@ -470,9 +470,9 @@ public class ClaudeService {
             - This analysis is for styling and colour-matching purposes only — not medical, genetic, or identity analysis.
 
             Analyse the visible skin colour in this photo and estimate:
-            1. skin_depth — the apparent shade depth. Choose one of exactly: fair, light, light-medium, medium, medium-deep, deep, rich
-            2. undertone — the visible colour cast. Choose one of exactly: cool, neutral, warm, olive, uncertain
-               (cool = pink/rosy cast, neutral = balanced mix, warm = golden/peachy cast, olive = yellow-green cast, uncertain = unclear from photo)
+            1. skin_depth — the apparent shade depth. Choose one of exactly: fair, light, light_medium, medium, tan, deep, rich
+            2. undertone — the visible colour cast. Choose one of exactly: cool, neutral, warm, olive, not_sure
+               (cool = pink/rosy cast, neutral = balanced mix, warm = golden/peachy cast, olive = yellow-green cast, not_sure = unclear from photo)
             3. confidence — your confidence in this estimate (0.0 to 1.0); use lower values if lighting is poor or skin is not clearly visible.
 
             Return ONLY valid JSON — no prose before or after:
@@ -624,15 +624,14 @@ public class ClaudeService {
         log.info("Claude API status: {}", status);
 
         if (status != 200) {
-            String snippet = resp.body().length() > 500 ? resp.body().substring(0, 500) : resp.body();
-            log.error("Claude API error {}: {}", status, snippet);
+            log.warn("Claude API request failed with status {}; returning safe fallback where applicable.", status);
             String friendly = switch (status) {
                 case 401 -> "Invalid or missing ANTHROPIC_API_KEY. Check your .env file and restart.";
                 case 403 -> "Access denied by Anthropic API. Verify your API key permissions.";
                 case 429 -> "Claude API rate limit hit. Wait a moment and try again.";
-                case 400 -> "Bad request sent to Claude. Details: " + snippet;
+                case 400 -> "Bad request sent to Claude. Please try again.";
                 case 529 -> "Anthropic API is overloaded. Try again in a few seconds.";
-                default  -> "Claude API returned HTTP " + status + ". Details: " + snippet;
+                default  -> "Claude API returned HTTP " + status + ". Please try again.";
             };
             throw new RuntimeException(friendly);
         }
@@ -652,8 +651,8 @@ public class ClaudeService {
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Failed to read Claude response structure: {}", e.getMessage());
-            throw new RuntimeException("Unexpected Claude response format: " + e.getMessage());
+            log.warn("Claude API request failed with status {}; returning safe fallback where applicable.", status);
+            throw new RuntimeException("Unexpected Claude response format.");
         }
 
         String json = extractJson(rawText);
@@ -663,7 +662,7 @@ public class ClaudeService {
         try {
             return mapper.readValue(json, new TypeReference<>() {});
         } catch (Exception e) {
-            log.error("JSON parse failure. Raw Claude text:\n{}", rawText);
+            log.warn("Claude API response was not valid JSON; returning safe fallback where applicable.");
             throw new RuntimeException(
                 "Claude's response was not valid JSON. Please try again.");
         }

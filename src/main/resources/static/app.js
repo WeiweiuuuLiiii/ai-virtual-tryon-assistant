@@ -239,6 +239,10 @@ function setupModelTab() {
     document.getElementById('model-display').classList.add('hidden');
     document.getElementById('model-empty').classList.remove('hidden');
     state.modelPhotoFile = null;
+    state.skinTone        = { depth: null, undertone: null, source: 'none' };
+    state.colorFitAnalysis = null;
+    state.colorFitLoading  = false;
+    state.colorFitImageUrl = null;
     document.getElementById('model-preview-wrap').classList.add('hidden');
     document.getElementById('model-upload-prompt').classList.remove('hidden');
     document.getElementById('model-measurements-form').classList.add('hidden');
@@ -295,6 +299,10 @@ async function runModelAnalysis() {
     state.model = modelData;
     state.modelRevision++;     // body_shape / model data updated → invalidate generation cache
     state.tryOnCache = new Map();
+    state.skinTone        = { depth: null, undertone: null, source: 'none' };
+    state.colorFitAnalysis = null;
+    state.colorFitLoading  = false;
+    state.colorFitImageUrl = null;
     renderModelCard(modelData, true);
     showToast('Model built — every outfit check is now calibrated to your frame.');
   } catch (err) {
@@ -484,8 +492,8 @@ function renderModelCard(model, hasPhoto) {
 
   syncStudioModelColumn(model, hasPhoto);
 
-  // Auto-detect skin tone when model photo changes (only if not already manually set)
-  if (hasPhoto && state.skinTone.source !== 'manual') {
+  // Auto-detect skin tone when model photo changes
+  if (hasPhoto) {
     triggerSkinToneDetection();
   }
 }
@@ -1265,6 +1273,7 @@ function renderTryOnPreview() {
     if (state.tryOnPreview.videoUrl) {
       // WaveSpeed video path: show canvas still-frame, keep video fully hidden.
       document.getElementById('complete-the-look')?.classList.add('hidden');
+      document.getElementById('color-fit-section')?.classList.add('hidden');
       if (img)         img.classList.add('hidden');
       if (video)       { video.removeAttribute('controls'); video.classList.add('hidden'); }
       if (imageActions) imageActions.classList.add('hidden');
@@ -1629,9 +1638,9 @@ function cancelBatchAddToLook() {
 const SKIN_DEPTHS = [
   { key: 'fair',         label: 'Fair',       color: '#f5dcca' },
   { key: 'light',        label: 'Light',      color: '#e8c4a0' },
-  { key: 'light-medium', label: 'Light Med.', color: '#d4a078' },
+  { key: 'light_medium', label: 'Light Med.', color: '#d4a078' },
   { key: 'medium',       label: 'Medium',     color: '#c08060' },
-  { key: 'medium-deep',  label: 'Med. Deep',  color: '#9b6444' },
+  { key: 'tan',          label: 'Tan',        color: '#9b6444' },
   { key: 'deep',         label: 'Deep',       color: '#7a4428' },
   { key: 'rich',         label: 'Rich',       color: '#4a2215' },
 ];
@@ -1641,7 +1650,7 @@ const UNDERTONES = [
   { key: 'neutral',   label: 'Neutral',  desc: 'balanced mix' },
   { key: 'warm',      label: 'Warm',     desc: 'golden/peachy' },
   { key: 'olive',     label: 'Olive',    desc: 'yellow-green cast' },
-  { key: 'uncertain', label: 'Not sure', desc: 'adjust later' },
+  { key: 'not_sure',  label: 'Not sure', desc: 'adjust later' },
 ];
 
 const _VALID_SKIN_DEPTHS   = new Set(SKIN_DEPTHS.map(d => d.key));

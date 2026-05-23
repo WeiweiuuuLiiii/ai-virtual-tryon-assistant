@@ -619,7 +619,7 @@ public class ApiController {
         if (!claude.isConfigured()) {
             Map<String, Object> fallback = new LinkedHashMap<>();
             fallback.put("skin_depth",  "medium");
-            fallback.put("undertone",   "uncertain");
+            fallback.put("undertone",   "not_sure");
             fallback.put("confidence",  0.0);
             return ResponseEntity.ok(fallback);
         }
@@ -632,7 +632,7 @@ public class ApiController {
             log.warn("Skin tone detection failed; returning uncertain defaults.");
             Map<String, Object> fallback = new LinkedHashMap<>();
             fallback.put("skin_depth",  "medium");
-            fallback.put("undertone",   "uncertain");
+            fallback.put("undertone",   "not_sure");
             fallback.put("confidence",  0.0);
             return ResponseEntity.ok(fallback);
         }
