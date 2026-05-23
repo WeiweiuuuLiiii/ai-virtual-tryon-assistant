@@ -414,15 +414,21 @@ public class ClaudeService {
 
     // ── Complete the Look Suggestions ────────────────────────────────────────
 
-    public List<Map<String, Object>> suggestCompleteTheLook(String assignedSlots) throws Exception {
+    public List<Map<String, Object>> suggestCompleteTheLook(String assignedSlots, String recentHistory) throws Exception {
         validateApiKey();
 
-        String prompt = """
+        String historyClause = (recentHistory != null && !recentHistory.isBlank())
+            ? "\nAvoid suggesting these recently shown items (slot::name): " + recentHistory
+              + "\nPrefer different items or different slot types if possible."
+            : "";
+
+        String prompt = ("""
             You are a fashion stylist AI. The user's outfit currently includes these slots: %s.
             Suggest exactly 3 complementary items from the remaining unassigned slots to complete the look.
             Available slots: top, outerwear, bottom, dress, shoes, bag, glasses, earrings, hair_accessory,
             scarf, necklace, bracelet, belt, hat, watch, tights, socks.
             Only suggest slots NOT already assigned.
+            %s
 
             Slot guidance for newer types:
             - scarf: draped at neck or over shoulders (e.g. "Cream Silk Scarf", "Navy Stripe Wool Scarf")
@@ -440,7 +446,7 @@ public class ClaudeService {
             - reason: ≤10 words explaining why it completes the look
 
             Return ONLY valid JSON: {"suggestions":[{"slot":"bag","name":"Tan Leather Tote Bag","reason":"Earthy neutral grounds the look"},...]}}
-            """.formatted(assignedSlots);
+            """).formatted(assignedSlots, historyClause);
 
         Map<String, Object> result = callClaude(List.of(Map.of("type", "text", "text", prompt)), 600);
 

@@ -428,7 +428,8 @@ public class ApiController {
 
     @PostMapping("/try-on/suggest-items")
     public ResponseEntity<?> suggestItems(
-            @RequestParam("assigned_slots") String assignedSlots) {
+            @RequestParam("assigned_slots") String assignedSlots,
+            @RequestParam(value = "recent_history", required = false, defaultValue = "") String recentHistory) {
         log.info("POST /api/try-on/suggest-items — assigned_slots={}", assignedSlots);
         if (assignedSlots == null || assignedSlots.isBlank()) {
             return ResponseEntity.badRequest().body(errorBody("assigned_slots is required."));
@@ -436,7 +437,7 @@ public class ApiController {
 
         List<Map<String, Object>> suggestions;
         try {
-            suggestions = claude.suggestCompleteTheLook(assignedSlots);
+            suggestions = claude.suggestCompleteTheLook(assignedSlots, recentHistory);
             if (suggestions == null || suggestions.isEmpty()) {
                 log.warn("Complete-the-look suggestions fell back to curated defaults.");
                 suggestions = buildFallbackSuggestions(assignedSlots);

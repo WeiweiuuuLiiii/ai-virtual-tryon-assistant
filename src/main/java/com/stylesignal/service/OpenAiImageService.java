@@ -147,8 +147,20 @@ public class OpenAiImageService {
             + "Preserve the person's exact face, skin tone, body shape, pose, and all existing outfit items. "
             + "Preserve the background exactly. "
             + "Only add the requested " + slotLabel + " — do not change or remove anything else. "
-            + "Place accessories anatomically: glasses on face, earrings on ears, "
-            + "bag held or worn on shoulder/arm, hair accessory on hair. "
+            + "Place the item anatomically according to its type: "
+            + "glasses: on the face at the eyes; "
+            + "earrings: on the earlobes; "
+            + "bag: held or worn on shoulder or arm; "
+            + "hair accessory: in or on the hair; "
+            + "scarf: draped naturally around the neck, shoulders, hair, or bag handle — do not turn it into a shirt or coat; "
+            + "necklace: around the neck — do not change the face, neckline, or clothing; "
+            + "bracelet: on the wrist — do not change the arm, hand, or pose; "
+            + "watch: on the wrist — do not change the arm, hand, or pose; "
+            + "belt: around the waist or over the garment — do not redesign the clothing; "
+            + "hat: on the head — do not change the face or hairstyle except where the hat covers it; "
+            + "tights: on the legs only — do not change the dress, skirt, shoes, or rest of the outfit; "
+            + "socks: visible around the ankles or calves — do not change the shoes unless necessary for visibility; "
+            + "outerwear and shoes: worn as intended. "
             + "Output must look like a real fashion photograph. No cartoon or artistic stylization.";
 
         byte[] body = buildAddItemBody(boundary, prompt, previewBytes, previewType,
@@ -280,8 +292,20 @@ public class OpenAiImageService {
         sb.append("existing outfit items, lighting, and background exactly as in the first image. ");
         sb.append("Do not redesign, remove, or alter any existing clothing or background. ");
         sb.append("Only add the items listed above — nothing else. ");
-        sb.append("Place each item anatomically: glasses on face at the eyes, earrings on earlobes, ");
-        sb.append("bag held or worn on shoulder/arm, hair accessory on hair. ");
+        sb.append("Place each item anatomically according to its type: ");
+        sb.append("glasses: on the face at the eyes; ");
+        sb.append("earrings: on the earlobes; ");
+        sb.append("bag: held or worn on shoulder or arm; ");
+        sb.append("hair accessory: in or on the hair; ");
+        sb.append("scarf: draped naturally around the neck, shoulders, hair, or bag handle — do not turn it into a shirt or coat; ");
+        sb.append("necklace: around the neck — do not change the face, neckline, or clothing; ");
+        sb.append("bracelet: on the wrist — do not change the arm, hand, or pose; ");
+        sb.append("watch: on the wrist — do not change the arm, hand, or pose; ");
+        sb.append("belt: around the waist or over the garment — do not redesign the clothing; ");
+        sb.append("hat: on the head — do not change the face or hairstyle except where the hat covers it; ");
+        sb.append("tights: on the legs only — do not change the dress, skirt, shoes, or rest of the outfit; ");
+        sb.append("socks: visible around the ankles or calves — do not change the shoes unless necessary for visibility; ");
+        sb.append("outerwear and shoes: worn as intended. ");
         sb.append("Match each item's colour and style to its description and reference image exactly. ");
         sb.append("Do not confuse accessory types — do not turn earrings into glasses or vice versa. ");
         sb.append("Do not invent extra items not listed. ");

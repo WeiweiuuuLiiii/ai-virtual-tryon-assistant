@@ -2065,20 +2065,25 @@ async function fetchCompleteTheLookSuggestions() {
   try {
     const form = new FormData();
     form.append('assigned_slots', assignedSlots);
+    if (state.completeLookHistory.length > 0) {
+      form.append('recent_history', state.completeLookHistory.join(','));
+    }
     const resp   = await fetch(`${API}/api/try-on/suggest-items`, { method: 'POST', body: form });
     if (!resp.ok) return; // keep fallback silently
     const result = await resp.json();
     const server  = result.suggestions || [];
     if (server.length > 0) {
-      // Filter recently shown items; if all were recently shown, show them anyway
+      // Filter recently shown items; if ALL server results are stale, keep the fresh fallback visible
       const historySet = new Set(state.completeLookHistory);
       const fresh = server.filter(s => !historySet.has(`${s.slot}::${s.name}`));
-      const toShow = fresh.length > 0 ? fresh : server;
-      _addSuggestionHistory(toShow);
-      state.completeLookSelected.clear(); // clear before replacement so stale selections don't survive
-      state.completeLookSuggestions = toShow;
-      state.completeLookError       = null;
-      renderCompleteTheLook();
+      if (fresh.length > 0) {
+        _addSuggestionHistory(fresh);
+        state.completeLookSelected.clear();
+        state.completeLookSuggestions = fresh;
+        state.completeLookError       = null;
+        renderCompleteTheLook();
+      }
+      // If all server results are stale, keep the fresh local fallback already visible.
     }
     // If empty, keep the local fallback — no error shown.
   } catch (_) {
