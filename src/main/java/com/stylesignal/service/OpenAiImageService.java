@@ -102,13 +102,11 @@ public class OpenAiImageService {
             resp = http.send(req2, HttpResponse.BodyHandlers.ofString());
             usedOptFormat = false; // fallback path — OpenAI will return default PNG
             if (resp.statusCode() != 200) {
-                log.warn("OpenAI Images API fallback try-on also failed — HTTP {}", resp.statusCode());
-                throw new RuntimeException("OpenAI Images API request failed (HTTP " + resp.statusCode() + ").");
+                throwClassified(resp.statusCode(), resp.body(), "try-on (fallback)");
             }
             log.info("GPT Image try-on succeeded via fallback (no output_format/output_compression)");
         } else if (resp.statusCode() != 200) {
-            log.warn("OpenAI Images API request failed — HTTP {}, model={}", resp.statusCode(), model);
-            throw new RuntimeException("OpenAI Images API request failed (HTTP " + resp.statusCode() + ").");
+            throwClassified(resp.statusCode(), resp.body(), "try-on");
         }
 
         Map<String, Object> result = mapper.readValue(resp.body(), new TypeReference<>() {});
@@ -170,13 +168,11 @@ public class OpenAiImageService {
             resp = http.send(req2, HttpResponse.BodyHandlers.ofString());
             usedOptFormat = false;
             if (resp.statusCode() != 200) {
-                log.warn("GPT Image whole-outfit fallback also failed — HTTP {}", resp.statusCode());
-                throw new RuntimeException("OpenAI Images API request failed (HTTP " + resp.statusCode() + ").");
+                throwClassified(resp.statusCode(), resp.body(), "whole-outfit (fallback)");
             }
             log.info("GPT Image whole-outfit succeeded via fallback");
         } else if (resp.statusCode() != 200) {
-            log.warn("GPT Image whole-outfit failed — HTTP {}", resp.statusCode());
-            throw new RuntimeException("OpenAI Images API request failed (HTTP " + resp.statusCode() + ").");
+            throwClassified(resp.statusCode(), resp.body(), "whole-outfit");
         }
 
         Map<String, Object> result = mapper.readValue(resp.body(), new TypeReference<>() {});
@@ -230,13 +226,11 @@ public class OpenAiImageService {
             resp = http.send(req2, HttpResponse.BodyHandlers.ofString());
             usedOptFormat = false;
             if (resp.statusCode() != 200) {
-                log.warn("GPT Image fit-preview fallback also failed — HTTP {}", resp.statusCode());
-                throw new RuntimeException("OpenAI Images API request failed (HTTP " + resp.statusCode() + ").");
+                throwClassified(resp.statusCode(), resp.body(), "fit-preview (fallback)");
             }
             log.info("GPT Image fit-preview succeeded via fallback");
         } else if (resp.statusCode() != 200) {
-            log.warn("GPT Image fit-preview failed — HTTP {}", resp.statusCode());
-            throw new RuntimeException("OpenAI Images API request failed (HTTP " + resp.statusCode() + ").");
+            throwClassified(resp.statusCode(), resp.body(), "fit-preview");
         }
 
         Map<String, Object> result = mapper.readValue(resp.body(), new TypeReference<>() {});
@@ -366,13 +360,11 @@ public class OpenAiImageService {
             resp = http.send(req2, HttpResponse.BodyHandlers.ofString());
             usedOptFormat = false; // fallback path — OpenAI will return default PNG
             if (resp.statusCode() != 200) {
-                log.warn("OpenAI add-item fallback also failed — HTTP {}", resp.statusCode());
-                throw new RuntimeException("OpenAI Images API request failed (HTTP " + resp.statusCode() + ").");
+                throwClassified(resp.statusCode(), resp.body(), "add-item (fallback)");
             }
             log.info("GPT Image add-item succeeded via fallback (no output_format/output_compression)");
         } else if (resp.statusCode() != 200) {
-            log.warn("OpenAI add-item failed — HTTP {}", resp.statusCode());
-            throw new RuntimeException("OpenAI Images API request failed (HTTP " + resp.statusCode() + ").");
+            throwClassified(resp.statusCode(), resp.body(), "add-item");
         }
 
         Map<String, Object> result  = mapper.readValue(resp.body(), new TypeReference<>() {});
@@ -423,13 +415,11 @@ public class OpenAiImageService {
             resp = http.send(req2, HttpResponse.BodyHandlers.ofString());
             usedOptFormat = false;
             if (resp.statusCode() != 200) {
-                log.warn("OpenAI batch add-items fallback also failed — HTTP {}", resp.statusCode());
-                throw new RuntimeException("OpenAI Images API request failed (HTTP " + resp.statusCode() + ").");
+                throwClassified(resp.statusCode(), resp.body(), "batch-add-items (fallback)");
             }
             log.info("GPT Image batch add-items succeeded via fallback (no output_format/output_compression)");
         } else if (resp.statusCode() != 200) {
-            log.warn("OpenAI batch add-items failed — HTTP {}", resp.statusCode());
-            throw new RuntimeException("OpenAI Images API request failed (HTTP " + resp.statusCode() + ").");
+            throwClassified(resp.statusCode(), resp.body(), "batch-add-items");
         }
 
         Map<String, Object> result = mapper.readValue(resp.body(), new TypeReference<>() {});
@@ -678,6 +668,44 @@ public class OpenAiImageService {
         out.write(("Content-Type: " + ct + crlf + crlf).getBytes(StandardCharsets.UTF_8));
         out.write(data);
         out.write(crlf.getBytes(StandardCharsets.UTF_8));
+    }
+
+    // ---------------------------------------------------------------------------
+    // Error classification
+    // ---------------------------------------------------------------------------
+
+    private String classifyOpenAiError(int status, String body) {
+        String lower = body == null ? "" : body.toLowerCase();
+        if (lower.contains("insufficient_funds") || lower.contains("insufficient_credits")
+                || lower.contains("billing") || lower.contains("credits") || lower.contains("balance")
+                || lower.contains("quota") || lower.contains("insufficient_quota")) {
+            return "billing_or_credits";
+        }
+        if (status == 429 || lower.contains("rate_limit") || lower.contains("rate limit")) {
+            return "rate_limited";
+        }
+        if (status == 500 || status == 502 || status == 503) {
+            return "provider_unavailable";
+        }
+        if (status == 400) {
+            return "bad_request";
+        }
+        return "unknown_provider_error";
+    }
+
+    private String safeMessageForCategory(String category) {
+        return switch (category) {
+            case "billing_or_credits"   -> "OpenAI credits or billing may be unavailable. Please check your API billing and try again.";
+            case "rate_limited"         -> "OpenAI is rate limiting requests right now. Please wait a moment and try again.";
+            case "provider_unavailable" -> "OpenAI Images API is temporarily unavailable. Please try again in a moment.";
+            default                     -> "Could not generate this preview. Please try again.";
+        };
+    }
+
+    private void throwClassified(int status, String body, String context) {
+        String category = classifyOpenAiError(status, body);
+        log.warn("OpenAI Images API {} failed — HTTP {}, category={}", context, status, category);
+        throw new OpenAiProviderException(safeMessageForCategory(category), category);
     }
 
     // ---------------------------------------------------------------------------

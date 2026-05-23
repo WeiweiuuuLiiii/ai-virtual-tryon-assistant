@@ -7,6 +7,7 @@ import com.stylesignal.model.RecommendRequest;
 import com.stylesignal.model.SceneCheckRequest;
 import com.stylesignal.service.ClaudeService;
 import com.stylesignal.service.OpenAiImageService;
+import com.stylesignal.service.OpenAiProviderException;
 import com.stylesignal.service.StorageService;
 import com.stylesignal.service.WeatherService;
 import com.stylesignal.tryon.BatchItem;
@@ -364,6 +365,12 @@ public class ApiController {
 
         try {
             return ResponseEntity.ok(provider.generate(req));
+        } catch (OpenAiProviderException e) {
+            log.warn("Try-on generate provider error — category={}", e.getCategory());
+            Map<String, Object> resp = new LinkedHashMap<>();
+            resp.put("status",  "failed");
+            resp.put("message", e.getMessage());
+            return ResponseEntity.ok(resp);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
         }
@@ -554,11 +561,19 @@ public class ApiController {
                 ? referenceImage.getContentType().toLowerCase() : "image/png";
         }
 
-        Map<String, Object> result = openAi.addItemToPreview(
-            previewImage.getBytes(), previewType,
-            referenceBytes, referenceType,
-            slot, itemDescription);
-        return ResponseEntity.ok(result);
+        try {
+            Map<String, Object> result = openAi.addItemToPreview(
+                previewImage.getBytes(), previewType,
+                referenceBytes, referenceType,
+                slot, itemDescription);
+            return ResponseEntity.ok(result);
+        } catch (OpenAiProviderException e) {
+            log.warn("Add-item provider error — category={}", e.getCategory());
+            Map<String, Object> resp = new LinkedHashMap<>();
+            resp.put("status",  "failed");
+            resp.put("message", e.getMessage());
+            return ResponseEntity.ok(resp);
+        }
     }
 
     @PostMapping("/try-on/add-items")
@@ -600,9 +615,17 @@ public class ApiController {
             items.add(new BatchItem(slots.get(i), itemDescriptions.get(i), refBytes, refType));
         }
 
-        Map<String, Object> result = openAi.addItemsBatchToPreview(
-            previewImage.getBytes(), previewType, items);
-        return ResponseEntity.ok(result);
+        try {
+            Map<String, Object> result = openAi.addItemsBatchToPreview(
+                previewImage.getBytes(), previewType, items);
+            return ResponseEntity.ok(result);
+        } catch (OpenAiProviderException e) {
+            log.warn("Batch add-items provider error — category={}", e.getCategory());
+            Map<String, Object> resp = new LinkedHashMap<>();
+            resp.put("status",  "failed");
+            resp.put("message", e.getMessage());
+            return ResponseEntity.ok(resp);
+        }
     }
 
     // ── Skin Tone Detection ───────────────────────────────────────────────────
@@ -715,9 +738,17 @@ public class ApiController {
             ? outfitRef.getContentType().toLowerCase() : "image/jpeg";
         if ("image/jpg".equalsIgnoreCase(outfitType)) outfitType = "image/jpeg";
 
-        Map<String, Object> result = openAi.tryWholeOutfit(
-            modelBytes, "image/jpeg", outfitBytes, outfitType);
-        return ResponseEntity.ok(result);
+        try {
+            Map<String, Object> result = openAi.tryWholeOutfit(
+                modelBytes, "image/jpeg", outfitBytes, outfitType);
+            return ResponseEntity.ok(result);
+        } catch (OpenAiProviderException e) {
+            log.warn("Whole-outfit provider error — category={}", e.getCategory());
+            Map<String, Object> resp = new LinkedHashMap<>();
+            resp.put("status",  "failed");
+            resp.put("message", e.getMessage());
+            return ResponseEntity.ok(resp);
+        }
     }
 
     // ── Outfit Reference Analysis ─────────────────────────────────────────────
@@ -797,6 +828,12 @@ public class ApiController {
                 imageBytes, mimeType, fitAdjustment, height, size, fitPreference);
             result.put("fit_adjustment", fitAdjustment);
             return ResponseEntity.ok(result);
+        } catch (OpenAiProviderException e) {
+            log.warn("Fit preview provider error — category={}", e.getCategory());
+            Map<String, Object> resp = new LinkedHashMap<>();
+            resp.put("status",  "failed");
+            resp.put("message", e.getMessage());
+            return ResponseEntity.ok(resp);
         } catch (Exception e) {
             log.warn("Fit preview generation failed; returning error.");
             return ResponseEntity.status(500).body(
