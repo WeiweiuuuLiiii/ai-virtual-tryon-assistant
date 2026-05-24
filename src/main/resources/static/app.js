@@ -901,6 +901,8 @@ function assignAssetToSlot(assetId, slotKey) {
   updateStudioExtras();
   updateStudioPieceCount();
   renderAssetLibrary();
+  const _equipEl = document.getElementById(`dz-${slotKey}`) ?? document.getElementById(`studio-extra-slot-${slotKey}`);
+  if (_equipEl) { _equipEl.classList.remove('slot-equipped'); void _equipEl.offsetWidth; _equipEl.classList.add('slot-equipped'); }
   updateCheckButton();
   updateGenerateButton();
 }
@@ -1291,6 +1293,7 @@ function renderTryOnPreview() {
     badge.textContent = info.text;
     badge.className   = `tryon-status-badge ${info.cls}`;
   }
+  document.getElementById('studio-stage')?.classList.toggle('stage-generating', status === 'generating');
 
   if (status === 'provider_required' && stateEl) {
     stateEl.innerHTML = `
@@ -4671,6 +4674,7 @@ function renderPlanSection() {
   if (!isVisible) return;
 
   const est = estimatePlan();
+  section.classList.toggle('has-staged-items', est.hasChanges);
 
   // Empty-state message — visible when nothing staged yet.
   const emptyMsg = document.getElementById('plan-empty-msg');

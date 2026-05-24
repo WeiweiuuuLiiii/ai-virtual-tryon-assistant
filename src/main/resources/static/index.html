@@ -44,33 +44,33 @@
         <div class="landing-grid-bg"></div>
         <div class="landing-scanlines"></div>
 
-        <!-- Floating chips — anchored to full stage width, never clips viewport -->
-        <div class="landing-chips" aria-hidden="true">
-          <span class="landing-chip landing-chip-1">Color Match 8/10</span>
-          <span class="landing-chip landing-chip-2">Fit Shift: Size Down</span>
-          <span class="landing-chip landing-chip-3">Style Boost Ready</span>
-          <span class="landing-chip landing-chip-4">Saved to Archive</span>
-          <span class="landing-chip landing-chip-5">Complete the Look</span>
-          <span class="landing-chip landing-chip-6">Planned Edits</span>
-          <span class="landing-chip landing-chip-7">Compare Looks</span>
-        </div>
-
-        <!-- Mirror portal -->
-        <div class="landing-mirror-wrap">
-          <div class="landing-mirror">
-            <div class="landing-mirror-ring landing-mirror-ring-1"></div>
-            <div class="landing-mirror-ring landing-mirror-ring-2"></div>
-            <div class="landing-mirror-ring landing-mirror-ring-3"></div>
-            <div class="landing-mirror-inner">
-              <div class="landing-mirror-glow"></div>
-              <svg class="landing-mirror-silhouette" viewBox="0 0 120 285" xmlns="http://www.w3.org/2000/svg">
-                <ellipse cx="60" cy="22" rx="12" ry="15" fill="rgba(168,85,247,0.25)" stroke="rgba(168,85,247,0.55)" stroke-width="1"/>
-                <path d="M 36 55 C 36 69 38 74 38 92 C 38 110 47 118 47 128 C 47 142 33 150 33 176 L 87 176 C 87 150 73 142 73 128 C 73 118 82 110 82 92 C 82 74 84 69 84 55 Z" fill="rgba(168,85,247,0.18)" stroke="rgba(168,85,247,0.5)" stroke-width="1"/>
-                <line x1="36" y1="57" x2="14" y2="131" stroke="rgba(168,85,247,0.38)" stroke-width="7" stroke-linecap="round"/>
-                <line x1="84" y1="57" x2="106" y2="131" stroke="rgba(168,85,247,0.38)" stroke-width="7" stroke-linecap="round"/>
-                <line x1="47" y1="176" x2="40" y2="275" stroke="rgba(168,85,247,0.38)" stroke-width="10" stroke-linecap="round"/>
-                <line x1="73" y1="176" x2="80" y2="275" stroke="rgba(168,85,247,0.38)" stroke-width="10" stroke-linecap="round"/>
-              </svg>
+        <!-- HUD zone: mirror + orbiting chips as one visual cluster -->
+        <div class="landing-hud-zone">
+          <div class="landing-chips" aria-hidden="true">
+            <span class="landing-chip landing-chip-1">Color Match 8/10</span>
+            <span class="landing-chip landing-chip-2">Fit Shift: Size Down</span>
+            <span class="landing-chip landing-chip-3">Style Boost Ready</span>
+            <span class="landing-chip landing-chip-4">Saved to Archive</span>
+            <span class="landing-chip landing-chip-5">Complete the Look</span>
+            <span class="landing-chip landing-chip-6">Planned Edits</span>
+            <span class="landing-chip landing-chip-7">Compare Looks</span>
+          </div>
+          <div class="landing-mirror-wrap">
+            <div class="landing-mirror">
+              <div class="landing-mirror-ring landing-mirror-ring-1"></div>
+              <div class="landing-mirror-ring landing-mirror-ring-2"></div>
+              <div class="landing-mirror-ring landing-mirror-ring-3"></div>
+              <div class="landing-mirror-inner">
+                <div class="landing-mirror-glow"></div>
+                <svg class="landing-mirror-silhouette" viewBox="0 0 120 285" xmlns="http://www.w3.org/2000/svg">
+                  <ellipse cx="60" cy="22" rx="12" ry="15" fill="rgba(168,85,247,0.25)" stroke="rgba(168,85,247,0.55)" stroke-width="1"/>
+                  <path d="M 36 55 C 36 69 38 74 38 92 C 38 110 47 118 47 128 C 47 142 33 150 33 176 L 87 176 C 87 150 73 142 73 128 C 73 118 82 110 82 92 C 82 74 84 69 84 55 Z" fill="rgba(168,85,247,0.18)" stroke="rgba(168,85,247,0.5)" stroke-width="1"/>
+                  <line x1="36" y1="57" x2="14" y2="131" stroke="rgba(168,85,247,0.38)" stroke-width="7" stroke-linecap="round"/>
+                  <line x1="84" y1="57" x2="106" y2="131" stroke="rgba(168,85,247,0.38)" stroke-width="7" stroke-linecap="round"/>
+                  <line x1="47" y1="176" x2="40" y2="275" stroke="rgba(168,85,247,0.38)" stroke-width="10" stroke-linecap="round"/>
+                  <line x1="73" y1="176" x2="80" y2="275" stroke="rgba(168,85,247,0.38)" stroke-width="10" stroke-linecap="round"/>
+                </svg>
+              </div>
             </div>
           </div>
         </div>
