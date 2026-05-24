@@ -6613,7 +6613,8 @@ input::placeholder, textarea::placeholder { color: var(--text-faint) !important;
 .studio-extra-row {
   display: flex;
   gap: 6px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
 }
 .studio-extra-slot {
   background: rgba(168,85,247,0.03);
