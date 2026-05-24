@@ -1631,7 +1631,12 @@ async function runTryOnGenerate() {
     const result = await resp.json();
     if (myId !== state.generationRequestId) return;
 
-    if (result.status === 'demo_locked') { handleDemoLocked(result.message); return; }
+    if (result.status === 'demo_locked') {
+      handleDemoLocked(result.message);
+      state.tryOnPreview.status  = 'failed';
+      state.tryOnPreview.message = result.message || 'Demo code required.';
+      return; // finally runs: stopGenerationProgress + renderTryOnPreview + updateGenerateButton
+    }
     if (!resp.ok) {
       state.tryOnPreview.status  = 'failed';
       state.tryOnPreview.message = result.message || result.error || 'Generation failed.';
@@ -2465,7 +2470,16 @@ async function runTryWholeOutfit() {
     const result = await resp.json();
     if (myId !== state.generationRequestId) return;
 
-    if (result.status === 'demo_locked') { handleDemoLocked(result.message); return; }
+    if (result.status === 'demo_locked') {
+      handleDemoLocked(result.message);
+      stopGenerationProgress(false);
+      state.tryOnPreview.status  = 'failed';
+      state.tryOnPreview.message = result.message || 'Demo code required.';
+      state.activeAbortController = null;
+      renderTryOnPreview();
+      updateGenerateButton();
+      return;
+    }
 
     await finishGenerationProgress();
     if (myId !== state.generationRequestId) return;
@@ -4733,7 +4747,14 @@ async function generatePlan() {
     const data = await resp.json();
     if (isStale()) return;
 
-    if (data.status === 'demo_locked') { handleDemoLocked(data.message); return; }
+    if (data.status === 'demo_locked') {
+      handleDemoLocked(data.message);
+      state.planStatus = 'failed';
+      state.planResult = { message: data.message || 'Demo code required.' };
+      state.activePlanAbortController = null;
+      renderPlanSection();
+      return;
+    }
     if (data.status === 'failed' || data.status === 'provider_required') {
       state.planStatus = 'failed';
       state.planResult = { message: data.message || 'Generation failed.' };
