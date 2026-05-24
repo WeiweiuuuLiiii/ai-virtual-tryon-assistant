@@ -1175,9 +1175,8 @@ async function loadTryOnProviders() {
   try {
     const resp = await fetch(`${API}/api/try-on/providers`);
     state.tryOnProviders = await resp.json();
-    if (!state.selectedProviderId && state.tryOnProviders?.active_provider) {
-      state.selectedProviderId = state.tryOnProviders.active_provider;
-    }
+    // Public demo: always use GPT Image — other providers are hidden from the UI.
+    state.selectedProviderId = 'gpt_image_static_tryon';
     renderProviderCapability();
   } catch (_) {}
 }
@@ -1191,77 +1190,24 @@ function getSelectedProviderCapability() {
 
 function renderProviderCapability() {
   const el = document.getElementById('provider-capability-section');
-  if (!el || !state.tryOnProviders) return;
+  if (!el) return;
 
-  const { providers } = state.tryOnProviders;
-  const configured = (providers || []).filter(p => p.status === 'active' || p.status === 'not_configured');
-  const planned    = (providers || []).filter(p => p.status === 'planned');
-
-  const statusBadge = {
-    active:         '<span class="prov-badge prov-active">Active</span>',
-    not_configured: '<span class="prov-badge prov-unconfigured">Token Missing</span>',
-    planned:        '<span class="prov-badge prov-planned">Planned</span>',
-  };
-  const WAVESPEED_ID  = 'wavespeed_ai_virtual_outfit_tryon';
-  const GPT_IMAGE_ID  = 'gpt_image_static_tryon';
-
-  // Provider selector — shown when more than one real provider exists
-  const selectorHtml = configured.length > 1 ? `
-    <p class="prov-select-label">Generate with:</p>
-    <div class="prov-selector">
-      ${configured.map(p => `
-        <button class="prov-select-btn${state.selectedProviderId === p.id ? ' prov-select-active' : ''}"
-          data-pid="${p.id}">
-          ${p.name}
-          ${p.id === WAVESPEED_ID ? '<span class="prov-badge prov-recommended">Full Outfit</span>' : ''}
-          ${p.id === GPT_IMAGE_ID  ? '<span class="prov-badge prov-hifi">High Fidelity</span>'   : ''}
-          ${statusBadge[p.status] || ''}
-        </button>`).join('')}
-    </div>` : '';
-
-  // Details for the currently selected or only available provider
-  const displayId = state.selectedProviderId || (configured[0] && configured[0].id);
-  const displayed  = (providers || []).find(p => p.id === displayId);
-
-  const detailsHtml = displayed ? `
-    <div class="prov-active-row">
-      <span class="prov-active-name">${displayed.name}</span>
-      ${configured.length <= 1 ? (statusBadge[displayed.status] || '') : ''}
-      <span class="prov-garment-limit">Max ${displayed.max_garments} garment${displayed.max_garments !== 1 ? 's' : ''}</span>
-    </div>
-    <ul class="prov-limitations">
-      ${(displayed.limitations || []).map(l => `<li>${l}</li>`).join('')}
-    </ul>` : `
-    <div class="prov-active-row">
-      <span class="prov-active-name">No provider configured</span>
-      <span class="prov-badge prov-unconfigured">Token Missing</span>
-    </div>
-    <ul class="prov-limitations"><li>Add REPLICATE_API_TOKEN or FASHN_API_KEY to .env and restart</li></ul>`;
-
-  const plannedHtml = planned.length ? `
-    <p class="prov-others-label">Future providers</p>
-    <div class="prov-others">
-      ${planned.map(p => `<span class="prov-chip prov-chip-planned" title="${p.description}">${p.name}</span>`).join('')}
-    </div>` : '';
+  const GPT_IMAGE_ID = 'gpt_image_static_tryon';
+  const gptProvider  = state.tryOnProviders?.providers?.find(p => p.id === GPT_IMAGE_ID);
+  const isConfigured = gptProvider?.status === 'active';
+  const statusBadge  = isConfigured
+    ? '<span class="prov-badge prov-active">Active</span>'
+    : '<span class="prov-badge prov-unconfigured">Token Missing</span>';
 
   el.innerHTML = `
     <div class="provider-capability-box">
-      <p class="prov-heading">Try-On Provider</p>
-      ${selectorHtml}
-      ${detailsHtml}
-      ${plannedHtml}
+      <p class="prov-heading">AI Render Engine</p>
+      <div class="prov-active-row">
+        <span class="prov-active-name">GPT Image Static Try-On</span>
+        <span class="prov-badge prov-hifi">High Fidelity</span>
+        ${statusBadge}
+      </div>
     </div>`;
-
-  // Wire selector buttons after render
-  el.querySelectorAll('.prov-select-btn[data-pid]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const p = (providers || []).find(p => p.id === btn.dataset.pid);
-      if (p && p.status === 'active') {
-        state.selectedProviderId = p.id;
-        renderProviderCapability();
-      }
-    });
-  });
 }
 
 /* ── Try-On Preview Flow (Issue #5) ──────────────────────────── */
@@ -1381,13 +1327,11 @@ function renderTryOnPreview() {
   if (status === 'provider_required' && stateEl) {
     stateEl.innerHTML = `
       <div class="tryon-provider-box">
-        <p class="tryon-provider-title">Try-On Provider Required</p>
-        <p class="tryon-provider-msg">${state.tryOnPreview.message || 'No try-on provider is currently configured.'}</p>
-        <p class="tryon-provider-connect">Add provider credentials to your .env to enable generation:</p>
+        <p class="tryon-provider-title">GPT Image Not Configured</p>
+        <p class="tryon-provider-msg">${state.tryOnPreview.message || 'GPT Image is required for try-on generation.'}</p>
+        <p class="tryon-provider-connect">Add your API key to .env to enable generation:</p>
         <ul class="tryon-provider-list">
-          <li>FASHN_API_KEY — FASHN v1.6, single-garment image try-on</li>
-          <li>WAVESPEED_API_KEY — WaveSpeed, full-outfit video try-on (recommended)</li>
-          <li>REPLICATE_API_TOKEN — IDM-VTON via Replicate, single-garment</li>
+          <li>OPENAI_API_KEY — GPT Image, high-fidelity full-outfit try-on</li>
         </ul>
       </div>`;
   } else if (status === 'failed' && stateEl && state.tryOnPreview.message) {
@@ -1534,16 +1478,10 @@ async function runTryOnGenerate() {
   // Unsupported slot check — generalized for all providers (Fix 4)
   const unsupportedFilled = filledSlots.filter(([s]) => unsupportedSls.includes(s));
   if (unsupportedFilled.length > 0) {
-    const slotStr   = unsupportedFilled.map(([s]) => s).join(', ');
-    const provName  = provCap?.name || 'This provider';
-    const isWaveSpeed = provCap?.id === 'wavespeed_ai_virtual_outfit_tryon';
-    const accessorySlots = ['bag', 'glasses', 'earrings', 'hair_accessory'];
-    const hasAccessory = unsupportedFilled.some(([s]) => accessorySlots.includes(s));
-    const hint = (isWaveSpeed && hasAccessory)
-      ? ' WaveSpeed is not reliable for small accessories yet. Use GPT Image Static Try-On for bags, glasses, earrings, or hair accessories.'
-      : '';
+    const slotStr  = unsupportedFilled.map(([s]) => s).join(', ');
+    const provName = provCap?.name || 'This provider';
     state.tryOnPreview.status  = 'failed';
-    state.tryOnPreview.message = `${provName} does not support: ${slotStr}. Remove this item before generating.${hint}`;
+    state.tryOnPreview.message = `${provName} does not support: ${slotStr}. Remove this item before generating.`;
     renderTryOnPreview();
     updateGenerateButton();
     return;
