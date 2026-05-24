@@ -33,6 +33,26 @@
           Look Archive
         </button>
       </nav>
+
+      <!-- Demo Code Gate -->
+      <button class="demo-gate-toggle" id="demo-gate-toggle" aria-label="Demo code" title="Enter demo code">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <span id="demo-gate-label">Demo</span>
+      </button>
+    </div>
+
+    <!-- Demo Gate Panel (shown when toggled) -->
+    <div class="demo-gate-panel hidden" id="demo-gate-panel" role="dialog" aria-label="Demo code entry">
+      <p class="demo-gate-hint">Enter your demo code to unlock AI generation features.</p>
+      <div class="demo-gate-row">
+        <input class="demo-gate-input" id="demo-code-input" type="password"
+               placeholder="demo code" autocomplete="off" spellcheck="false" />
+        <button class="demo-gate-btn-apply" id="demo-code-apply">Unlock</button>
+        <button class="demo-gate-btn-clear" id="demo-code-clear" title="Clear saved code">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <p class="demo-gate-status" id="demo-gate-status"></p>
     </div>
   </header>
 

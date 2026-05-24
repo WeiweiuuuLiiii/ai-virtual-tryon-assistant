@@ -6,6 +6,8 @@ import com.stylesignal.model.FeedbackRequest;
 import com.stylesignal.model.RecommendRequest;
 import com.stylesignal.model.SceneCheckRequest;
 import com.stylesignal.service.ClaudeService;
+import com.stylesignal.service.DemoGuardException;
+import com.stylesignal.service.DemoGuardService;
 import com.stylesignal.service.OpenAiImageService;
 import com.stylesignal.service.OpenAiProviderException;
 import com.stylesignal.service.StorageService;
@@ -44,19 +46,29 @@ public class ApiController {
     private final StorageService         storage;
     private final TryOnProviderRegistry  providerRegistry;
     private final OpenAiImageService     openAi;
+    private final DemoGuardService       demoGuard;
     private final ObjectMapper           mapper = new ObjectMapper();
 
     public ApiController(ClaudeService claude, WeatherService weather,
                          StorageService storage, TryOnProviderRegistry providerRegistry,
-                         OpenAiImageService openAi) {
+                         OpenAiImageService openAi, DemoGuardService demoGuard) {
         this.claude           = claude;
         this.weather          = weather;
         this.storage          = storage;
         this.providerRegistry = providerRegistry;
         this.openAi           = openAi;
+        this.demoGuard        = demoGuard;
     }
 
-    // ── Global error handler ──────────────────────────────────────────────────
+    // ── Global error handlers ─────────────────────────────────────────────────
+
+    @ExceptionHandler(DemoGuardException.class)
+    public ResponseEntity<Map<String, Object>> handleDemoGuard(DemoGuardException e) {
+        Map<String, Object> resp = new LinkedHashMap<>();
+        resp.put("status",  "demo_locked");
+        resp.put("message", e.getUserMessage());
+        return ResponseEntity.ok(resp);
+    }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleException(Exception e) {
@@ -265,9 +277,11 @@ public class ApiController {
             @RequestParam(value = "garm_img_tights",         required = false) MultipartFile garmImgTights,
             @RequestParam(value = "garm_img_socks",          required = false) MultipartFile garmImgSocks,
             @RequestParam(value = "outfit_mode",             required = false) String outfitMode,
-            @RequestParam(value = "hair_accessory_placement",required = false) String hairAccessoryPlacement)
+            @RequestParam(value = "hair_accessory_placement",required = false) String hairAccessoryPlacement,
+            @RequestHeader(value = "X-Demo-Code",            required = false) String demoCode)
             throws Exception {
 
+        demoGuard.checkAndIncrement(demoCode);
         log.info("POST /api/try-on/generate — slot={}, provider={}", slot, providerId);
 
         // ── Provider resolution ──────────────────────────────────────────────
@@ -532,8 +546,10 @@ public class ApiController {
             @RequestParam("preview_image")                                   MultipartFile previewImage,
             @RequestParam("slot")                                            String slot,
             @RequestParam("item_description")                                String itemDescription,
-            @RequestParam(value = "reference_image", required = false)       MultipartFile referenceImage)
+            @RequestParam(value = "reference_image", required = false)       MultipartFile referenceImage,
+            @RequestHeader(value = "X-Demo-Code",    required = false)       String demoCode)
             throws Exception {
+        demoGuard.checkAndIncrement(demoCode);
         log.info("POST /api/try-on/add-item — slot={}, hasReference={}", slot, referenceImage != null);
 
         if (previewImage == null || previewImage.isEmpty()) {
@@ -581,8 +597,10 @@ public class ApiController {
             @RequestParam("preview_image")                                       MultipartFile previewImage,
             @RequestParam("slots")                                               List<String> slots,
             @RequestParam("item_descriptions")                                   List<String> itemDescriptions,
-            @RequestParam(value = "reference_images", required = false)          List<MultipartFile> referenceImages)
+            @RequestParam(value = "reference_images", required = false)          List<MultipartFile> referenceImages,
+            @RequestHeader(value = "X-Demo-Code",     required = false)          String demoCode)
             throws Exception {
+        demoGuard.checkAndIncrement(demoCode);
         log.info("POST /api/try-on/add-items — count={}", slots != null ? slots.size() : 0);
 
         if (previewImage == null || previewImage.isEmpty()) {
@@ -709,8 +727,10 @@ public class ApiController {
 
     @PostMapping("/try-on/full-outfit")
     public ResponseEntity<?> tryWholeOutfit(
-            @RequestParam("outfit_ref") MultipartFile outfitRef) throws Exception {
+            @RequestParam("outfit_ref")                           MultipartFile outfitRef,
+            @RequestHeader(value = "X-Demo-Code", required = false) String demoCode) throws Exception {
 
+        demoGuard.checkAndIncrement(demoCode);
         log.info("POST /api/try-on/full-outfit");
 
         if (!openAi.isConfigured()) {
@@ -789,8 +809,10 @@ public class ApiController {
             @RequestParam(value = "fit_adjustment",  required = false, defaultValue = "size_up")           String fitAdjustment,
             @RequestParam(value = "height",          required = false, defaultValue = "")                  String height,
             @RequestParam(value = "size",            required = false, defaultValue = "")                  String size,
-            @RequestParam(value = "fit_preference",  required = false, defaultValue = "not_sure")          String fitPreference) {
+            @RequestParam(value = "fit_preference",  required = false, defaultValue = "not_sure")          String fitPreference,
+            @RequestHeader(value = "X-Demo-Code",    required = false)                                     String demoCode) {
 
+        demoGuard.checkAndIncrement(demoCode);
         log.info("POST /api/try-on/fit-preview — fit_adjustment={}", fitAdjustment);
 
         if (!openAi.isConfigured()) {
@@ -848,9 +870,11 @@ public class ApiController {
             @RequestParam("preview_image") MultipartFile previewImage,
             @RequestParam(value = "plan_items",  required = false, defaultValue = "[]") String planItemsJson,
             @RequestParam(value = "fit_shift",   required = false, defaultValue = "none") String fitShift,
-            @RequestParam(value = "scene",       required = false, defaultValue = "original") String scene)
+            @RequestParam(value = "scene",       required = false, defaultValue = "original") String scene,
+            @RequestHeader(value = "X-Demo-Code", required = false) String demoCode)
             throws Exception {
 
+        demoGuard.checkAndIncrement(demoCode);
         log.info("POST /api/try-on/generate-plan — fit_shift={}, scene={}", fitShift, scene);
 
         if (!openAi.isConfigured()) {

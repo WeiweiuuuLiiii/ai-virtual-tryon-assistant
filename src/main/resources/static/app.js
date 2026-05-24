@@ -83,10 +83,93 @@ const state = {
 
 const API = '';
 
+/* ── Demo Guard ─────────────────────────────────────────────── */
+const DEMO_CODE_KEY = 'stylesignal_demo_code';
+
+function getDemoCode() {
+  return localStorage.getItem(DEMO_CODE_KEY) || '';
+}
+
+function setDemoCode(code) {
+  if (code) {
+    localStorage.setItem(DEMO_CODE_KEY, code);
+  } else {
+    localStorage.removeItem(DEMO_CODE_KEY);
+  }
+}
+
+function handleDemoLocked(message) {
+  showToast(message || 'Enter a demo code to use this feature.', true);
+  const panel = document.getElementById('demo-gate-panel');
+  if (panel && panel.classList.contains('hidden')) {
+    panel.classList.remove('hidden');
+    document.getElementById('demo-code-input')?.focus();
+  }
+}
+
+function setupDemoGate() {
+  const toggleBtn  = document.getElementById('demo-gate-toggle');
+  const panel      = document.getElementById('demo-gate-panel');
+  const input      = document.getElementById('demo-code-input');
+  const applyBtn   = document.getElementById('demo-code-apply');
+  const clearBtn   = document.getElementById('demo-code-clear');
+  const statusEl   = document.getElementById('demo-gate-status');
+  const labelEl    = document.getElementById('demo-gate-label');
+
+  if (!toggleBtn || !panel) return;
+
+  // Restore persisted code on load
+  const saved = getDemoCode();
+  if (saved) {
+    if (input) input.value = saved;
+    if (labelEl) labelEl.textContent = 'Code ✓';
+    toggleBtn.classList.add('demo-gate-active');
+  }
+
+  toggleBtn.addEventListener('click', () => {
+    panel.classList.toggle('hidden');
+    if (!panel.classList.contains('hidden')) input?.focus();
+  });
+
+  // Close panel on click outside
+  document.addEventListener('click', (e) => {
+    if (!panel.contains(e.target) && !toggleBtn.contains(e.target)) {
+      panel.classList.add('hidden');
+    }
+  });
+
+  function applyCode() {
+    const code = input?.value.trim() || '';
+    setDemoCode(code);
+    if (code) {
+      if (statusEl) { statusEl.textContent = 'Code saved.'; statusEl.className = 'demo-gate-status ok'; }
+      if (labelEl) labelEl.textContent = 'Code ✓';
+      toggleBtn.classList.add('demo-gate-active');
+    } else {
+      if (statusEl) { statusEl.textContent = 'Code cleared.'; statusEl.className = 'demo-gate-status'; }
+      if (labelEl) labelEl.textContent = 'Demo';
+      toggleBtn.classList.remove('demo-gate-active');
+    }
+    setTimeout(() => panel.classList.add('hidden'), 800);
+  }
+
+  applyBtn?.addEventListener('click', applyCode);
+  input?.addEventListener('keydown', (e) => { if (e.key === 'Enter') applyCode(); });
+
+  clearBtn?.addEventListener('click', () => {
+    if (input) input.value = '';
+    setDemoCode('');
+    if (statusEl) { statusEl.textContent = 'Code cleared.'; statusEl.className = 'demo-gate-status'; }
+    if (labelEl) labelEl.textContent = 'Demo';
+    toggleBtn.classList.remove('demo-gate-active');
+  });
+}
+
 /* ── Boot ───────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', async () => {
   setupTabs();
   setupLanding();
+  setupDemoGate();
   setupModelTab();
   setupSkinTonePicker();
   setupFitPreview();
@@ -1543,11 +1626,12 @@ async function runTryOnGenerate() {
       form.append('contains_model', asset.containsModel ? 'true' : 'false');
     }
 
-    const resp = await fetch(`${API}/api/try-on/generate`, { method: 'POST', body: form, signal: controller.signal });
+    const resp = await fetch(`${API}/api/try-on/generate`, { method: 'POST', body: form, signal: controller.signal, headers: { 'X-Demo-Code': getDemoCode() } });
     if (myId !== state.generationRequestId) return;
     const result = await resp.json();
     if (myId !== state.generationRequestId) return;
 
+    if (result.status === 'demo_locked') { handleDemoLocked(result.message); return; }
     if (!resp.ok) {
       state.tryOnPreview.status  = 'failed';
       state.tryOnPreview.message = result.message || result.error || 'Generation failed.';
@@ -2075,9 +2159,10 @@ async function triggerFitPreview(fitAdjustment) {
 
   try {
     const resp = await fetch(`${API}/api/try-on/fit-preview`,
-      { method: 'POST', body: form, signal: controller.signal });
+      { method: 'POST', body: form, signal: controller.signal, headers: { 'X-Demo-Code': getDemoCode() } });
     if (!resp.ok) await apiError(resp);
     const data = await resp.json();
+    if (data.status === 'demo_locked') { handleDemoLocked(data.message); return; }
 
     // Stale guard: cancelled, superseded, or base image changed (Finding 3 & 4).
     if (state.fitPreview[fitAdjustment].requestId !== myId) return;
@@ -2373,11 +2458,14 @@ async function runTryWholeOutfit() {
       method: 'POST',
       body:   form,
       signal: controller.signal,
+      headers: { 'X-Demo-Code': getDemoCode() },
     });
     if (myId !== state.generationRequestId) return;
 
     const result = await resp.json();
     if (myId !== state.generationRequestId) return;
+
+    if (result.status === 'demo_locked') { handleDemoLocked(result.message); return; }
 
     await finishGenerationProgress();
     if (myId !== state.generationRequestId) return;
@@ -2974,12 +3062,13 @@ async function addSuggestionToLook(idx) {
     form.append('item_description', suggestion.name);
 
     const resp = await fetch(`${API}/api/try-on/add-item`,
-      { method: 'POST', body: form, signal: controller.signal });
+      { method: 'POST', body: form, signal: controller.signal, headers: { 'X-Demo-Code': getDemoCode() } });
     if (myAddId !== state.addToLookRequestId) return; // Req 4: stale result guard
 
     const result = await resp.json();
     if (myAddId !== state.addToLookRequestId) return; // Req 4: stale result guard
 
+    if (result.status === 'demo_locked') { handleDemoLocked(result.message); return; }
     if (resp.ok && result.preview_image_url) {
       state.addToLookCache.set(cacheKey, result.preview_image_url); // Req 9: store
       state.tryOnPreview.imageUrl = result.preview_image_url;
@@ -3082,12 +3171,13 @@ async function applySelectedToLook() {
     }
 
     const resp = await fetch(`${API}/api/try-on/add-items`,
-      { method: 'POST', body: form, signal: controller.signal });
+      { method: 'POST', body: form, signal: controller.signal, headers: { 'X-Demo-Code': getDemoCode() } });
     if (myAddId !== state.addToLookRequestId) return; // stale
 
     const result = await resp.json();
     if (myAddId !== state.addToLookRequestId) return; // stale
 
+    if (result.status === 'demo_locked') { handleDemoLocked(result.message); return; }
     if (resp.ok && result.preview_image_url) {
       state.addToLookCache.set(cacheKey, result.preview_image_url);
       state.tryOnPreview.imageUrl = result.preview_image_url;
@@ -4637,12 +4727,13 @@ async function generatePlan() {
     form.append('scene',      state.planScene);
 
     const resp = await fetch(`${API}/api/try-on/generate-plan`,
-      { method: 'POST', body: form, signal: controller.signal });
+      { method: 'POST', body: form, signal: controller.signal, headers: { 'X-Demo-Code': getDemoCode() } });
     if (isStale()) return;
     if (!resp.ok) throw new Error(`Server error ${resp.status}`);
     const data = await resp.json();
     if (isStale()) return;
 
+    if (data.status === 'demo_locked') { handleDemoLocked(data.message); return; }
     if (data.status === 'failed' || data.status === 'provider_required') {
       state.planStatus = 'failed';
       state.planResult = { message: data.message || 'Generation failed.' };
