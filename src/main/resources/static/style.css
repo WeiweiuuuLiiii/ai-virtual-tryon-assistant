@@ -6263,8 +6263,252 @@ input::placeholder, textarea::placeholder { color: var(--text-faint) !important;
   }
   .landing-mirror-wrap { width: 280px; height: 360px; }
   .landing-mirror      { width: 190px; height: 268px; }
-  .landing-chip-1, .landing-chip-3, .landing-chip-5 { left: -18%; }
-  .landing-chip-2, .landing-chip-4, .landing-chip-6 { right: -22%; }
   .landing-ctas        { justify-content: center; }
   .landing-feature-row { justify-content: center; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   PART A — LANDING CHIP SPACING (Issue 27 follow-up 2)
+   Chips are now children of .landing-stage (full viewport width),
+   not .landing-mirror-wrap (340px). Positions use fixed px so
+   left chips never clip at the viewport edge.
+═══════════════════════════════════════════════════════════ */
+
+/* More breathing room between mirror and hero */
+.landing-stage { gap: 160px; }
+
+/* Chips overlay the full stage — positioned in stage coordinates */
+.landing-chips { z-index: 2; }
+
+/* Left chips: fixed-px from stage left edge — always in viewport */
+.landing-chip-1 { top: 10%; left: 16px;  right: auto; }
+.landing-chip-3 { top: 44%; left: 12px;  right: auto; }
+.landing-chip-5 { top: 74%; left: 16px;  right: auto; }
+.landing-chip-7 { top: 89%; left: 20px;  right: auto; }
+
+/* Right chips: just right of mirror-wrap (340px + 48px padding = 388px from stage left).
+   Fixed at 400px keeps them in the 160px gap, clear of hero text. */
+.landing-chip-2 { top: 22%; left: 400px; right: auto; }
+.landing-chip-4 { top: 60%; left: 400px; right: auto; }
+.landing-chip-6 { top:  7%; left: 400px; right: auto; }
+
+/* Narrower laptops (~1100px): right chips enter hero territory → hide them */
+@media (max-width: 1100px) {
+  .landing-chip-2,
+  .landing-chip-4,
+  .landing-chip-6 { display: none; }
+}
+
+/* Mobile column layout: no room for any chips */
+@media (max-width: 820px) {
+  .landing-chip-1, .landing-chip-2, .landing-chip-3,
+  .landing-chip-4, .landing-chip-5, .landing-chip-6,
+  .landing-chip-7 { display: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PART B — AI STUDIO GAME-LIKE POLISH (Issue 27 follow-up 2)
+═══════════════════════════════════════════════════════════ */
+
+/* -- Provider: "AI Render Engine" console -- */
+.provider-capability-section { padding: 0 20px; margin-bottom: 12px; }
+.provider-capability-box {
+  background: linear-gradient(135deg, rgba(18,13,38,0.98) 0%, rgba(11,8,24,0.99) 100%);
+  border: 1px solid rgba(168,85,247,0.20);
+  box-shadow: 0 0 28px rgba(168,85,247,0.07), inset 0 1px 0 rgba(255,255,255,0.04);
+  backdrop-filter: blur(14px);
+  padding: 12px 18px;
+}
+.prov-heading {
+  color: #C4A0FA;
+  letter-spacing: .15em;
+  font-weight: 700;
+  font-size: .58rem;
+}
+.prov-select-btn {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(168,85,247,0.16);
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  font-size: .74rem;
+  transition: all .15s;
+}
+.prov-select-btn:hover {
+  border-color: rgba(168,85,247,0.38);
+  color: var(--text);
+  background: rgba(168,85,247,0.07);
+  box-shadow: 0 0 8px rgba(168,85,247,0.10);
+}
+.prov-select-btn.prov-select-active {
+  background: linear-gradient(135deg, rgba(124,58,237,0.28), rgba(168,85,247,0.16));
+  border-color: rgba(168,85,247,0.55);
+  color: #C4A0FA;
+  box-shadow: 0 0 14px rgba(168,85,247,0.20), 0 0 0 1px rgba(168,85,247,0.18);
+}
+
+/* -- Panels: stronger glass + edge glow -- */
+.studio-wardrobe-panel {
+  border-color: rgba(168,85,247,0.16);
+  box-shadow: 0 0 0 1px rgba(168,85,247,0.05), 0 4px 28px rgba(0,0,0,0.45),
+              inset 1px 0 0 rgba(255,255,255,0.03);
+  transition: border-color .2s;
+}
+.studio-mannequin-panel {
+  border-color: rgba(168,85,247,0.22);
+  box-shadow: 0 0 32px rgba(168,85,247,0.11), 0 4px 28px rgba(0,0,0,0.45);
+}
+.studio-preview-panel {
+  border-color: rgba(168,85,247,0.16);
+  box-shadow: 0 0 24px rgba(168,85,247,0.08), 0 4px 28px rgba(0,0,0,0.45);
+  background: rgba(11,9,24,0.90);
+}
+.studio-panel-hdr {
+  background: linear-gradient(90deg, rgba(168,85,247,0.07) 0%, transparent 55%);
+  padding-bottom: 10px;
+}
+
+/* -- Mannequin dressing stage: centre-beam + floor glow -- */
+.studio-stage {
+  background:
+    radial-gradient(ellipse 55% 80% at 50% 42%, rgba(124,58,237,0.16) 0%, transparent 65%),
+    radial-gradient(ellipse 35% 15% at 50% 98%, rgba(168,85,247,0.14) 0%, transparent 60%),
+    rgba(6,4,16,0.90);
+  border: 1px solid rgba(168,85,247,0.24);
+  box-shadow: inset 0 0 60px rgba(168,85,247,0.07), 0 0 40px rgba(168,85,247,0.12);
+  position: relative;
+  overflow: hidden;
+}
+.studio-stage::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(168,85,247,0.28) 25%,
+    rgba(168,85,247,0.42) 50%,
+    rgba(168,85,247,0.28) 75%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+.studio-stage::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 64%;
+  height: 22px;
+  background: radial-gradient(ellipse at center, rgba(168,85,247,0.28) 0%, transparent 68%);
+  pointer-events: none;
+}
+
+/* -- Equipment drop zones: vivid gear-slot neon -- */
+.studio-dz, .studio-outerwear-slot {
+  border: 1.5px dashed rgba(168,85,247,0.30);
+  background: rgba(168,85,247,0.03);
+}
+.studio-dz:hover, .studio-outerwear-slot:hover,
+.studio-dz.drag-over, .studio-outerwear-slot.drag-over {
+  background: rgba(168,85,247,0.11);
+  border-color: rgba(168,85,247,0.65);
+  box-shadow: inset 0 0 24px rgba(168,85,247,0.12), 0 0 18px rgba(168,85,247,0.16);
+}
+.studio-dz.slot-filled, .studio-outerwear-slot.slot-filled {
+  border-style: solid;
+  border-color: rgba(168,85,247,0.42);
+  background: rgba(168,85,247,0.07);
+}
+
+/* -- Mode switch: game-toggle style -- */
+.outfit-mode-switch {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(168,85,247,0.15);
+  border-radius: 10px;
+  padding: 3px;
+}
+.mode-btn {
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  border-radius: 8px;
+  font-size: .78rem;
+  transition: all .16s;
+}
+.mode-btn:hover:not(.mode-active) {
+  color: var(--text);
+  background: rgba(168,85,247,0.07);
+}
+.mode-btn.mode-active {
+  background: linear-gradient(135deg, rgba(124,58,237,0.55), rgba(168,85,247,0.38));
+  color: #fff;
+  box-shadow: 0 0 14px rgba(168,85,247,0.22);
+}
+
+/* -- Preview idle state: dark AI mirror frame -- */
+.tryon-preview-idle-state {
+  background:
+    radial-gradient(ellipse 65% 55% at 50% 38%, rgba(124,58,237,0.09) 0%, transparent 62%),
+    rgba(8,6,18,0.72);
+  border: 1.5px dashed rgba(168,85,247,0.22);
+}
+.tryon-preview-idle-state svg { stroke: rgba(168,85,247,0.50); opacity: .45; }
+.tryon-preview-idle-state .tryon-state-msg { color: var(--text-muted); }
+.tryon-preview-idle-state .tryon-state-sub { color: var(--text-faint); }
+
+/* -- Generate button: ready-state glow pulse -- */
+@keyframes generateReadyPulse {
+  0%, 100% { box-shadow: 0 0 16px rgba(168,85,247,0.28), 0 2px 8px rgba(0,0,0,0.4); }
+  50%       { box-shadow: 0 0 32px rgba(168,85,247,0.52), 0 2px 8px rgba(0,0,0,0.4); }
+}
+#studio-generate-btn:not(:disabled) {
+  animation: generateReadyPulse 2.8s ease-in-out infinite;
+}
+
+/* -- Accessory hotbar -- */
+.studio-extras {
+  background: rgba(255,255,255,0.015);
+  border: 1px solid rgba(168,85,247,0.10);
+  border-radius: 10px;
+  padding: 6px 8px;
+}
+
+/* -- Complete the Look: hover lift on AI suggestion cards -- */
+.complete-look-section { border-color: rgba(168,85,247,0.18); }
+.complete-look-card { transition: all .18s cubic-bezier(.4,0,.2,1); }
+.complete-look-card:hover {
+  border-color: rgba(168,85,247,0.35);
+  box-shadow: 0 0 18px rgba(168,85,247,0.14), 0 4px 12px rgba(0,0,0,0.4);
+  transform: translateY(-2px);
+}
+
+/* -- Color Fit: match-score card -- */
+.color-fit-section { border-color: rgba(52,211,153,0.14); }
+.color-fit-title {
+  background: linear-gradient(90deg, #34D399, #6EE7B7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* -- Planned Edits: gold loadout tray -- */
+#plan-section { border-color: rgba(212,184,150,0.18); }
+
+/* -- Wardrobe cards: collectible hover lift -- */
+.studio-asset-card { transition: all .18s cubic-bezier(.4,0,.2,1); }
+.studio-asset-card:hover {
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0 0 22px rgba(168,85,247,0.16), 0 6px 20px rgba(0,0,0,0.45);
+  border-color: rgba(168,85,247,0.40);
+}
+
+/* -- Preview result: fade-in from dark -- */
+#tryon-state-ready { animation: fadeSlideUp .4s ease both; }
+
+/* -- Layout: tighter HUD composition -- */
+.studio-layout { padding: 0 20px 24px; gap: 16px; }
