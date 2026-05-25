@@ -6912,7 +6912,11 @@ input::placeholder, textarea::placeholder { color: var(--text-faint) !important;
 .demo-gate-input::placeholder { color: rgba(255,255,255,0.25); }
 
 .demo-gate-btn-apply {
-  padding: 7px 14px;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 8px;
+  padding: 8px 14px;
   background: linear-gradient(135deg, rgba(168,85,247,0.85), rgba(124,58,237,0.85));
   border: none;
   border-radius: var(--radius-sm);
@@ -6921,7 +6925,7 @@ input::placeholder, textarea::placeholder { color: var(--text-faint) !important;
   font-weight: 600;
   cursor: pointer;
   transition: all .16s;
-  white-space: nowrap;
+  text-align: center;
 }
 .demo-gate-btn-apply:hover {
   background: linear-gradient(135deg, rgba(168,85,247,1), rgba(124,58,237,1));
