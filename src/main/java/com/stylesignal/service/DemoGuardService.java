@@ -49,20 +49,23 @@ public class DemoGuardService {
         if (current >= dailyLimit) {
             log.warn("Demo daily limit reached — count={}", current);
             throw new DemoGuardException(
-                "Daily generation limit reached. The demo resets tomorrow.");
+                "Today's public demo generation limit has been reached. " +
+                "Contact Weiwei Li for a live walkthrough.");
         }
 
         Set<String> validCodes = parseValidCodes();
         if (validCodes.isEmpty()) {
             throw new DemoGuardException(
-                "Demo mode is active but no demo codes are configured. Contact the owner.");
+                "Live AI generation is credit-protected in this public demo. " +
+                "Contact Weiwei Li for a private demo code or live walkthrough.");
         }
 
         String trimmed = (code != null) ? code.trim() : "";
         if (!validCodes.contains(trimmed)) {
             log.warn("Demo: invalid or missing code — provided={}", trimmed.isEmpty() ? "(empty)" : "[redacted]");
             throw new DemoGuardException(
-                "Enter a valid demo code to use this feature.");
+                "Live AI generation is credit-protected in this public demo. " +
+                "Contact Weiwei Li for a private demo code or live walkthrough.");
         }
 
         AtomicInteger perCode = codeUsage.computeIfAbsent(trimmed, k -> new AtomicInteger(0));
@@ -70,7 +73,8 @@ public class DemoGuardService {
         if (perCodeCount >= demoCodeMaxUses) {
             log.warn("Demo: per-code limit reached — count={}", perCodeCount);
             throw new DemoGuardException(
-                "This demo code has reached its generation limit. Request a new code.");
+                "This demo code has reached its live generation limit. " +
+                "Contact Weiwei Li for more access or a live walkthrough.");
         }
 
         dailyCount.incrementAndGet();

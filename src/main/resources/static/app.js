@@ -102,7 +102,10 @@ function setDemoCode(code) {
 }
 
 function handleDemoLocked(message) {
-  showToast(message || 'Enter a demo code to use this feature.', true);
+  const text = message ||
+    'Live AI generation is credit-protected in this public demo. ' +
+    'Contact Weiwei Li for a private demo code or live walkthrough.';
+  showToast(text);
   const panel = document.getElementById('demo-gate-panel');
   if (panel && panel.classList.contains('hidden')) {
     panel.classList.remove('hidden');

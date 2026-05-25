@@ -6872,11 +6872,18 @@ input::placeholder, textarea::placeholder { color: var(--text-faint) !important;
 }
 .demo-gate-panel.hidden { display: none; }
 
+.demo-gate-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 6px;
+  letter-spacing: .02em;
+}
 .demo-gate-hint {
-  font-size: 0.75rem;
-  color: var(--muted);
+  font-size: 0.72rem;
+  color: var(--text-muted);
   margin: 0 0 10px;
-  line-height: 1.45;
+  line-height: 1.5;
 }
 
 .demo-gate-row {
