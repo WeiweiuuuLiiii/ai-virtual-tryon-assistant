@@ -114,6 +114,8 @@ function handleDemoLocked(message) {
   }
 }
 
+const DEMO_INTRO_DISMISSED_KEY = 'demoAccessIntroDismissed';
+
 function setupDemoGate() {
   const toggleBtn  = document.getElementById('demo-gate-toggle');
   const panel      = document.getElementById('demo-gate-panel');
@@ -125,6 +127,11 @@ function setupDemoGate() {
 
   if (!toggleBtn || !panel) return;
 
+  function closePanel() {
+    panel.classList.add('hidden');
+    localStorage.setItem(DEMO_INTRO_DISMISSED_KEY, 'true');
+  }
+
   // Restore persisted code on load
   const saved = getDemoCode();
   if (saved) {
@@ -134,14 +141,19 @@ function setupDemoGate() {
   }
 
   toggleBtn.addEventListener('click', () => {
-    panel.classList.toggle('hidden');
-    if (!panel.classList.contains('hidden')) input?.focus();
+    const isOpen = !panel.classList.contains('hidden');
+    if (isOpen) {
+      closePanel();
+    } else {
+      panel.classList.remove('hidden');
+      input?.focus();
+    }
   });
 
   // Close panel on click outside
   document.addEventListener('click', (e) => {
     if (!panel.contains(e.target) && !toggleBtn.contains(e.target)) {
-      panel.classList.add('hidden');
+      if (!panel.classList.contains('hidden')) closePanel();
     }
   });
 
@@ -157,7 +169,7 @@ function setupDemoGate() {
       if (labelEl) labelEl.textContent = 'Demo';
       toggleBtn.classList.remove('demo-gate-active');
     }
-    setTimeout(() => panel.classList.add('hidden'), 800);
+    setTimeout(() => closePanel(), 800);
   }
 
   applyBtn?.addEventListener('click', applyCode);
@@ -169,7 +181,21 @@ function setupDemoGate() {
     if (statusEl) { statusEl.textContent = 'Code cleared.'; statusEl.className = 'demo-gate-status'; }
     if (labelEl) labelEl.textContent = 'Demo';
     toggleBtn.classList.remove('demo-gate-active');
+    // Clear leaves panel open so user can immediately enter a new code
   });
+
+  // Auto-open on first public demo visit — only if no saved code and not yet dismissed
+  if (!getDemoCode() && !localStorage.getItem(DEMO_INTRO_DISMISSED_KEY)) {
+    fetch(`${API}/api/demo-config`)
+      .then(r => r.json())
+      .then(cfg => {
+        if (cfg.publicDemoMode) {
+          panel.classList.remove('hidden');
+          input?.focus();
+        }
+      })
+      .catch(() => {});
+  }
 }
 
 /* ── Boot ───────────────────────────────────────────────────── */

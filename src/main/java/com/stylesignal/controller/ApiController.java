@@ -86,6 +86,13 @@ public class ApiController {
         return ResponseEntity.internalServerError().body(err);
     }
 
+    // ── Demo Config ───────────────────────────────────────────────────────────
+
+    @GetMapping("/demo-config")
+    public ResponseEntity<Map<String, Object>> demoConfig() {
+        return ResponseEntity.ok(demoGuard.getDemoConfig());
+    }
+
     // ── Style Profile ─────────────────────────────────────────────────────────
 
     @GetMapping("/profile")

@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -125,6 +127,13 @@ public class DemoGuardService {
                 }
             }
         }
+    }
+
+    public Map<String, Object> getDemoConfig() {
+        Map<String, Object> cfg = new LinkedHashMap<>();
+        cfg.put("publicDemoMode",       publicDemoMode);
+        cfg.put("sampleResultsEnabled", sampleResultsEnabled);
+        return cfg;
     }
 
     private Set<String> parseValidCodes() {
