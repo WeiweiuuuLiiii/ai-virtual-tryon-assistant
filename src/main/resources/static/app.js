@@ -895,7 +895,7 @@ function renderAssetLibrary() {
     const card = document.createElement('div');
     const needsItemChoice = asset.ambiguous && !asset.userTypeOverride && asset.possibleTypes.length > 1;
     card.className   = 'asset-card';
-    card.draggable   = !needsItemChoice;
+    card.draggable   = true; // always draggable — drop target determines role
     card.dataset.assetId = asset.id;
     const assigned = Object.values(state.slotAssignments).includes(asset.id);
     if (assigned) card.classList.add('asset-assigned');
@@ -972,9 +972,11 @@ function resolveAmbiguousType(assetId, chosenType) {
 function assignAssetToSlot(assetId, slotKey) {
   const asset = state.clothingAssets.find(a => a.id === assetId);
   if (!asset) return;
-  if (asset.ambiguous && !asset.userTypeOverride && asset.possibleTypes.length > 1) {
-    showToast('Choose which item to use from this image before assigning it.', true);
-    return;
+  // Auto-resolve type to the drop target slot — the user's drop intent is the type.
+  if (ASSET_TYPES.some(t => t.key === slotKey)) {
+    asset.type             = slotKey;
+    asset.userTypeOverride = true;
+    asset.ambiguous        = false;
   }
   Object.keys(state.slotAssignments).forEach(s => {
     if (state.slotAssignments[s] === assetId) state.slotAssignments[s] = null;
@@ -1468,9 +1470,10 @@ async function runTryOnGenerate() {
     return;
   }
 
-  // Derive rules from selected provider's capability metadata
+  // Derive rules from selected provider's capability metadata.
+  // GPT Image is always the engine; fall back to its known limits if provider data hasn't loaded yet.
   const provCap        = getSelectedProviderCapability();
-  const maxGarments    = provCap?.max_garments    ?? 1;
+  const maxGarments    = provCap?.max_garments    ?? 16;  // GPT Image supports up to 16
   const unsupportedSls = provCap?.unsupported_slots ?? [];
   const isMultiGarment = maxGarments > 1;
   const isVideo        = provCap?.output_type === 'video';

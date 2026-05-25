@@ -517,14 +517,40 @@ public class OpenAiImageService {
 
     private String buildPrompt(List<GarmentItem> garments, String outfitMode, String hairAccessoryPlacement) {
         StringBuilder sb = new StringBuilder();
-        sb.append("Photorealistic virtual try-on: dress the person from the first image ");
-        sb.append("in the exact garments and accessories shown in the following reference images. ");
+
+        // Task opening
+        sb.append("Photorealistic virtual try-on. The first image shows the model/person. ");
+
+        // Explicit numbered assignment list
+        sb.append("Assigned items — reference images in order: ");
         for (int i = 0; i < garments.size(); i++) {
-            sb.append("Reference image ").append(i + 2).append(": ").append(garments.get(i).slot()).append(". ");
+            String role = garments.get(i).slot().replace('_', ' ');
+            sb.append((i + 1)).append(") image ").append(i + 2).append(" = ").append(role).append("; ");
         }
-        sb.append("Use each uploaded reference item according to its slot label. ");
-        sb.append("Place accessories naturally on the same person. ");
-        sb.append("If an accessory is uploaded, apply it as that accessory only. ");
+
+        // Mandatory multi-garment rule
+        sb.append("Apply EVERY assigned item. Do not omit, ignore, or replace any item from the list. ");
+        if (garments.size() > 1) {
+            sb.append("Compose all assigned items together into one coherent outfit on the same person. ");
+        }
+
+        // Role-specific mandatory rules for common combinations
+        boolean hasDress  = garments.stream().anyMatch(g -> "dress".equals(g.slot()));
+        boolean hasTop    = garments.stream().anyMatch(g -> "top".equals(g.slot()));
+        boolean hasBottom = garments.stream().anyMatch(g -> "bottom".equals(g.slot()));
+        boolean hasShoes  = garments.stream().anyMatch(g -> "shoes".equals(g.slot()));
+
+        if (hasDress) {
+            sb.append("MANDATORY: the dress/skirt from the reference image is the primary clothing garment — it must appear in the output. ");
+            sb.append("Do not drop, omit, or replace the dress/skirt with anything else. ");
+        }
+        if (hasTop && hasBottom) {
+            sb.append("MANDATORY: both the top and bottom from the reference images must appear together as the outfit. ");
+        }
+        if (hasShoes && (hasDress || hasTop || hasBottom)) {
+            sb.append("MANDATORY: the shoes must appear on the feet as footwear. ");
+            sb.append("Do not replace the main outfit garment with the shoes — both must be present. ");
+        }
 
         // Dress mode stability guardrails
         if ("dress".equalsIgnoreCase(outfitMode)) {
