@@ -40,7 +40,7 @@ const state = {
   tryOnPreview: { status: 'idle', mode: null, imageUrl: null, videoUrl: null, message: null },
   // Provider capability matrix (Issue #7)
   tryOnProviders: null,
-  selectedProviderId: null,
+  selectedProviderId: 'gpt_image_static_tryon',
   // Scene check
   sceneCheckScene: null,
   sceneCheckVibe: null,
@@ -1180,7 +1180,11 @@ async function loadTryOnProviders() {
     // Public demo: always use GPT Image — other providers are hidden from the UI.
     state.selectedProviderId = 'gpt_image_static_tryon';
     renderProviderCapability();
-  } catch (_) {}
+  } catch (_) {
+    // Capability endpoint unreachable — GPT Image remains the hard default.
+    state.selectedProviderId = 'gpt_image_static_tryon';
+    renderProviderCapability();
+  }
 }
 
 function getSelectedProviderCapability() {
@@ -1544,7 +1548,7 @@ async function runTryOnGenerate() {
 
   try {
     const form = new FormData();
-    if (state.selectedProviderId)  form.append('provider_id',  state.selectedProviderId);
+    form.append('provider_id', 'gpt_image_static_tryon');
     if (state.model?.body_shape)   form.append('body_shape',   state.model.body_shape);
     form.append('outfit_mode', state.outfitMode);
     if (state.slotAssignments.hair_accessory && state.hairAccessoryPlacement) {
