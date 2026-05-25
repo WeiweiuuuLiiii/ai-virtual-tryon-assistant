@@ -3752,7 +3752,7 @@ body.lightbox-open { overflow: hidden; }
 }
 .complete-look-hdr {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 10px;
@@ -3800,7 +3800,7 @@ body.lightbox-open { overflow: hidden; }
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 8px 10px;
-  min-width: 220px;
+  min-width: 300px;
   flex-shrink: 0;
   scroll-snap-align: start;
 }
@@ -3905,8 +3905,9 @@ body.lightbox-open { overflow: hidden; }
 /* ── Complete the Look — Issue #19 additions ─────────────────── */
 .complete-look-hdr-left {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
   flex: 1;
   min-width: 0;
 }
