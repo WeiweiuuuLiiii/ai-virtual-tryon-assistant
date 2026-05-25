@@ -50,14 +50,16 @@ public class DemoGuardService {
             log.warn("Demo daily limit reached — count={}", current);
             throw new DemoGuardException(
                 "Today's public demo generation limit has been reached. " +
-                "Contact Weiwei Li for a live walkthrough.");
+                "You can still explore the UI and saved-look workflows, " +
+                "or contact Weiwei Li for a live walkthrough.");
         }
 
         Set<String> validCodes = parseValidCodes();
         if (validCodes.isEmpty()) {
             throw new DemoGuardException(
                 "Live AI generation is credit-protected in this public demo. " +
-                "Contact Weiwei Li for a private demo code or live walkthrough.");
+                "You can still explore the UI and saved-look workflows, " +
+                "or contact Weiwei Li for a private demo code or live walkthrough.");
         }
 
         String trimmed = (code != null) ? code.trim() : "";
@@ -65,7 +67,8 @@ public class DemoGuardService {
             log.warn("Demo: invalid or missing code — provided={}", trimmed.isEmpty() ? "(empty)" : "[redacted]");
             throw new DemoGuardException(
                 "Live AI generation is credit-protected in this public demo. " +
-                "Contact Weiwei Li for a private demo code or live walkthrough.");
+                "You can still explore the UI and saved-look workflows, " +
+                "or contact Weiwei Li for a private demo code or live walkthrough.");
         }
 
         AtomicInteger perCode = codeUsage.computeIfAbsent(trimmed, k -> new AtomicInteger(0));
@@ -74,7 +77,8 @@ public class DemoGuardService {
             log.warn("Demo: per-code limit reached — count={}", perCodeCount);
             throw new DemoGuardException(
                 "This demo code has reached its live generation limit. " +
-                "Contact Weiwei Li for more access or a live walkthrough.");
+                "You can still explore the UI and saved-look workflows, " +
+                "or contact Weiwei Li for more access or a live walkthrough.");
         }
 
         dailyCount.incrementAndGet();

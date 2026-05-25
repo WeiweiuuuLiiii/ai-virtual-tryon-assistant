@@ -104,7 +104,8 @@ function setDemoCode(code) {
 function handleDemoLocked(message) {
   const text = message ||
     'Live AI generation is credit-protected in this public demo. ' +
-    'Contact Weiwei Li for a private demo code or live walkthrough.';
+    'You can still explore the UI and saved-look workflows, ' +
+    'or contact Weiwei Li for a private demo code or live walkthrough.';
   showToast(text);
   const panel = document.getElementById('demo-gate-panel');
   if (panel && panel.classList.contains('hidden')) {
