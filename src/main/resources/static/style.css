@@ -6959,3 +6959,12 @@ input::placeholder, textarea::placeholder { color: var(--text-faint) !important;
   min-height: 1em;
 }
 .demo-gate-status.ok { color: rgba(52,211,153,0.85); }
+
+.demo-gate-sample-note {
+  font-size: 0.67rem;
+  color: var(--text-faint, rgba(255,255,255,0.28));
+  margin: 8px 0 0;
+  line-height: 1.5;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding-top: 7px;
+}
