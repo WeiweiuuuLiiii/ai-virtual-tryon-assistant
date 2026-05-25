@@ -4468,18 +4468,23 @@ function renderSavedLooks() {
             <button class="btn-look-compare${cmpCls}" data-id="${escHtml(look.id)}">${cmpLabel}</button>
             <button class="btn-look-delete" data-id="${escHtml(look.id)}">Delete</button>
           </div>
-          ${state.looksScene ? (() => {
+          ${(() => {
             const inFlight = state.looksSceneInFlight.has(look.id);
+            // Always show the row while in-flight (even if dropdown switches to All Scenes).
             if (inFlight) {
               return `<div class="look-card-scene-row">
                 <span class="look-scene-generating">Generating scene version…</span>
                 <button class="btn-look-scene-cancel" data-id="${escHtml(look.id)}">Cancel</button>
               </div>`;
             }
-            return `<div class="look-card-scene-row">
-              <button class="btn-look-scene" data-id="${escHtml(look.id)}">&#127775; Apply Scene</button>
-            </div>`;
-          })() : ''}
+            // Show Apply Scene only when a scene is selected.
+            if (state.looksScene) {
+              return `<div class="look-card-scene-row">
+                <button class="btn-look-scene" data-id="${escHtml(look.id)}">&#127775; Apply Scene</button>
+              </div>`;
+            }
+            return '';
+          })()}
         </div>
       </div>`;
   }).join('');
@@ -4986,8 +4991,11 @@ async function applySceneToLook(lookId) {
   const look = state.savedLooks.find(l => l.id === lookId);
   if (!look || !state.looksScene) return;
 
-  const prevEntry = state.looksSceneInFlight.get(lookId);
-  const reqId     = (prevEntry?.reqId ?? 0) + 1;
+  // Capture scene at request start — do not read state.looksScene after any await.
+  const scene = state.looksScene;
+
+  const prevEntry  = state.looksSceneInFlight.get(lookId);
+  const reqId      = (prevEntry?.reqId ?? 0) + 1;
   const controller = new AbortController();
   state.looksSceneInFlight.set(lookId, { controller, reqId });
   renderSavedLooks();
@@ -4998,7 +5006,7 @@ async function applySceneToLook(lookId) {
 
     const form = new FormData();
     form.append('preview_image', imgBlob, 'look.jpg');
-    form.append('scene', state.looksScene);
+    form.append('scene', scene);
 
     const resp = await fetch(`${API}/api/try-on/scene-version`, {
       method: 'POST',
@@ -5021,8 +5029,8 @@ async function applySceneToLook(lookId) {
       return;
     }
 
-    const label = `${look.label} — ${sceneLabel(state.looksScene)}`;
-    saveLook(result.imageUrl, 'scene', label, null, state.looksScene, lookId);
+    const label = `${look.label} — ${sceneLabel(scene)}`;
+    saveLook(result.imageUrl, 'scene', label, null, scene, lookId);
     showToast('Scene version saved to Look Archive.');
   } catch (err) {
     if (err.name === 'AbortError') {
