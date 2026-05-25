@@ -2908,16 +2908,18 @@ function renderCompleteTheLook() {
     const inPlan     = state.planItems.some(p => p.slot === s.slot && p.name === s.name);
     return `
       <div class="complete-look-card${isSelected ? ' ctl-selected' : ''}">
-        <button class="ctl-card-check${isSelected ? ' ctl-checked' : ''}"
-                data-index="${i}" ${inFlight ? 'disabled' : ''}
-                title="${isSelected ? 'Deselect' : 'Select for batch add'}">&#10003;</button>
-        <div class="complete-look-card-thumb">
-          <img src="${thumb}" alt="${slotLbl}" draggable="false" />
-        </div>
-        <div class="complete-look-card-info">
-          <span class="complete-look-card-slot">${slotLbl}</span>
-          <span class="complete-look-card-name">${s.name || ''}</span>
-          <span class="complete-look-card-reason">${s.reason || ''}</span>
+        <div class="ctl-card-top">
+          <button class="ctl-card-check${isSelected ? ' ctl-checked' : ''}"
+                  data-index="${i}" ${inFlight ? 'disabled' : ''}
+                  title="${isSelected ? 'Deselect' : 'Select for batch add'}">&#10003;</button>
+          <div class="complete-look-card-thumb">
+            <img src="${thumb}" alt="${slotLbl}" draggable="false" />
+          </div>
+          <div class="complete-look-card-info">
+            <span class="complete-look-card-slot">${slotLbl}</span>
+            <span class="complete-look-card-name">${s.name || ''}</span>
+            <span class="complete-look-card-reason">${s.reason || ''}</span>
+          </div>
         </div>
         <div class="complete-look-card-actions">
           <button class="btn-add-to-look" data-index="${i}" ${inFlight ? 'disabled' : ''}>${addTxt}</button>
