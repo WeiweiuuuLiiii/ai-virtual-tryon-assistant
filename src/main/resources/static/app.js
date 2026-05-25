@@ -36,6 +36,7 @@ const state = {
   studioVibe:   null,
   studioWeather: null,
   studioStep:   'build',
+  studioHeroMode: 'build',    // 'build' | 'try_whole'
   // Try-On Preview (Issue #5)
   tryOnPreview: { status: 'idle', mode: null, imageUrl: null, videoUrl: null, message: null },
   // Provider capability matrix (Issue #7)
@@ -289,39 +290,46 @@ function setupTabs() {
 }
 
 /* ── Landing ─────────────────────────────────────────────────── */
+function setStudioHeroMode(mode) {
+  state.studioHeroMode = mode;
+  document.querySelectorAll('.studio-mode-card').forEach(card => {
+    const matches = card.classList.contains('studio-mode-featured')
+      ? mode === 'try_whole'
+      : mode === 'build';
+    card.classList.toggle('mode-active', matches);
+  });
+}
+
 function setupLanding() {
-  const enterBtn = document.getElementById('landing-enter-btn');
+  const enterBtn  = document.getElementById('landing-enter-btn');
   const outfitBtn = document.getElementById('landing-outfit-btn');
 
   if (enterBtn) {
     enterBtn.addEventListener('click', () => {
       document.querySelector('[data-tab="studio"]')?.click();
+      setStudioHeroMode('build');
     });
   }
 
   if (outfitBtn) {
     outfitBtn.addEventListener('click', () => {
       document.querySelector('[data-tab="studio"]')?.click();
-      setTimeout(() => document.getElementById('btn-add-outfit-ref')?.click(), 150);
+      setStudioHeroMode('try_whole');
     });
   }
 
-  // Studio hero mode cards — clickable shortcuts
-  const modeCards = document.querySelectorAll('.studio-mode-card');
-  modeCards.forEach(card => {
+  // Studio hero mode cards — mode selector only, no file picker
+  document.querySelectorAll('.studio-mode-card').forEach(card => {
     card.style.cursor = 'pointer';
     card.addEventListener('click', () => {
       document.querySelector('[data-tab="studio"]')?.click();
-      const isFeatured = card.classList.contains('studio-mode-featured');
-      if (isFeatured) {
-        // Try Whole Outfit → open outfit reference upload
-        setTimeout(() => document.getElementById('btn-add-outfit-ref')?.click(), 150);
-      } else {
-        // Build Your Look → open wardrobe item upload
-        setTimeout(() => document.getElementById('studio-add-item-btn')?.click(), 150);
-      }
+      const mode = card.classList.contains('studio-mode-featured') ? 'try_whole' : 'build';
+      setStudioHeroMode(mode);
     });
   });
+
+  // Initialize default active card
+  setStudioHeroMode('build');
 }
 
 /* ── Model: Load ────────────────────────────────────────────── */
@@ -989,6 +997,7 @@ function resolveAmbiguousType(assetId, chosenType) {
 function assignAssetToSlot(assetId, slotKey) {
   const asset = state.clothingAssets.find(a => a.id === assetId);
   if (!asset) return;
+  setStudioHeroMode('build');
   // Auto-resolve type to the drop target slot — the user's drop intent is the type.
   if (ASSET_TYPES.some(t => t.key === slotKey)) {
     asset.type             = slotKey;
@@ -2279,7 +2288,7 @@ function setupOutfitRef() {
   const tryBtn = document.getElementById('btn-try-whole-outfit');
 
   if (btn && input) {
-    btn.addEventListener('click', () => input.click());
+    btn.addEventListener('click', () => { setStudioHeroMode('try_whole'); input.click(); });
     input.addEventListener('change', e => {
       const file = e.target.files?.[0];
       if (file) handleOutfitRefUpload(file);
@@ -2291,6 +2300,7 @@ function setupOutfitRef() {
 }
 
 function handleOutfitRefUpload(file) {
+  setStudioHeroMode('try_whole');
   if (state.outfitRefUrl) URL.revokeObjectURL(state.outfitRefUrl);
   state.outfitRefFile     = file;
   state.outfitRefUrl      = URL.createObjectURL(file);
@@ -3428,8 +3438,9 @@ function setupStudio() {
   // Asset upload: button + file input
   const addItemBtn   = document.getElementById('studio-add-item-btn');
   const assetInput   = document.getElementById('studio-asset-input');
-  addItemBtn?.addEventListener('click', () => assetInput?.click());
+  addItemBtn?.addEventListener('click', () => { setStudioHeroMode('build'); assetInput?.click(); });
   assetInput?.addEventListener('change', () => {
+    setStudioHeroMode('build');
     Array.from(assetInput.files).forEach(f => addClothingAsset(f));
     assetInput.value = '';
   });

@@ -5447,6 +5447,17 @@ body {
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+.studio-mode-card.mode-active {
+  border-color: rgba(168,85,247,0.70) !important;
+  box-shadow: 0 0 22px rgba(168,85,247,0.22), inset 0 0 0 1px rgba(168,85,247,0.12);
+  transform: translateY(-1px);
+}
+.studio-mode-card.mode-active .studio-mode-name {
+  color: rgba(255,255,255,0.97);
+}
+.studio-mode-card.mode-active .studio-mode-desc {
+  color: rgba(255,255,255,0.60);
+}
 
 /* ── Panels — glass ─────────────────────────────────────────── */
 .studio-wardrobe-panel,
