@@ -67,7 +67,7 @@ const state = {
   savedLooks: [],
   looksCompareSelected: new Set(),
   looksScene: '',                   // selected scene key for Apply Scene
-  looksSceneInFlight: new Map(),    // lookId → true while scene-version is generating
+  looksSceneInFlight: new Map(),    // lookId → { controller: AbortController, reqId: number }
   // Generation Plan (Issue 26)
   planItems: [],
   planFitShift: 'none',
@@ -4470,10 +4470,14 @@ function renderSavedLooks() {
           </div>
           ${state.looksScene ? (() => {
             const inFlight = state.looksSceneInFlight.has(look.id);
+            if (inFlight) {
+              return `<div class="look-card-scene-row">
+                <span class="look-scene-generating">Generating scene version…</span>
+                <button class="btn-look-scene-cancel" data-id="${escHtml(look.id)}">Cancel</button>
+              </div>`;
+            }
             return `<div class="look-card-scene-row">
-              <button class="btn-look-scene" data-id="${escHtml(look.id)}" ${inFlight ? 'disabled' : ''}>
-                ${inFlight ? 'Generating scene version…' : '&#127775; Apply Scene'}
-              </button>
+              <button class="btn-look-scene" data-id="${escHtml(look.id)}">&#127775; Apply Scene</button>
             </div>`;
           })() : ''}
         </div>
@@ -4513,6 +4517,9 @@ function renderSavedLooks() {
   });
   grid.querySelectorAll('.btn-look-scene').forEach(btn => {
     btn.addEventListener('click', () => applySceneToLook(btn.dataset.id));
+  });
+  grid.querySelectorAll('.btn-look-scene-cancel').forEach(btn => {
+    btn.addEventListener('click', () => cancelSceneGeneration(btn.dataset.id));
   });
 
   renderCompareBoard();
@@ -4979,11 +4986,14 @@ async function applySceneToLook(lookId) {
   const look = state.savedLooks.find(l => l.id === lookId);
   if (!look || !state.looksScene) return;
 
-  state.looksSceneInFlight.set(lookId, true);
+  const prevEntry = state.looksSceneInFlight.get(lookId);
+  const reqId     = (prevEntry?.reqId ?? 0) + 1;
+  const controller = new AbortController();
+  state.looksSceneInFlight.set(lookId, { controller, reqId });
   renderSavedLooks();
 
   try {
-    const imgResp = await fetch(look.imageUrl);
+    const imgResp = await fetch(look.imageUrl, { signal: controller.signal });
     const imgBlob = await imgResp.blob();
 
     const form = new FormData();
@@ -4994,8 +5004,13 @@ async function applySceneToLook(lookId) {
       method: 'POST',
       headers: { 'X-Demo-Code': getDemoCode() },
       body: form,
+      signal: controller.signal,
     });
     const result = await resp.json();
+
+    // Stale-result guard: discard if a newer request has taken over
+    const current = state.looksSceneInFlight.get(lookId);
+    if (!current || current.reqId !== reqId) return;
 
     if (result.status === 'demo_locked') {
       handleDemoLocked(result.message);
@@ -5009,12 +5024,25 @@ async function applySceneToLook(lookId) {
     const label = `${look.label} — ${sceneLabel(state.looksScene)}`;
     saveLook(result.imageUrl, 'scene', label, null, state.looksScene, lookId);
     showToast('Scene version saved to Look Archive.');
-  } catch (_) {
-    showToast('Scene version failed. Please try again.', true);
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      showToast('Scene generation cancelled.');
+    } else {
+      showToast('Scene version failed. Please try again.', true);
+    }
   } finally {
-    state.looksSceneInFlight.delete(lookId);
-    renderSavedLooks();
+    const current = state.looksSceneInFlight.get(lookId);
+    if (current && current.reqId === reqId) {
+      state.looksSceneInFlight.delete(lookId);
+      renderSavedLooks();
+    }
   }
+}
+
+function cancelSceneGeneration(lookId) {
+  const entry = state.looksSceneInFlight.get(lookId);
+  if (entry) entry.controller.abort();
+  // State and re-render are handled by the finally block in applySceneToLook
 }
 
 function escHtml(str) {

@@ -5804,9 +5804,34 @@ body {
   color: #FCA67A;
 }
 .look-card-scene-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding-top: 6px;
   border-top: 1px solid rgba(255,255,255,0.05);
   margin-top: 2px;
+}
+.look-scene-generating {
+  flex: 1;
+  font-size: .68rem;
+  color: var(--text-faint);
+  font-style: italic;
+}
+.btn-look-scene-cancel {
+  font-size: .68rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(248,113,113,0.30);
+  background: transparent;
+  color: var(--danger, #f87171);
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.btn-look-scene-cancel:hover {
+  background: rgba(248,113,113,0.10);
+  border-color: rgba(248,113,113,0.50);
 }
 .btn-look-scene {
   width: 100%;
