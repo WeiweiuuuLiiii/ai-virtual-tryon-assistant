@@ -788,6 +788,89 @@ public class OpenAiImageService {
         return out;
     }
 
+    public Map<String, Object> sceneVersion(
+            byte[] imageBytes, String imageType, String scene) throws Exception {
+
+        String boundary = "----OpenAiBoundary" + UUID.randomUUID().toString().replace("-", "");
+        String prompt   = buildSceneVersionPrompt(scene);
+        byte[] body     = buildAddItemBody(boundary, prompt, imageBytes, imageType, null, null, true);
+
+        log.info("GPT Image scene-version request — scene={}", scene);
+
+        HttpRequest req = HttpRequest.newBuilder()
+            .uri(URI.create(OPENAI_API + "/images/edits"))
+            .header("Authorization", "Bearer " + apiKey)
+            .header("Content-Type",  "multipart/form-data; boundary=" + boundary)
+            .POST(HttpRequest.BodyPublishers.ofByteArray(body))
+            .build();
+
+        HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+        boolean usedOptFormat = isUsingOptimizedFormat();
+
+        if (resp.statusCode() != 200 && usedOptFormat) {
+            log.warn("Optimized format rejected for scene-version (HTTP {}); retrying without output_format",
+                     resp.statusCode());
+            String boundary2 = "----OpenAiBoundary" + UUID.randomUUID().toString().replace("-", "");
+            byte[] body2     = buildAddItemBody(boundary2, prompt, imageBytes, imageType, null, null, false);
+            HttpRequest req2 = HttpRequest.newBuilder()
+                .uri(URI.create(OPENAI_API + "/images/edits"))
+                .header("Authorization", "Bearer " + apiKey)
+                .header("Content-Type",  "multipart/form-data; boundary=" + boundary2)
+                .POST(HttpRequest.BodyPublishers.ofByteArray(body2))
+                .build();
+            resp = http.send(req2, HttpResponse.BodyHandlers.ofString());
+            usedOptFormat = false;
+            if (resp.statusCode() != 200) {
+                throwClassified(resp.statusCode(), resp.body(), "scene-version (fallback)");
+            }
+            log.info("GPT Image scene-version succeeded via fallback");
+        } else if (resp.statusCode() != 200) {
+            throwClassified(resp.statusCode(), resp.body(), "scene-version");
+        }
+
+        Map<String, Object> result = mapper.readValue(resp.body(), new TypeReference<>() {});
+        String dataUrl = extractImageDataUrl(result, usedOptFormat);
+        log.info("GPT Image scene-version complete — scene={}", scene);
+
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("status",  "success");
+        out.put("imageUrl", dataUrl);
+        out.put("message",  "Scene version generated.");
+        return out;
+    }
+
+    private String buildSceneVersionPrompt(String scene) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Photorealistic fashion photography. ");
+        sb.append("Keep the outfit and person exactly the same: same garments, garment colors, patterns, ");
+        sb.append("fabric textures, fit, face, skin tone, hair, body shape, and pose. ");
+        sb.append("Do not replace, redesign, or alter any clothing items. ");
+        sb.append("Only change the background, lighting, and atmosphere to match this scene: ");
+        String lower = (scene == null ? "" : scene.toLowerCase().trim());
+        switch (lower) {
+            case "street_night"      -> sb.append(
+                "Evening city street: urban ambient lighting, neon sign reflections on wet pavement, nocturnal city mood.");
+            case "daylight"          -> sb.append(
+                "Bright natural daylight outdoors, clean sunlit shadows, open sky or park background, fresh and clear.");
+            case "warm_indoor"       -> sb.append(
+                "Cozy warm indoor scene with soft golden-hour-style ambient glow, comfortable home or lounge atmosphere.");
+            case "cafe"              -> sb.append(
+                "Warm cafe interior: soft warm lighting, wooden tones, coffee shop ambiance in the background.");
+            case "office"            -> sb.append(
+                "Polished professional office: clean neutral lighting, modern corporate interior background.");
+            case "date_night"        -> sb.append(
+                "Romantic evening: soft candlelight or dim restaurant lighting, elegant dark background.");
+            case "studio_editorial"  -> sb.append(
+                "Fashion editorial studio: seamless light grey backdrop, professional studio strobe lighting, high-fashion look.");
+            case "soft_natural"      -> sb.append(
+                "Soft diffused natural window light, airy minimal indoor background, bright clean atmosphere.");
+            default                  -> sb.append(
+                scene == null ? "original setting" : scene.replace('_', ' '));
+        }
+        sb.append(" Maintain full photorealism. The output must look like a professional fashion photograph.");
+        return sb.toString();
+    }
+
     private String buildPlanPrompt(List<Map<String, String>> planItems, String fitShift, String scene) {
         StringBuilder sb = new StringBuilder();
         sb.append("High-quality virtual styling update: ");

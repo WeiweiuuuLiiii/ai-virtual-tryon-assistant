@@ -66,6 +66,8 @@ const state = {
   // Saved Looks (Issue 25)
   savedLooks: [],
   looksCompareSelected: new Set(),
+  looksScene: '',                   // selected scene key for Apply Scene
+  looksSceneInFlight: new Map(),    // lookId → true while scene-version is generating
   // Generation Plan (Issue 26)
   planItems: [],
   planFitShift: 'none',
@@ -4256,7 +4258,7 @@ function persistLooks() {
   }
 }
 
-function saveLook(imageUrl, source, label, fitAdjustment) {
+function saveLook(imageUrl, source, label, fitAdjustment, scene, parentLookId) {
   if (!imageUrl) return;
   if (state.savedLooks.length >= LOOKS_MAX) {
     showToast('You can save up to 20 looks in this version. Delete one to save a new look.', true);
@@ -4272,6 +4274,8 @@ function saveLook(imageUrl, source, label, fitAdjustment) {
     notes: '',
     favorite: false,
     fitAdjustment: fitAdjustment || null,
+    scene: scene || null,
+    parentLookId: parentLookId || null,
   };
   state.savedLooks.unshift(look);
   if (!persistLooks()) {
@@ -4290,7 +4294,22 @@ function formatLookLabel(source, fitAdjustment) {
               : fitAdjustment === 'size_down' ? 'Size Down' : '';
     return adj ? `Fit Preview — ${adj}` : 'Fit Preview';
   }
+  if (source === 'scene') return 'Scene Version';
   return 'Try-On Look';
+}
+
+function sceneLabel(sceneKey) {
+  const map = {
+    street_night:      'Street Night',
+    daylight:          'Daylight',
+    warm_indoor:       'Warm Indoor',
+    cafe:              'Cafe',
+    office:            'Office',
+    date_night:        'Date Night',
+    studio_editorial:  'Studio Editorial',
+    soft_natural:      'Soft Natural Light',
+  };
+  return map[sceneKey] || (sceneKey ? sceneKey.replace(/_/g, ' ') : '');
 }
 
 function sourceBadgeLabel(source) {
@@ -4302,14 +4321,15 @@ function sourceBadgeLabel(source) {
     'batch_add':    'Batch Add',
     'fit-preview':  'Fit Preview',
     'fit_preview':  'Fit Preview',
+    'scene':        'Scene',
   };
   return map[source] || (source ? source.replace(/[_-]/g, ' ') : 'Try-On');
 }
 
 function sourceBadgeCls(source) {
-  return (source === 'fit-preview' || source === 'fit_preview')
-    ? 'look-badge-fitpreview'
-    : 'look-badge-source';
+  if (source === 'fit-preview' || source === 'fit_preview') return 'look-badge-fitpreview';
+  if (source === 'scene') return 'look-badge-scene';
+  return 'look-badge-source';
 }
 
 function deleteLook(id) {
@@ -4420,6 +4440,7 @@ function renderSavedLooks() {
     let badges = `<span class="look-badge ${sourceBadgeCls(look.source)}">${escHtml(sourceBadgeLabel(look.source))}</span>`;
     if (adj === 'size_up')   badges += `<span class="look-badge look-badge-sizeup">Size Up</span>`;
     if (adj === 'size_down') badges += `<span class="look-badge look-badge-sizedown">Size Down</span>`;
+    if (look.scene) badges += `<span class="look-badge look-badge-scene-name">${escHtml(sceneLabel(look.scene))}</span>`;
 
     const favCls   = look.favorite ? ' look-card-fav-active' : '';
     const selCls   = isSelected    ? ' look-card-selected'    : '';
@@ -4447,6 +4468,14 @@ function renderSavedLooks() {
             <button class="btn-look-compare${cmpCls}" data-id="${escHtml(look.id)}">${cmpLabel}</button>
             <button class="btn-look-delete" data-id="${escHtml(look.id)}">Delete</button>
           </div>
+          ${state.looksScene ? (() => {
+            const inFlight = state.looksSceneInFlight.has(look.id);
+            return `<div class="look-card-scene-row">
+              <button class="btn-look-scene" data-id="${escHtml(look.id)}" ${inFlight ? 'disabled' : ''}>
+                ${inFlight ? 'Generating scene version…' : '&#127775; Apply Scene'}
+              </button>
+            </div>`;
+          })() : ''}
         </div>
       </div>`;
   }).join('');
@@ -4482,6 +4511,9 @@ function renderSavedLooks() {
     el.addEventListener('blur', () => updateLookLabel(el.dataset.id, el.textContent.trim()));
     el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } });
   });
+  grid.querySelectorAll('.btn-look-scene').forEach(btn => {
+    btn.addEventListener('click', () => applySceneToLook(btn.dataset.id));
+  });
 
   renderCompareBoard();
 }
@@ -4506,6 +4538,7 @@ function renderCompareBoard() {
     let badges = `<span class="look-badge ${sourceBadgeCls(look.source)}">${escHtml(sourceBadgeLabel(look.source))}</span>`;
     if (adj === 'size_up')   badges += `<span class="look-badge look-badge-sizeup">Size Up</span>`;
     if (adj === 'size_down') badges += `<span class="look-badge look-badge-sizedown">Size Down</span>`;
+    if (look.scene) badges += `<span class="look-badge look-badge-scene-name">${escHtml(sceneLabel(look.scene))}</span>`;
 
     return `
       <div class="looks-compare-item">
@@ -4935,6 +4968,53 @@ function setupLooks() {
     renderSavedLooks();
     renderCompareBoard();
   });
+
+  document.getElementById('looks-scene-select')?.addEventListener('change', e => {
+    state.looksScene = e.target.value;
+    renderSavedLooks();
+  });
+}
+
+async function applySceneToLook(lookId) {
+  const look = state.savedLooks.find(l => l.id === lookId);
+  if (!look || !state.looksScene) return;
+
+  state.looksSceneInFlight.set(lookId, true);
+  renderSavedLooks();
+
+  try {
+    const imgResp = await fetch(look.imageUrl);
+    const imgBlob = await imgResp.blob();
+
+    const form = new FormData();
+    form.append('preview_image', imgBlob, 'look.jpg');
+    form.append('scene', state.looksScene);
+
+    const resp = await fetch(`${API}/api/try-on/scene-version`, {
+      method: 'POST',
+      headers: { 'X-Demo-Code': getDemoCode() },
+      body: form,
+    });
+    const result = await resp.json();
+
+    if (result.status === 'demo_locked') {
+      handleDemoLocked(result.message);
+      return;
+    }
+    if (result.status !== 'success' || !result.imageUrl) {
+      showToast(result.message || 'Scene version generation failed.', true);
+      return;
+    }
+
+    const label = `${look.label} — ${sceneLabel(state.looksScene)}`;
+    saveLook(result.imageUrl, 'scene', label, null, state.looksScene, lookId);
+    showToast('Scene version saved to Look Archive.');
+  } catch (_) {
+    showToast('Scene version failed. Please try again.', true);
+  } finally {
+    state.looksSceneInFlight.delete(lookId);
+    renderSavedLooks();
+  }
 }
 
 function escHtml(str) {

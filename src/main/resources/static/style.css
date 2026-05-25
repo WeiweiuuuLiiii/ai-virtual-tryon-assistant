@@ -4899,6 +4899,16 @@ body.lightbox-open { overflow: hidden; }
   color: #3B72B0;
   border: 1px solid #93C5FD;
 }
+.look-badge-scene {
+  background: #FFF7ED;
+  color: #C2622A;
+  border: 1px solid #FDBA74;
+}
+.look-badge-scene-name {
+  background: #FFF7ED;
+  color: #C2622A;
+  border: 1px solid #FDBA74;
+}
 .look-card-body {
   display: flex;
   flex-direction: column;
@@ -5786,6 +5796,39 @@ body {
   background: rgba(251,191,36,0.10);
   border-color: rgba(251,191,36,0.25);
   color: #FCD34D;
+}
+.look-badge-scene,
+.look-badge-scene-name {
+  background: rgba(251,146,60,0.12);
+  border-color: rgba(251,146,60,0.30);
+  color: #FCA67A;
+}
+.look-card-scene-row {
+  padding-top: 6px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  margin-top: 2px;
+}
+.btn-look-scene {
+  width: 100%;
+  font-size: .72rem;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(251,146,60,0.35);
+  background: rgba(251,146,60,0.10);
+  color: #FCA67A;
+  cursor: pointer;
+  transition: all .18s;
+  white-space: nowrap;
+}
+.btn-look-scene:hover:not(:disabled) {
+  background: rgba(251,146,60,0.22);
+  box-shadow: 0 0 12px rgba(251,146,60,0.18);
+  transform: translateY(-1px);
+}
+.btn-look-scene:disabled {
+  opacity: .6;
+  cursor: not-allowed;
 }
 
 /* Edit This Look button */

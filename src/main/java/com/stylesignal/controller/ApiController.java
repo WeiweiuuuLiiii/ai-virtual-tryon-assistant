@@ -916,6 +916,49 @@ public class ApiController {
         }
     }
 
+    @PostMapping("/try-on/scene-version")
+    public ResponseEntity<?> generateSceneVersion(
+            @RequestParam("preview_image") MultipartFile previewImage,
+            @RequestParam(value = "scene", defaultValue = "") String scene,
+            @RequestHeader(value = "X-Demo-Code", required = false) String demoCode) throws Exception {
+
+        demoGuard.checkAndIncrement(demoCode);
+        log.info("POST /api/try-on/scene-version — scene={}", scene);
+
+        if (!openAi.isConfigured()) {
+            Map<String, Object> resp = new LinkedHashMap<>();
+            resp.put("status",  "provider_required");
+            resp.put("message", "Scene version requires GPT Image. Add OPENAI_API_KEY to your .env.");
+            return ResponseEntity.ok(resp);
+        }
+
+        if (previewImage == null || previewImage.isEmpty()) {
+            return ResponseEntity.badRequest().body(errorBody("No image provided."));
+        }
+        if (scene == null || scene.isBlank()) {
+            return ResponseEntity.badRequest().body(errorBody("No scene selected."));
+        }
+
+        String mimeType = previewImage.getContentType() != null
+                ? previewImage.getContentType().toLowerCase() : "image/jpeg";
+        if ("image/jpg".equalsIgnoreCase(mimeType)) mimeType = "image/jpeg";
+        byte[] imageBytes = previewImage.getBytes();
+
+        try {
+            Map<String, Object> result = openAi.sceneVersion(imageBytes, mimeType, scene);
+            return ResponseEntity.ok(result);
+        } catch (OpenAiProviderException e) {
+            log.warn("Scene version provider error — category={}", e.getCategory());
+            Map<String, Object> resp = new LinkedHashMap<>();
+            resp.put("status",  "failed");
+            resp.put("message", e.getMessage());
+            return ResponseEntity.ok(resp);
+        } catch (Exception e) {
+            log.warn("Scene version failed: {}", e.getMessage());
+            return ResponseEntity.status(500).body(errorBody("Scene version generation failed. Please try again."));
+        }
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private Map<String, Object> errorBody(String message) {
