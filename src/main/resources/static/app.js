@@ -1633,6 +1633,9 @@ async function runTryOnGenerate() {
           imageUrl: state.tryOnPreview.imageUrl,
           videoUrl: state.tryOnPreview.videoUrl,
         });
+        if (result.demo === true) showToast(
+          'Sample demo result shown. Live AI generation is credit-protected. ' +
+          'Contact Weiwei Li for a private demo code or live walkthrough.');
       }
     }
   } catch (err) {
@@ -2469,6 +2472,9 @@ async function runTryWholeOutfit() {
       state.tryOnPreview.imageUrl = result.preview_image_url;
       state.tryOnPreview.videoUrl = null;
       state.tryOnPreview.message  = null;
+      if (result.demo === true) showToast(
+        'Sample demo result shown. Live AI generation is credit-protected. ' +
+        'Contact Weiwei Li for a private demo code or live walkthrough.');
     } else if (result.status === 'provider_required') {
       state.tryOnPreview.status  = 'provider_required';
       state.tryOnPreview.message = result.message || 'GPT Image provider not configured.';
@@ -4787,6 +4793,9 @@ async function generatePlan() {
       state.planResult = { imageUrl: data.preview_image_url };
       state.planCache.set(cacheKey, state.planResult);
       state.planStatus = 'complete';
+      if (data.demo === true) showToast(
+        'Sample demo result shown. Live AI generation is credit-protected. ' +
+        'Contact Weiwei Li for a private demo code or live walkthrough.');
     } else {
       throw new Error('No image returned from server.');
     }
@@ -5035,7 +5044,13 @@ async function applySceneToLook(lookId) {
 
     const label = `${look.label} — ${sceneLabel(scene)}`;
     saveLook(result.imageUrl, 'scene', label, null, scene, lookId);
-    showToast('Scene version saved to Look Archive.');
+    if (result.demo === true) {
+      showToast(
+        'Sample demo scene result saved. Live AI generation is credit-protected. ' +
+        'Contact Weiwei Li for a private demo code or live walkthrough.');
+    } else {
+      showToast('Scene version saved to Look Archive.');
+    }
   } catch (err) {
     if (err.name === 'AbortError') {
       showToast('Scene generation cancelled.');

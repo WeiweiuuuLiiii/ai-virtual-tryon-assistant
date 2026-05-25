@@ -60,6 +60,11 @@ public class ApiController {
         this.demoGuard        = demoGuard;
     }
 
+    private static final String SAMPLE_MSG =
+        "Sample demo result shown. Live AI generation is credit-protected. " +
+        "You can still explore the UI and saved-look workflows, " +
+        "or contact Weiwei Li for a private demo code or live walkthrough.";
+
     // ── Global error handlers ─────────────────────────────────────────────────
 
     @ExceptionHandler(DemoGuardException.class)
@@ -281,6 +286,16 @@ public class ApiController {
             @RequestHeader(value = "X-Demo-Code",            required = false) String demoCode)
             throws Exception {
 
+        if (demoGuard.shouldServeSample(demoCode)) {
+            log.info("POST /api/try-on/generate — serving sample result (demo mode, no valid code)");
+            Map<String, Object> sample = new LinkedHashMap<>();
+            sample.put("status",            "ready");
+            sample.put("preview_image_url", "/demo/sample-look-1.jpg");
+            sample.put("mode",              "demo_sample");
+            sample.put("demo",              true);
+            sample.put("message",           SAMPLE_MSG);
+            return ResponseEntity.ok(sample);
+        }
         demoGuard.checkAndIncrement(demoCode);
         log.info("POST /api/try-on/generate — slot={}, provider={}", slot, providerId);
 
@@ -730,6 +745,16 @@ public class ApiController {
             @RequestParam("outfit_ref")                           MultipartFile outfitRef,
             @RequestHeader(value = "X-Demo-Code", required = false) String demoCode) throws Exception {
 
+        if (demoGuard.shouldServeSample(demoCode)) {
+            log.info("POST /api/try-on/full-outfit — serving sample result (demo mode, no valid code)");
+            Map<String, Object> sample = new LinkedHashMap<>();
+            sample.put("status",            "ready");
+            sample.put("preview_image_url", "/demo/sample-look-2.jpg");
+            sample.put("mode",              "demo_sample");
+            sample.put("demo",              true);
+            sample.put("message",           SAMPLE_MSG);
+            return ResponseEntity.ok(sample);
+        }
         demoGuard.checkAndIncrement(demoCode);
         log.info("POST /api/try-on/full-outfit");
 
@@ -874,6 +899,15 @@ public class ApiController {
             @RequestHeader(value = "X-Demo-Code", required = false) String demoCode)
             throws Exception {
 
+        if (demoGuard.shouldServeSample(demoCode)) {
+            log.info("POST /api/try-on/generate-plan — serving sample result (demo mode, no valid code)");
+            Map<String, Object> sample = new LinkedHashMap<>();
+            sample.put("status",            "ready");
+            sample.put("preview_image_url", "/demo/sample-look-3.jpg");
+            sample.put("demo",              true);
+            sample.put("message",           SAMPLE_MSG);
+            return ResponseEntity.ok(sample);
+        }
         demoGuard.checkAndIncrement(demoCode);
         log.info("POST /api/try-on/generate-plan — fit_shift={}, scene={}", fitShift, scene);
 
@@ -922,6 +956,15 @@ public class ApiController {
             @RequestParam(value = "scene", defaultValue = "") String scene,
             @RequestHeader(value = "X-Demo-Code", required = false) String demoCode) throws Exception {
 
+        if (demoGuard.shouldServeSample(demoCode)) {
+            log.info("POST /api/try-on/scene-version — serving sample result (demo mode, no valid code)");
+            Map<String, Object> sample = new LinkedHashMap<>();
+            sample.put("status",   "success");
+            sample.put("imageUrl", "/demo/sample-scene-1.jpg");
+            sample.put("demo",     true);
+            sample.put("message",  SAMPLE_MSG);
+            return ResponseEntity.ok(sample);
+        }
         demoGuard.checkAndIncrement(demoCode);
         log.info("POST /api/try-on/scene-version — scene={}", scene);
 

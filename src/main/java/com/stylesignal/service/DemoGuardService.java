@@ -20,6 +20,9 @@ public class DemoGuardService {
     @Value("${app.public-demo-mode:false}")
     private boolean publicDemoMode;
 
+    @Value("${app.public-demo-sample-results:true}")
+    private boolean sampleResultsEnabled;
+
     @Value("${app.demo-codes:}")
     private String demoCodesConfig;
 
@@ -32,6 +35,31 @@ public class DemoGuardService {
     private final ConcurrentHashMap<String, AtomicInteger> codeUsage = new ConcurrentHashMap<>();
     private final AtomicInteger dailyCount = new AtomicInteger(0);
     private volatile String lastResetDate = "";
+
+    /**
+     * Returns true when the request should be served with a static sample result:
+     *   - publicDemoMode is enabled
+     *   - sampleResultsEnabled is true
+     *   - the provided code is missing, invalid, or exhausted
+     * Returns false in all other cases (local mode, valid code, or sample results disabled).
+     * Does not increment any counters or create usage entries.
+     */
+    public boolean shouldServeSample(String code) {
+        if (!publicDemoMode || !sampleResultsEnabled) return false;
+        return !isCodeValidAndAvailable(code);
+    }
+
+    private boolean isCodeValidAndAvailable(String code) {
+        resetDailyIfNeeded();
+        if (dailyCount.get() >= dailyLimit) return false;
+        Set<String> validCodes = parseValidCodes();
+        if (validCodes.isEmpty()) return false;
+        String trimmed = (code != null) ? code.trim() : "";
+        if (!validCodes.contains(trimmed)) return false;
+        AtomicInteger perCode = codeUsage.get(trimmed);
+        int count = (perCode != null) ? perCode.get() : 0;
+        return count < demoCodeMaxUses;
+    }
 
     /**
      * Validates the demo code and increments usage counters.
