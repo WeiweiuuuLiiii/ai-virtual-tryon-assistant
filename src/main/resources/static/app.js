@@ -305,6 +305,23 @@ function setupLanding() {
       setTimeout(() => document.getElementById('btn-add-outfit-ref')?.click(), 150);
     });
   }
+
+  // Studio hero mode cards — clickable shortcuts
+  const modeCards = document.querySelectorAll('.studio-mode-card');
+  modeCards.forEach(card => {
+    card.style.cursor = 'pointer';
+    card.addEventListener('click', () => {
+      document.querySelector('[data-tab="studio"]')?.click();
+      const isFeatured = card.classList.contains('studio-mode-featured');
+      if (isFeatured) {
+        // Try Whole Outfit → open outfit reference upload
+        setTimeout(() => document.getElementById('btn-add-outfit-ref')?.click(), 150);
+      } else {
+        // Build Your Look → open wardrobe item upload
+        setTimeout(() => document.getElementById('studio-add-item-btn')?.click(), 150);
+      }
+    });
+  });
 }
 
 /* ── Model: Load ────────────────────────────────────────────── */

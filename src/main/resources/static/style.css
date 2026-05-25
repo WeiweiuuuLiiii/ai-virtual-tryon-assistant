@@ -1397,6 +1397,7 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  margin-top: 10px;
 }
 .fit-proportion-chip {
   background: var(--bg);
@@ -1411,7 +1412,7 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin: 0;
+  margin: 8px 0 0;
 }
 .fit-notes-list li {
   font-size: .875rem;
@@ -1745,6 +1746,7 @@ h3 { font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1
   writing-mode: vertical-rl;
   transform: rotate(180deg);
   pointer-events: none;
+  padding: 6px 2px;
 }
 .studio-outerwear-slot .dz-label {
   font-size: .58rem;
@@ -3771,8 +3773,12 @@ body.lightbox-open { overflow: hidden; }
 }
 .complete-look-cards {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-direction: row;
+  overflow-x: auto;
+  gap: 12px;
+  padding-bottom: 6px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
 }
 .complete-look-loading {
   font-size: .72rem;
@@ -3794,6 +3800,9 @@ body.lightbox-open { overflow: hidden; }
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 8px 10px;
+  min-width: 220px;
+  flex-shrink: 0;
+  scroll-snap-align: start;
 }
 .complete-look-card-thumb {
   width: 46px;
@@ -4312,8 +4321,10 @@ body.lightbox-open { overflow: hidden; }
 }
 .color-fit-hdr {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
   margin-bottom: 8px;
 }
 .color-fit-hdr-left {
