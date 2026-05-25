@@ -841,6 +841,7 @@ function _guessType(file) {
 }
 
 function addClothingAsset(file) {
+  setStudioHeroMode('build');
   const id  = `asset_${++_assetIdCounter}`;
   const rawImageUrl = URL.createObjectURL(file);
   state.clothingAssets.push({
